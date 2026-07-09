@@ -1,4 +1,4 @@
-const CACHE_NAME = 'scv-saha-v1-cache-2';
+const CACHE_NAME = 'scv-saha-v1-cache-3';
 const CORE_ASSETS = [
   './scv-saha-v1.html',
   './manifest.json',
@@ -6,7 +6,10 @@ const CORE_ASSETS = [
   './icon-512.png',
   'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css',
   'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js',
-  'https://unpkg.com/xlsx@0.18.5/dist/xlsx.full.min.js'
+  'https://unpkg.com/xlsx@0.18.5/dist/xlsx.full.min.js',
+  'https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js',
+  'https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js',
+  'https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js'
 ];
 
 self.addEventListener('install', (event) => {
@@ -29,6 +32,10 @@ self.addEventListener('activate', (event) => {
 
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
+  const url = event.request.url;
+  if (url.includes('googleapis.com') || url.includes('firebaseapp.com') || url.includes('firebaseio.com')) {
+    return; // Firestore/Auth trafiğine dokunma - kendi ağ katmanını kullansın
+  }
 
   event.respondWith(
     caches.match(event.request).then(cached => {
