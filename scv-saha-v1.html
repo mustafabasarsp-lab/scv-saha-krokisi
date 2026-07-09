@@ -341,7 +341,7 @@ input,select,button,textarea{font-family:inherit;font-size:14px;}
   padding:1px 4px;border-radius:5px;
 }
 .zararli-badge{
-  position:absolute;top:3px;left:3px;
+  position:absolute;top:22px;right:3px;
   background:var(--amber);color:#fff;font-size:8px;font-weight:700;
   padding:1px 4px;border-radius:5px;
 }
@@ -687,6 +687,10 @@ function stateNormalizeEt(){
       else t.bolge = '';
     }
     t.zararlilar = t.zararlilar || [];
+    const eskiSiddetYuzde = { hafif:25, orta:50, yogun:80 };
+    t.zararlilar.forEach(z=>{
+      if(z.yuzde==null && z.siddet){ z.yuzde = eskiSiddetYuzde[z.siddet] ?? 50; }
+    });
   });
 }
 
@@ -904,13 +908,12 @@ function tarlaPhiDurum(tarla){
 
 function tarlaZararliDurum(tarla){
   if(!tarla.zararlilar || !tarla.zararlilar.length) return null;
-  // en şiddetli (yoğun > orta > hafif), eşitlikte en güncel tarihli kayıt gösterilir
-  const siddetSira = { yogun:3, orta:2, hafif:1 };
+  // en yüksek yüzdeli kayıt gösterilir, eşitlikte en güncel tarihli kazanır
   let enKotu = null;
   tarla.zararlilar.forEach(z=>{
-    const puan = siddetSira[z.siddet] || 2;
-    if(!enKotu || puan > enKotu.puan || (puan === enKotu.puan && z.tarih > enKotu.tarih)){
-      enKotu = { ad: z.ad, siddet: z.siddet, tarih: z.tarih, puan };
+    const yuzde = Number(z.yuzde)||0;
+    if(!enKotu || yuzde > enKotu.yuzde || (yuzde === enKotu.yuzde && z.tarih > enKotu.tarih)){
+      enKotu = { ad: z.ad, yuzde, tarih: z.tarih };
     }
   });
   return enKotu;
@@ -1113,7 +1116,7 @@ function renderTarlalar(){
     }
     return `<div class="tarla-box" onclick="openTarlaDetay('${t.id}')">
       ${phi ? `<div class="phi-badge">${phi.kalanGun}g</div>` : ''}
-      ${zararli ? `<div class="zararli-badge ${zararli.siddet==='yogun'?'siddetli':''}" title="${escapeHtml(zararli.ad)}">🐛</div>` : ''}
+      ${zararli ? `<div class="zararli-badge ${zararli.yuzde>=50?'siddetli':''}" title="${escapeHtml(zararli.ad)} — %${zararli.yuzde}">🐛 %${zararli.yuzde}</div>` : ''}
       <div class="name">${escapeHtml(t.ad)}</div>
       <div class="sub">${fmt(t.dekar,1)} da</div>
       <div class="kirim-row">${dots}</div>
@@ -1414,11 +1417,7 @@ function zararliRowEkle(prefill){
   wrap.innerHTML = `
     <input type="text" placeholder="Zararlı adı (örn. Yaprak biti)" id="zararliAd${idx}" value="${escapeHtml(p.ad||'')}">
     <input type="date" id="zararliTarih${idx}" value="${p.tarih||''}">
-    <select id="zararliSiddet${idx}">
-      <option value="hafif" ${p.siddet==='hafif'?'selected':''}>Hafif</option>
-      <option value="orta" ${!p.siddet||p.siddet==='orta'?'selected':''}>Orta</option>
-      <option value="yogun" ${p.siddet==='yogun'?'selected':''}>Yoğun</option>
-    </select>
+    <input type="number" placeholder="Yüzde %" id="zararliYuzde${idx}" min="0" max="100" step="1" value="${p.yuzde??''}">
     <button class="btn btn-muted" type="button" onclick="document.getElementById('zararliRow${idx}').remove()">×</button>
   `;
   document.getElementById('zararliRows').appendChild(wrap);
@@ -1430,8 +1429,8 @@ function tarlaZararlilarOku(){
     if(!rowEl) continue;
     const zAd = document.getElementById('zararliAd'+i)?.value.trim();
     const zTarih = document.getElementById('zararliTarih'+i)?.value;
-    const zSiddet = document.getElementById('zararliSiddet'+i)?.value;
-    if(zAd && zTarih){ zararlilar.push({ ad:zAd, tarih:zTarih, siddet:zSiddet||'orta' }); }
+    const zYuzde = Number(document.getElementById('zararliYuzde'+i)?.value)||0;
+    if(zAd && zTarih){ zararlilar.push({ ad:zAd, tarih:zTarih, yuzde:zYuzde }); }
   }
   return zararlilar;
 }
@@ -1504,9 +1503,8 @@ function openTarlaDetay(id){
     const durum = kalan>0 ? `<span class="warn-phi">Hasada ${kalan} gün</span>` : `<span class="ok-phi">PHI geçti (güvenli)</span>`;
     return `<div class="item">${escapeHtml(ilac.ad)} — ${escapeHtml(ilac.tarih)} (PHI ${ilac.phi}g) — ${durum}</div>`;
   }).join('') || '<div class="item">İlaç kaydı yok</div>';
-  const siddetEtiket = { hafif:'Hafif', orta:'Orta', yogun:'Yoğun' };
   const zararliHtml = [...(t.zararlilar||[])].sort((a,b)=>b.tarih.localeCompare(a.tarih)).map(z=>
-    `<div class="item">🐛 ${escapeHtml(z.ad)} — ${escapeHtml(z.tarih)} — ${siddetEtiket[z.siddet]||'Orta'}</div>`
+    `<div class="item">🐛 ${escapeHtml(z.ad)} — ${escapeHtml(z.tarih)} — %${Number(z.yuzde)||0}</div>`
   ).join('') || '<div class="item">Zararlı kaydı yok</div>';
   const tarlaKirimlari = state.kirimlar.filter(k=>k.tarlaId===t.id).sort((a,b)=>b.tarih.localeCompare(a.tarih));
   const kirimListHtml = tarlaKirimlari.map(k=>{
