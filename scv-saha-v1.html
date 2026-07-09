@@ -1,0 +1,2078 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>SCV Saha Krokisi</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#0a7a4f">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="SCV Saha">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="icon" href="icon-192.png">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+<script src="https://unpkg.com/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<style>
+:root{
+  --bg:#f6f9f7;
+  --panel:#ffffff;
+  --panel-2:#f2f8f4;
+  --ink:#20281f;
+  --muted:#6b7a6c;
+  --green-900:#00543c;
+  --green-700:#0a7a4f;
+  --green-500:#4c8f52;
+  --green-300:#9fd3a0;
+  --green-100:#e4f3e3;
+  --plot-outline:#a13a2e;
+  --amber:#e0a02c;
+  --red:#c0392b;
+  --border:#c9ded0;
+  --shadow:0 2px 6px rgba(20,50,30,.14);
+}
+*{box-sizing:border-box;}
+html,body{height:100%;}
+body{
+  margin:0;
+  background:var(--bg);
+  color:var(--ink);
+  font-family:'Inter','Segoe UI',system-ui,sans-serif;
+  font-size:14px;
+  overflow:hidden;
+}
+h1,h2,h3,h4,.heading{
+  font-family:'Barlow Semi Condensed','Oswald','Arial Narrow',sans-serif;
+  letter-spacing:.02em;
+  font-weight:700;
+  margin:0;
+}
+button{font-family:inherit;cursor:pointer;}
+input,select,button,textarea{font-family:inherit;font-size:14px;}
+
+/* ---------- APP SHELL ---------- */
+.app{
+  display:grid;
+  grid-template-rows:auto 1fr auto;
+  height:100vh;
+  gap:8px;
+  padding:8px;
+}
+
+/* ---------- HEADER ---------- */
+.header{
+  background:var(--panel);
+  border:1px solid var(--border);
+  border-radius:10px;
+  box-shadow:var(--shadow);
+  padding:8px 12px;
+  display:flex;
+  align-items:center;
+  gap:14px;
+  flex-wrap:wrap;
+}
+.header .brand{
+  font-size:20px;
+  color:var(--green-900);
+  white-space:nowrap;
+}
+.header .brand small{
+  display:block;
+  font-family:'Inter',sans-serif;
+  font-weight:400;
+  font-size:11px;
+  color:var(--muted);
+  letter-spacing:0;
+}
+.badges{
+  display:flex;
+  gap:6px;
+  flex-wrap:wrap;
+  flex:1;
+}
+.badge{
+  position:relative;
+  background:var(--green-100);
+  border:1px solid var(--green-300);
+  color:var(--green-900);
+  border-radius:20px;
+  padding:4px 10px;
+  font-size:12px;
+  white-space:nowrap;
+  display:flex;
+  gap:4px;
+  align-items:center;
+}
+.badge b{font-family:'Barlow Semi Condensed',sans-serif;font-size:13px;}
+.badge .badge-tip{
+  display:none;
+  position:absolute;
+  top:120%;
+  left:0;
+  z-index:50;
+  background:var(--ink);
+  color:#fff;
+  padding:6px 8px;
+  border-radius:6px;
+  font-size:11px;
+  width:200px;
+  white-space:normal;
+  box-shadow:var(--shadow);
+}
+.badge.open .badge-tip{display:block;}
+.header-actions{display:flex;gap:8px;}
+.btn-csv{
+  background:var(--green-700);
+  color:#fff;
+  border:none;
+  border-radius:8px;
+  padding:8px 14px;
+  font-size:13px;
+  font-weight:600;
+}
+
+/* ---------- MIDDLE ROW ---------- */
+.middle{
+  display:grid;
+  grid-template-columns:220px 1fr 340px;
+  gap:8px;
+  min-height:0;
+}
+.panel{
+  background:var(--panel);
+  border:1px solid var(--border);
+  border-radius:10px;
+  box-shadow:var(--shadow);
+  display:flex;
+  flex-direction:column;
+  min-height:0;
+  overflow:hidden;
+}
+.panel-head{
+  padding:8px 10px;
+  border-bottom:1px solid var(--border);
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  background:var(--panel-2);
+  border-radius:10px 10px 0 0;
+}
+.panel-head h2{font-size:16px;color:var(--green-900);}
+.panel-body{
+  padding:10px;
+  overflow-y:auto;
+  flex:1;
+  min-height:0;
+}
+.icon-btn{
+  width:26px;height:26px;
+  border-radius:50%;
+  border:1px solid var(--green-700);
+  background:var(--green-700);
+  color:#fff;
+  font-size:16px;
+  line-height:1;
+  display:flex;align-items:center;justify-content:center;
+}
+.icon-btn.ghost{background:transparent;color:var(--green-700);}
+
+/* ---------- SOL: DIZIM ALANI ---------- */
+.dizim-plot{
+  border:2px dashed var(--green-500);
+  border-radius:10px;
+  background:
+    repeating-linear-gradient(45deg, rgba(10,122,79,.08) 0 8px, transparent 8px 16px),
+    var(--green-100);
+  height:110px;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  text-align:center;
+  cursor:pointer;
+  color:var(--green-900);
+  padding:6px;
+}
+.dizim-plot:hover{filter:brightness(1.03);}
+.dizim-plot b{font-family:'Barlow Semi Condensed',sans-serif;font-size:16px;color:var(--green-900);}
+.dizim-plot span{font-size:11px;}
+.son-kirimlar{margin-top:10px;}
+.son-kirimlar h3,.toplam-istatistik h3{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px;}
+.toplam-istatistik{margin-top:14px;padding-top:12px;border-top:1px dashed var(--border);}
+.toplam-istatistik .detail-grid{margin-top:8px;}
+.toplam-istatistik .detail-grid div{background:var(--panel-2);border:1px solid var(--border);border-radius:6px;padding:5px 7px;}
+.mini-kirim{
+  border:1px solid var(--border);
+  border-radius:6px;
+  padding:5px 7px;
+  margin-bottom:5px;
+  font-size:11.5px;
+  background:var(--panel-2);
+}
+.mini-kirim .r1{display:flex;justify-content:space-between;font-weight:600;color:var(--green-900);}
+.mini-kirim .r2{color:var(--muted);}
+
+/* ---------- ORTA ---------- */
+.orta-body{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;text-align:center;gap:10px;}
+.orta-body h1{font-size:26px;color:var(--green-900);}
+.orta-body .sub{color:var(--muted);font-size:12px;}
+.legend{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-top:6px;}
+.legend .lg{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--muted);}
+.legend .sw{width:12px;height:12px;border-radius:3px;border:1px solid var(--border);}
+.quickstats{display:flex;gap:16px;margin-top:8px;}
+.quickstats div{font-size:11px;color:var(--muted);text-align:center;}
+.quickstats b{display:block;font-family:'Barlow Semi Condensed',sans-serif;font-size:20px;color:var(--green-900);}
+
+/* ---------- SAG: SERALAR ---------- */
+.sera-plot{display:flex;flex-wrap:wrap;gap:10px;align-content:flex-start;}
+.sera-box{
+  position:relative;
+  height:78px;
+  border:1px solid var(--border);
+  border-radius:6px;
+  box-shadow:var(--shadow);
+  overflow:hidden;
+  cursor:pointer;
+  background:#e5e7e0;
+}
+.sera-box .label{
+  position:absolute;top:3px;left:0;right:0;
+  text-align:center;font-size:10.5px;font-weight:700;color:var(--ink);
+  z-index:3;text-shadow:0 1px 2px rgba(255,255,255,.6);
+  padding:0 4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+.sera-box .pct{
+  position:absolute;bottom:3px;left:0;right:0;
+  text-align:center;font-size:10px;font-weight:600;color:var(--ink);
+  z-index:3;text-shadow:0 1px 2px rgba(255,255,255,.6);
+}
+.sera-box .fill{
+  position:absolute;left:0;right:0;bottom:0;
+  background-image:
+    radial-gradient(circle at 20% 30%, rgba(255,255,255,.35) 0 3px, transparent 4px),
+    radial-gradient(circle at 60% 75%, rgba(255,255,255,.25) 0 2px, transparent 3px),
+    radial-gradient(circle at 80% 25%, rgba(255,255,255,.25) 0 2px, transparent 3px),
+    radial-gradient(circle at 40% 55%, rgba(255,255,255,.2) 0 2px, transparent 3px);
+  background-size:16px 16px;
+  transition:height .3s;
+}
+.fill-0{background-color:#e5e7e0;}
+.fill-low{background-color:var(--green-100);}
+.fill-mid{background-color:var(--green-300);}
+.fill-high{background-color:var(--green-500);}
+.fill-amber{background-color:var(--amber);}
+.fill-over{background-color:var(--red);}
+.sera-close{
+  position:absolute;top:2px;right:2px;z-index:4;
+  width:16px;height:16px;border-radius:50%;
+  background:rgba(0,0,0,.45);color:#fff;border:none;
+  font-size:10px;line-height:1;display:flex;align-items:center;justify-content:center;
+  padding:0;
+}
+.empty-hint{color:var(--muted);font-size:12px;text-align:center;padding:20px 6px;}
+
+/* ---------- ALT: TARLALAR ---------- */
+.bottom-panel{
+  background:var(--panel);
+  border:1px solid var(--border);
+  border-radius:10px;
+  box-shadow:var(--shadow);
+  padding:8px 10px;
+  display:flex;
+  flex-direction:column;
+  height:250px;
+}
+.tarla-plot{
+  display:flex;flex-wrap:wrap;gap:7px;overflow-y:auto;overflow-x:hidden;
+  padding:4px 2px 8px 2px;flex:1;align-content:flex-start;
+}
+.tarla-box{
+  flex:0 0 auto;
+  width:82px;
+  height:82px;
+  border:2px solid var(--plot-outline);
+  border-radius:3px;
+  /* sol kenarda hafif düzensiz kroki-sınırı hissi; phi-badge/tarla-close
+     sağ köşelerde olduğu için sağ taraf kasıtlı olarak dikdörtgen bırakıldı */
+  clip-path:polygon(3% 0%, 100% 0%, 100% 100%, 4% 100%, 0% 92%, 0% 6%);
+  background:
+    radial-gradient(circle at 18% 28%, rgba(0,84,60,.12) 0 3px, transparent 4px),
+    radial-gradient(circle at 58% 72%, rgba(0,84,60,.10) 0 2px, transparent 3px),
+    radial-gradient(circle at 82% 22%, rgba(122,90,52,.14) 0 2px, transparent 3px),
+    radial-gradient(circle at 34% 55%, rgba(122,90,52,.10) 0 2px, transparent 3px),
+    repeating-linear-gradient(115deg, rgba(0,84,60,.06) 0 5px, transparent 5px 11px),
+    var(--green-100);
+  box-shadow:var(--shadow);
+  padding:5px 6px;
+  cursor:pointer;
+  position:relative;
+  display:flex;flex-direction:column;
+}
+.tarla-box .name{
+  font-family:'Barlow Semi Condensed',sans-serif;font-weight:700;font-size:10.5px;color:#fff;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  background:var(--green-900);
+  align-self:flex-start;
+  max-width:100%;
+  padding:1px 6px;
+  border-radius:3px 3px 3px 0;
+  box-shadow:0 2px 3px rgba(0,0,0,.22);
+  margin:-1px 0 4px -2px;
+  position:relative;
+}
+.tarla-box .name::after{
+  content:'';
+  position:absolute;left:0;top:100%;
+  border-width:3px 3px 0 0;border-style:solid;
+  border-color:var(--green-900) transparent transparent transparent;
+}
+.tarla-box .sub{font-size:9px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.tarla-box .kirim-row{display:flex;align-items:center;gap:2px;margin-top:auto;flex-wrap:wrap;}
+.kdot{width:6px;height:6px;border-radius:50%;background:var(--green-700);display:inline-block;flex:0 0 auto;}
+.kdot.empty{background:transparent;border:1px solid var(--muted);}
+.phi-badge{
+  position:absolute;top:3px;right:3px;
+  background:var(--red);color:#fff;font-size:8px;font-weight:700;
+  padding:1px 4px;border-radius:5px;
+}
+.zararli-badge{
+  position:absolute;top:3px;left:3px;
+  background:var(--amber);color:#fff;font-size:8px;font-weight:700;
+  padding:1px 4px;border-radius:5px;
+}
+.zararli-badge.siddetli{background:var(--red);}
+.tarla-close{
+  position:absolute;bottom:2px;right:2px;
+  width:13px;height:13px;border-radius:50%;
+  background:rgba(0,0,0,.4);color:#fff;border:none;font-size:9px;
+  display:flex;align-items:center;justify-content:center;padding:0;
+}
+
+/* ---------- SAYFA GEÇİŞİ / HARİTALAR ---------- */
+.page{display:contents;}
+.page.hidden{display:none;}
+.page-tabs{display:flex;gap:6px;flex-wrap:wrap;}
+.tab-btn{
+  background:transparent;border:1px solid var(--border);border-radius:8px;
+  padding:7px 14px;font-size:13px;font-weight:600;color:var(--muted);
+}
+.tab-btn.active{background:var(--green-700);color:#fff;border-color:var(--green-700);}
+.harita-toolbar{display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap;flex:0 0 auto;}
+.harita-toolbar .hint-text{font-size:11.5px;color:var(--muted);flex:1;min-width:220px;}
+#haritaPinModBtn.active{background:var(--green-700);color:#fff;border-color:var(--green-700);}
+#haritaMap{flex:1;min-height:320px;border-radius:8px;border:1px solid var(--border);}
+.harita-pin-icon{display:flex;flex-direction:column;align-items:center;pointer-events:none;}
+.harita-pin-icon .pin-dot{
+  width:16px;height:16px;border-radius:50% 50% 50% 0;
+  background:var(--plot-outline);border:2px solid #fff;
+  transform:rotate(-45deg);box-shadow:0 1px 4px rgba(0,0,0,.5);
+}
+.harita-pin-icon .pin-label{
+  background:var(--green-900);color:#fff;font-size:10.5px;font-weight:700;
+  padding:1px 6px;border-radius:4px;margin-bottom:2px;white-space:nowrap;
+  box-shadow:0 1px 3px rgba(0,0,0,.3);
+}
+.tesis-pin-icon{display:flex;flex-direction:column;align-items:center;pointer-events:none;}
+.tesis-pin-icon .tesis-dot{
+  width:12px;height:12px;border-radius:50%;
+  background:#2b6cb0;border:2px solid #fff;
+  box-shadow:0 1px 4px rgba(0,0,0,.5);
+}
+.tesis-pin-icon .tesis-label{
+  background:#2b6cb0;color:#fff;font-size:9.5px;font-weight:700;
+  padding:1px 5px;border-radius:4px;margin-bottom:2px;white-space:nowrap;
+  box-shadow:0 1px 3px rgba(0,0,0,.3);
+}
+
+/* ---------- MODAL ---------- */
+.overlay{
+  position:fixed;inset:0;background:rgba(20,15,5,.45);
+  display:flex;align-items:center;justify-content:center;
+  z-index:100;padding:16px;
+}
+.overlay.hidden{display:none;}
+.modal{
+  background:var(--panel);
+  border-radius:12px;
+  border:1px solid var(--border);
+  box-shadow:0 8px 30px rgba(0,0,0,.3);
+  width:100%;max-width:520px;
+  max-height:88vh;overflow-y:auto;
+  padding:16px 18px;
+}
+.modal h2{color:var(--green-900);font-size:20px;margin-bottom:10px;}
+.field{margin-bottom:9px;}
+.field label{display:block;font-size:11.5px;color:var(--muted);margin-bottom:2px;text-transform:uppercase;letter-spacing:.03em;}
+.field input,.field select,.field textarea{
+  width:100%;padding:8px 9px;border:1px solid var(--border);border-radius:6px;
+  background:#fff;color:var(--ink);
+}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+.row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;}
+.check-row{display:flex;align-items:center;gap:8px;font-size:12.5px;margin:8px 0;}
+.check-row input{width:auto;}
+.hint-box{
+  background:var(--green-100);border:1px solid var(--green-300);border-radius:6px;
+  padding:7px 9px;font-size:12px;color:var(--green-900);margin:8px 0;
+}
+.modal-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:14px;}
+.btn{padding:9px 16px;border-radius:7px;border:1px solid var(--border);background:#fff;font-size:13px;font-weight:600;}
+.btn-primary{background:var(--green-700);color:#fff;border-color:var(--green-700);}
+.btn-danger{background:var(--red);color:#fff;border-color:var(--red);}
+.btn-muted{background:transparent;color:var(--muted);}
+.ilac-row{display:grid;grid-template-columns:1fr 110px 70px 30px;gap:6px;margin-bottom:6px;align-items:center;}
+.ilac-row input{padding:6px 7px;}
+.zararli-row{display:grid;grid-template-columns:1fr 110px 90px 30px;gap:6px;margin-bottom:6px;align-items:center;}
+.zararli-row input,.zararli-row select{padding:6px 7px;}
+.sera-dagilim-row{display:grid;grid-template-columns:1fr 110px 30px;gap:6px;margin-bottom:6px;align-items:center;}
+.sera-dagilim-row input,.sera-dagilim-row select{padding:6px 7px;}
+.detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px 14px;margin:10px 0;}
+.detail-grid div{font-size:12px;}
+.detail-grid b{display:block;font-family:'Barlow Semi Condensed',sans-serif;font-size:17px;color:var(--green-900);}
+.list-small{max-height:140px;overflow-y:auto;border:1px solid var(--border);border-radius:6px;padding:6px;background:var(--panel-2);}
+.list-small .item{font-size:11.5px;padding:3px 0;border-bottom:1px dashed var(--border);}
+.list-small .item:last-child{border-bottom:none;}
+.warn-phi{color:var(--red);font-weight:700;}
+.ok-phi{color:var(--green-700);font-weight:700;}
+
+/* ---------- MOBILE ---------- */
+@media (max-width:900px){
+  body{overflow:auto;}
+  .app{height:auto;min-height:100vh;grid-template-rows:auto auto auto;}
+  .middle{grid-template-columns:1fr;}
+  .panel{min-height:200px;max-height:340px;}
+  .bottom-panel{height:auto;max-height:260px;}
+  .icon-btn{width:32px;height:32px;font-size:18px;}
+  .sera-box{height:88px;}
+  .kdot{width:11px;height:11px;}
+}
+</style>
+</head>
+<body>
+
+<div class="app">
+
+  <!-- HEADER -->
+  <div class="header">
+    <div class="brand">SCV Saha Krokisi<small>Bugün: <span id="bugunTarih"></span></small></div>
+    <div class="page-tabs">
+      <button class="tab-btn active" id="tab_pageSaha" onclick="sayfaGecis('pageSaha')">🌿 Saha Krokisi</button>
+      <button class="tab-btn" id="tab_pageHaritalar" onclick="sayfaGecis('pageHaritalar')">🗺️ Haritalar</button>
+      <button class="tab-btn" id="tab_pageDepo" onclick="sayfaGecis('pageDepo')">📦 Depo</button>
+      <button class="tab-btn" id="tab_pageSulama" onclick="sayfaGecis('pageSulama')">💧 Sulama Takip</button>
+    </div>
+    <div class="badges" id="badgesRow"></div>
+    <div class="header-actions">
+      <button class="btn-csv" id="installBtn" style="display:none;" onclick="pwaYukle()">⬇️ Uygulamayı Yükle</button>
+      <button class="btn-csv" onclick="openVeriYonetimiModal()">💾 Veri Yönetimi</button>
+    </div>
+    <input type="file" id="yedekDosyaInput" accept="application/json,.json" style="display:none" onchange="yedekDosyaYuklendi(this)">
+  </div>
+
+  <div class="page" id="pageSaha">
+  <!-- MIDDLE -->
+  <div class="middle">
+
+    <!-- SOL: DIZIM ALANI -->
+    <div class="panel">
+      <div class="panel-head"><h2>Dizim Alanı</h2></div>
+      <div class="panel-body">
+        <div class="dizim-plot" onclick="openKirimModal()">
+          <b>+ Kırım Kaydı Gir</b>
+          <span>Tarla · El · Dizi/Balya · Hedef Sera</span>
+        </div>
+        <div class="son-kirimlar">
+          <h3>Son Kırımlar</h3>
+          <div id="sonKirimlarList"></div>
+        </div>
+        <div class="toplam-istatistik">
+          <h3>Toplam İstatistik</h3>
+          <div class="row2">
+            <div class="field"><label>Başlangıç</label><input id="statBaslangic" type="date" oninput="renderToplamIstatistik()"></div>
+            <div class="field"><label>Bitiş</label><input id="statBitis" type="date" oninput="renderToplamIstatistik()"></div>
+          </div>
+          <div class="field">
+            <label>Çeşit / Varyete</label>
+            <select id="statCesit" onchange="renderToplamIstatistik()"><option value="">Tümü</option></select>
+          </div>
+          <div class="detail-grid" id="toplamIstatistikSonuc"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ORTA -->
+    <div class="panel">
+      <div class="panel-head"><h2>Saha Genel</h2></div>
+      <div class="panel-body">
+        <div class="orta-body">
+          <h1>🌿 SCV</h1>
+          <div class="sub">Üstten görünüm kroki paneli</div>
+          <div class="legend">
+            <div class="lg"><span class="sw" style="background:#e5e7e0"></span>Boş</div>
+            <div class="lg"><span class="sw" style="background:var(--green-100)"></span>%1-50</div>
+            <div class="lg"><span class="sw" style="background:var(--green-300)"></span>%51-85</div>
+            <div class="lg"><span class="sw" style="background:var(--amber)"></span>%86-99</div>
+            <div class="lg"><span class="sw" style="background:var(--red)"></span>%100+</div>
+          </div>
+          <div class="quickstats">
+            <div><b id="qsTarla">0</b>Tarla</div>
+            <div><b id="qsSera">0</b>Sera</div>
+            <div><b id="qsKirim">0</b>Kırım Kaydı</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SAG: SERALAR -->
+    <div class="panel">
+      <div class="panel-head">
+        <h2>Seralar</h2>
+        <button class="icon-btn" onclick="openSeraEkleModal()">+</button>
+      </div>
+      <div class="panel-body">
+        <div class="sera-plot" id="seraPlot"></div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ALT: TARLALAR -->
+  <div class="bottom-panel">
+    <div class="panel-head" style="margin:-8px -10px 4px -10px;">
+      <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
+        <h2>Tarlalar</h2>
+        <div class="page-tabs" id="tarlaBolgeTabs">
+          <button class="tab-btn active" id="tarlaBolgeTab_tumu" onclick="tarlaBolgeSekmeGecis('tumu')">Tümü</button>
+          <button class="tab-btn" id="tarlaBolgeTab_tekeliler" onclick="tarlaBolgeSekmeGecis('tekeliler')">Tekeliler</button>
+          <button class="tab-btn" id="tarlaBolgeTab_kalemli" onclick="tarlaBolgeSekmeGecis('kalemli')">Kalemli</button>
+        </div>
+      </div>
+      <button class="icon-btn" onclick="openTarlaEkleModalAktifBolgeIle()">+</button>
+    </div>
+    <div class="tarla-plot" id="tarlaPlot"></div>
+  </div>
+  </div>
+
+  <!-- SAYFA: HARİTALAR -->
+  <div class="page hidden" id="pageHaritalar">
+    <div class="panel" style="min-height:0;">
+      <div class="panel-head">
+        <h2>Haritalar</h2>
+      </div>
+      <div class="panel-body" style="display:flex;flex-direction:column;min-height:0;">
+        <div class="harita-toolbar">
+          <button class="btn" id="haritaPinModBtn" onclick="haritaPinModuDegistir()">📍 Pin Ekleme Modu</button>
+          <button class="btn btn-primary" onclick="haritaKonumumlaPinEkle()">🛰️ Buradayım (GPS ile Pin Ekle)</button>
+          <button class="btn" onclick="openKoordinatTarlaEkleModal()">🔢 Koordinat ile Tarla Ekle</button>
+          <button class="btn" onclick="haritaBolgeyeGit('kalemli')">Kalemli'ye Git</button>
+          <button class="btn" onclick="haritaBolgeyeGit('tekeliler')">Tekeliler'e Git</button>
+          <button class="btn" onclick="krokiVerileriniIceAktar()">📥 Kroki Verilerini İçe Aktar</button>
+          <span class="hint-text">Uydu görüntüsü — gerçek konum verisi. Pin Ekleme Modu açıkken haritaya tıklayarak tarla pini ekleyin; moddayken bir pine tıklamak sil/GPS-güncelle seçeneği açar, mod kapalıyken pine tıklamak o tarlanın detayını açar. Sahadayken "Buradayım" ile telefonunuzun GPS konumuyla doğrudan pin ekleyebilirsiniz.</span>
+        </div>
+        <div id="haritaMap"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SAYFA: DEPO -->
+  <div class="page hidden" id="pageDepo">
+    <div class="panel" style="min-height:0;">
+      <div class="panel-head">
+        <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
+          <h2>Depo</h2>
+          <div class="page-tabs" id="depoBolgeTabs">
+            <button class="tab-btn active" id="depoBolgeTab_tekeliler" onclick="depoBolgeSekmeGecis('tekeliler')">Tekeliler</button>
+            <button class="tab-btn" id="depoBolgeTab_kalemli" onclick="depoBolgeSekmeGecis('kalemli')">Kalemli</button>
+          </div>
+        </div>
+        <button class="icon-btn" onclick="openKutuEkleModal()">+</button>
+      </div>
+      <div class="panel-body">
+        <div class="detail-grid" id="depoOzet"></div>
+        <div class="field" style="margin-top:10px;">
+          <label>Kutular</label>
+          <div class="list-small" id="depoKutuListesi"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SAYFA: SULAMA TAKİP -->
+  <div class="page hidden" id="pageSulama">
+    <div class="panel" style="min-height:0;">
+      <div class="panel-head">
+        <h2>Sulama Takip</h2>
+        <button class="icon-btn" onclick="openSulamaEkleModal()">+</button>
+      </div>
+      <div class="panel-body">
+        <div class="detail-grid" id="sulamaOzet"></div>
+        <div class="field" style="margin-top:10px;">
+          <label>Sulama Kayıtları</label>
+          <div class="list-small" id="sulamaListesi"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div class="overlay hidden" id="overlay">
+  <div class="modal" id="modalContent"></div>
+</div>
+
+<script>
+/* =========================================================
+   AYARLAR (tek ayar bloğu — sabitleri buradan değiştirin)
+   ========================================================= */
+const AYARLAR = {
+  UNITE_KAPASITE: 480,        // 1 ünite sera kapasitesi (dizi)
+  GUNLUK_ISLEME_DIZI: 200,    // seranın günlük işlenen tahmini dizi hızı (boşalma tahmini için)
+  UNITE_PX: 40                // 1 ünitenin ekran genişliği (px) — kroki oranı
+};
+const STORAGE_KEY = 'scvSahaKrokiV1';
+
+/* =========================================================
+   STORE
+   ========================================================= */
+function bosState(){ return { tarlalar: [], seralar: [], kirimlar: [], haritaPinleri: [], tesisPinleri: [], depoKutulari: [], sulamaKayitlari: [] }; }
+function stateNormalizeEt(){
+  state.haritaPinleri = state.haritaPinleri || [];
+  state.tesisPinleri = state.tesisPinleri || [];
+  state.depoKutulari = state.depoKutulari || [];
+  state.sulamaKayitlari = state.sulamaKayitlari || [];
+  state.tarlalar.forEach(t=>{
+    if(!t.bolge){
+      if(/^T\d/i.test(t.ad)) t.bolge = 'tekeliler';
+      else if(/^K\d/i.test(t.ad)) t.bolge = 'kalemli';
+      else t.bolge = '';
+    }
+    t.zararlilar = t.zararlilar || [];
+  });
+}
+
+let state = bosState();
+(function loadState(){
+  try{
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if(raw){ state = JSON.parse(raw); }
+  }catch(e){ /* localStorage yok / erişilemiyor: bellekte kalacak */ }
+  stateNormalizeEt();
+})();
+
+function saveState(){
+  try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
+  catch(e){ /* sessizce yut, veri bu oturum için bellekte kalmaya devam eder */ }
+}
+
+function uid(){ return 'id' + Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
+function todayStr(){ return new Date().toISOString().slice(0,10); }
+function escapeHtml(s){
+  return String(s==null?'':s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+function fmt(n, d){ if(n==null||isNaN(n)) return '-'; return Number(n).toLocaleString('tr-TR',{maximumFractionDigits:d==null?1:d, minimumFractionDigits:0}); }
+
+/* =========================================================
+   TÜREV HESAPLAR
+   ========================================================= */
+function seraDagilimiEtiket(seraDagilimi){
+  return (seraDagilimi||[]).map(d=>{
+    const s = seraBul(d.seraId);
+    return `${s?s.ad:'(sera silinmiş)'}: ${d.diziSayisi}`;
+  }).join(', ') || '-';
+}
+function kirimTurev(k){
+  const diziSayisi = (k.seraDagilimi||[]).reduce((s,d)=>s+(Number(d.diziSayisi)||0),0);
+  const diziKg = diziSayisi * (Number(k.ortDiziKg)||0);       // serada dizilen tütün ağırlığı (kg)
+  const toplamKg = (Number(k.balyaSayisi)||0) * (Number(k.ortBalyaKg)||0); // toplam kırılmış/balyalanmış tütün ağırlığı (kg)
+  return { diziSayisi, diziKg, toplamKg };
+}
+
+function tarlaBul(id){ return state.tarlalar.find(t=>t.id===id); }
+function seraBul(id){ return state.seralar.find(s=>s.id===id); }
+function seraAktifDonem(sera){ return (sera && sera.donemler || []).find(d=>d.aktif) || null; }
+function seraGuncelDolu(sera){ const d = seraAktifDonem(sera); return d ? (Number(d.dolu)||0) : 0; }
+function seraGuncelDizilmisKg(sera){ const d = seraAktifDonem(sera); return d ? (d.kaynaklar||[]).reduce((s,k)=>s+(Number(k.diziKg)||0),0) : 0; }
+function donemBulByKirim(sera, kirimId){
+  for(const d of (sera.donemler||[])){
+    if((d.kaynaklar||[]).some(k=>k.kirimId===kirimId)) return d;
+  }
+  return null;
+}
+
+function tarlaStats(tarlaId){
+  const kayitlar = state.kirimlar.filter(k=>k.tarlaId===tarlaId);
+  let maxKirimNo = 0, toplamKg = 0, toplamBalya = 0;
+  kayitlar.forEach(k=>{
+    if(Number(k.kirimNo) > maxKirimNo) maxKirimNo = Number(k.kirimNo);
+    toplamKg += kirimTurev(k).toplamKg;
+    toplamBalya += Number(k.balyaSayisi)||0;
+  });
+  const ortBalyaKg = toplamBalya>0 ? toplamKg/toplamBalya : null;
+  return { kayitSayisi: kayitlar.length, maxKirimNo, toplamKg, toplamBalya, ortBalyaKg };
+}
+
+function tarlaPhiDurum(tarla){
+  if(!tarla.ilaclar || !tarla.ilaclar.length) return null;
+  const today = new Date(todayStr());
+  let enKotu = null;
+  tarla.ilaclar.forEach(ilac=>{
+    const uygulamaTarihi = new Date(ilac.tarih);
+    const bitisTarihi = new Date(uygulamaTarihi.getTime() + (Number(ilac.phi)||0)*86400000);
+    const kalanGun = Math.ceil((bitisTarihi - today) / 86400000);
+    if(kalanGun > 0){
+      if(!enKotu || kalanGun > enKotu.kalanGun) enKotu = { ad: ilac.ad, kalanGun };
+    }
+  });
+  return enKotu;
+}
+
+function tarlaZararliDurum(tarla){
+  if(!tarla.zararlilar || !tarla.zararlilar.length) return null;
+  const today = new Date(todayStr());
+  let enYeni = null;
+  tarla.zararlilar.forEach(z=>{
+    const gun = Math.floor((today - new Date(z.tarih)) / 86400000);
+    if(gun>=0 && gun<=21 && (!enYeni || gun<enYeni.gun)) enYeni = { ad: z.ad, gun, siddet: z.siddet };
+  });
+  return enYeni;
+}
+
+function seraDurumSinifi(pct){
+  if(pct<=0) return 'fill-0';
+  if(pct<=50) return 'fill-low';
+  if(pct<=85) return 'fill-mid';
+  if(pct<=99) return 'fill-high';
+  if(pct<100) return 'fill-amber';
+  return 'fill-over';
+}
+function seraDurumSinifiExact(pct){
+  if(pct<=0) return 'fill-0';
+  if(pct<=50) return 'fill-low';
+  if(pct<=85) return 'fill-mid';
+  if(pct<=99) return 'fill-amber';
+  return 'fill-over';
+}
+
+/* =========================================================
+   BADGE / ROZET HESAPLARI
+   ========================================================= */
+function hesaplaRozetler(){
+  // kg/dekar: kirim yapılmış tarlaların kg/dekar ortalaması
+  const aktifTarlalar = state.tarlalar.filter(t => state.kirimlar.some(k=>k.tarlaId===t.id) && Number(t.dekar)>0);
+  let kgDekarOrt = null;
+  if(aktifTarlalar.length){
+    const toplam = aktifTarlalar.reduce((s,t)=> s + (tarlaStats(t.id).toplamKg / Number(t.dekar)), 0);
+    kgDekarOrt = toplam / aktifTarlalar.length;
+  }
+
+  // TL/kg: toplam isci maliyeti / toplam kg
+  let toplamMaliyet = 0, toplamKgTum = 0;
+  state.kirimlar.forEach(k=>{
+    toplamMaliyet += (Number(k.isciSayisi)||0) * (Number(k.yevmiye)||0);
+    toplamKgTum += kirimTurev(k).toplamKg;
+  });
+  const tlKg = toplamKgTum>0 ? toplamMaliyet/toplamKgTum : null;
+
+  // Sera doluluk %
+  const toplamKapasite = state.seralar.reduce((s,x)=>s+x.kapasite,0);
+  const toplamDolu = state.seralar.reduce((s,x)=>s+seraGuncelDolu(x),0);
+  const seraDoluluk = toplamKapasite>0 ? (toplamDolu/toplamKapasite*100) : null;
+
+  // Bu haftanın ort. balya kg
+  const haftaBasi = new Date(); haftaBasi.setDate(haftaBasi.getDate()-6);
+  const haftaKirimleri = state.kirimlar.filter(k => new Date(k.tarih) >= haftaBasi && Number(k.ortBalyaKg)>0);
+  const ortBalya = haftaKirimleri.length ? (haftaKirimleri.reduce((s,k)=>s+Number(k.ortBalyaKg),0)/haftaKirimleri.length) : null;
+
+  // Kayıp oranı
+  const toplamDiziTum = state.kirimlar.reduce((s,k)=>s+kirimTurev(k).diziSayisi,0);
+  const toplamKayip = state.kirimlar.reduce((s,k)=>s+(Number(k.kayipDizi)||0),0);
+  const kayipOrani = toplamDiziTum>0 ? (toplamKayip/toplamDiziTum*100) : null;
+
+  return { kgDekarOrt, tlKg, seraDoluluk, ortBalya, kayipOrani };
+}
+
+/* =========================================================
+   RENDER
+   ========================================================= */
+function renderAll(){
+  document.getElementById('bugunTarih').textContent = new Date().toLocaleDateString('tr-TR');
+  renderBadges();
+  renderDizim();
+  renderSeralar();
+  renderTarlalar();
+  renderQuickStats();
+  populateCesitFiltre();
+  renderToplamIstatistik();
+  renderHaritalar();
+  renderDepo();
+  renderSulama();
+  saveState();
+}
+
+function renderQuickStats(){
+  document.getElementById('qsTarla').textContent = state.tarlalar.length;
+  document.getElementById('qsSera').textContent = state.seralar.length;
+  document.getElementById('qsKirim').textContent = state.kirimlar.length;
+}
+
+function renderBadges(){
+  const r = hesaplaRozetler();
+  const items = [
+    { label:'kg/dekar', val: r.kgDekarOrt==null?'-':fmt(r.kgDekarOrt,1), tip:'Kırım yapılmış tarlaların kg/dekar ortalaması.' },
+    { label:'₺/kg', val: r.tlKg==null?'-':fmt(r.tlKg,2), tip:'Toplam işçi maliyeti ÷ toplam kg (tüm kayıtlar).' },
+    { label:'Sera Doluluk', val: r.seraDoluluk==null?'-':fmt(r.seraDoluluk,0)+'%', tip:'Tüm seraların toplam dolu dizi ÷ toplam kapasite.' },
+    { label:'Ort. Balya (7g)', val: r.ortBalya==null?'-':fmt(r.ortBalya,1)+' kg', tip:'Son 7 gündeki kırımların ortalama balya ağırlığı.' },
+    { label:'Kayıp', val: r.kayipOrani==null?'-':fmt(r.kayipOrani,1)+'%', tip:'Kayıp/çürük dizi ÷ toplam dizi (girilen kayıtlara göre).' },
+  ];
+  document.getElementById('badgesRow').innerHTML = items.map(it=>`
+    <button class="badge" onclick="event.stopPropagation();this.classList.toggle('open')">
+      ${escapeHtml(it.label)}: <b>${escapeHtml(it.val)}</b>
+      <span class="badge-tip">${escapeHtml(it.tip)}</span>
+    </button>
+  `).join('');
+}
+
+function renderDizim(){
+  const son = [...state.kirimlar].sort((a,b)=> b.tarih.localeCompare(a.tarih) || b.olusturma-a.olusturma).slice(0,6);
+  if(!son.length){
+    document.getElementById('sonKirimlarList').innerHTML = '<div class="empty-hint">Henüz kırım kaydı yok.</div>';
+    return;
+  }
+  document.getElementById('sonKirimlarList').innerHTML = son.map(k=>{
+    const t = tarlaBul(k.tarlaId);
+    const tr = kirimTurev(k);
+    return `<div class="mini-kirim">
+      <div class="r1"><span>${escapeHtml(t?t.ad:'(silinmiş tarla)')}</span>
+        <span>${escapeHtml(k.tarih)} <button class="btn btn-muted" style="padding:0 5px;font-size:10px;" title="Sil" onclick="kirimSil('${k.id}')">×</button></span></div>
+      <div class="r2">${k.kirimNo}. kırım · ${fmt(tr.diziSayisi,0)} dizi${k.balyaSayisi?' · '+fmt(k.balyaSayisi,0)+' balya':''} · ${fmt(tr.toplamKg,0)} kg</div>
+    </div>`;
+  }).join('');
+}
+
+function populateCesitFiltre(){
+  const sel = document.getElementById('statCesit');
+  if(!sel) return;
+  const onceki = sel.value;
+  const cesitler = [...new Set(state.tarlalar.map(t=>t.cesit).filter(Boolean))].sort();
+  sel.innerHTML = '<option value="">Tümü</option>' + cesitler.map(c=>`<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join('');
+  sel.value = cesitler.includes(onceki) ? onceki : '';
+}
+
+function renderToplamIstatistik(){
+  const sonucEl = document.getElementById('toplamIstatistikSonuc');
+  if(!sonucEl) return;
+  const baslangic = document.getElementById('statBaslangic').value;
+  const bitis = document.getElementById('statBitis').value;
+  const cesit = document.getElementById('statCesit').value;
+  const kayitlar = state.kirimlar.filter(k=>{
+    if(baslangic && k.tarih < baslangic) return false;
+    if(bitis && k.tarih > bitis) return false;
+    if(cesit){
+      const t = tarlaBul(k.tarlaId);
+      if(!t || t.cesit !== cesit) return false;
+    }
+    return true;
+  });
+  const toplamDizi = kayitlar.reduce((s,k)=>s+kirimTurev(k).diziSayisi,0);
+  const toplamBalya = kayitlar.reduce((s,k)=>s+(Number(k.balyaSayisi)||0),0);
+  const toplamFire = kayitlar.reduce((s,k)=>s+(Number(k.kayipDizi)||0),0);
+  const diziliKayitlar = kayitlar.filter(k=>Number(k.ortDiziKg)>0);
+  const diziOrt = diziliKayitlar.length ? diziliKayitlar.reduce((s,k)=>s+Number(k.ortDiziKg),0)/diziliKayitlar.length : null;
+  const balyaliKayitlar = kayitlar.filter(k=>Number(k.ortBalyaKg)>0);
+  const balyaOrt = balyaliKayitlar.length ? balyaliKayitlar.reduce((s,k)=>s+Number(k.ortBalyaKg),0)/balyaliKayitlar.length : null;
+  sonucEl.innerHTML = `
+    <div>Toplam Dizim<b>${fmt(toplamDizi,0)}</b></div>
+    <div>Toplam Balya<b>${fmt(toplamBalya,0)}</b></div>
+    <div>Dizi Ortalaması<b>${diziOrt==null?'-':fmt(diziOrt,2)+' kg'}</b></div>
+    <div>Balya Ortalaması<b>${balyaOrt==null?'-':fmt(balyaOrt,1)+' kg'}</b></div>
+    <div>Toplam Fire<b>${fmt(toplamFire,0)}</b></div>
+  `;
+}
+
+function renderSeralar(){
+  const el = document.getElementById('seraPlot');
+  if(!state.seralar.length){
+    el.innerHTML = '<div class="empty-hint">Henüz sera yok. "+" ile ekleyin.</div>';
+    return;
+  }
+  el.innerHTML = state.seralar.map(s=>{
+    const pct = s.kapasite>0 ? (seraGuncelDolu(s)/s.kapasite*100) : 0;
+    const cls = seraDurumSinifiExact(pct);
+    const width = s.unite * AYARLAR.UNITE_PX;
+    const fillH = Math.min(pct,100);
+    return `<div class="sera-box" style="width:${width}px" onclick="openSeraDetay('${s.id}')">
+      <button class="sera-close" title="Sil" onclick="event.stopPropagation();seraSil('${s.id}')">×</button>
+      <div class="label">${escapeHtml(s.ad)}</div>
+      <div class="fill ${cls}" style="height:${fillH}%"></div>
+      <div class="pct">${fmt(pct,0)}%</div>
+    </div>`;
+  }).join('');
+}
+
+let tarlaBolgeAktif = 'tumu';
+function tarlaBolgeSekmeGecis(bolge){
+  tarlaBolgeAktif = bolge;
+  ['tumu','tekeliler','kalemli'].forEach(b=>{
+    document.getElementById('tarlaBolgeTab_'+b).classList.toggle('active', b===bolge);
+  });
+  renderTarlalar();
+}
+function openTarlaEkleModalAktifBolgeIle(){
+  openTarlaEkleModal(tarlaBolgeAktif==='tumu' ? '' : tarlaBolgeAktif);
+}
+function renderTarlalar(){
+  const el = document.getElementById('tarlaPlot');
+  const liste = tarlaBolgeAktif==='tumu' ? state.tarlalar : state.tarlalar.filter(t=>t.bolge===tarlaBolgeAktif);
+  if(!liste.length){
+    el.innerHTML = `<div class="empty-hint">${state.tarlalar.length?'Bu bölgede tarla yok.':'Henüz tarla yok. "+" ile ekleyin.'}</div>`;
+    return;
+  }
+  el.innerHTML = liste.map(t=>{
+    const stats = tarlaStats(t.id);
+    const phi = tarlaPhiDurum(t);
+    const zararli = tarlaZararliDurum(t);
+    let dots = '';
+    for(let i=1;i<=6;i++){
+      dots += `<span class="kdot ${i<=stats.maxKirimNo?'':'empty'}"></span>`;
+    }
+    return `<div class="tarla-box" onclick="openTarlaDetay('${t.id}')">
+      ${phi ? `<div class="phi-badge">${phi.kalanGun}g</div>` : ''}
+      ${zararli ? `<div class="zararli-badge ${zararli.siddet==='yogun'?'siddetli':''}" title="${escapeHtml(zararli.ad)}">🐛</div>` : ''}
+      <div class="name">${escapeHtml(t.ad)}</div>
+      <div class="sub">${fmt(t.dekar,1)} da</div>
+      <div class="kirim-row">${dots}</div>
+      <button class="tarla-close" title="Sil" onclick="event.stopPropagation();tarlaSil('${t.id}')">×</button>
+    </div>`;
+  }).join('');
+}
+
+/* =========================================================
+   MODAL YARDIMCI
+   ========================================================= */
+function openModal(html){
+  document.getElementById('modalContent').innerHTML = html;
+  document.getElementById('overlay').classList.remove('hidden');
+}
+function closeModal(){
+  document.getElementById('overlay').classList.add('hidden');
+  document.getElementById('modalContent').innerHTML = '';
+}
+document.getElementById('overlay').addEventListener('click', function(e){
+  if(e.target.id === 'overlay') closeModal();
+});
+document.addEventListener('click', function(e){
+  if(!e.target.closest('.badge')){
+    document.querySelectorAll('.badge.open').forEach(b=>b.classList.remove('open'));
+  }
+});
+
+/* =========================================================
+   SERA EKLE / DETAY / DÜZENLE
+   ========================================================= */
+function seraFormFieldsHtml(s){
+  s = s || {};
+  return `
+    <div class="field">
+      <label>Sera Adı</label>
+      <input id="fSeraAd" type="text" placeholder="örn. Sera 3" value="${escapeHtml(s.ad||'')}">
+    </div>
+    <div class="field">
+      <label>Ünite Sayısı (1 ünite = ${AYARLAR.UNITE_KAPASITE} dizi kapasite)</label>
+      <select id="fSeraUnite">
+        <option value="1" ${s.unite==1?'selected':''}>1 ünite (${AYARLAR.UNITE_KAPASITE} dizi)</option>
+        <option value="2" ${s.unite==2?'selected':''}>2 ünite (${AYARLAR.UNITE_KAPASITE*2} dizi)</option>
+        <option value="3" ${s.unite==3?'selected':''}>3 ünite (${AYARLAR.UNITE_KAPASITE*3} dizi)</option>
+        <option value="4" ${s.unite==4?'selected':''}>4 ünite (${AYARLAR.UNITE_KAPASITE*4} dizi)</option>
+        <option value="6" ${s.unite==6?'selected':''}>6 ünite (${AYARLAR.UNITE_KAPASITE*6} dizi)</option>
+      </select>
+    </div>
+  `;
+}
+function seraFormOku(){
+  return {
+    ad: document.getElementById('fSeraAd').value.trim(),
+    unite: Number(document.getElementById('fSeraUnite').value)
+  };
+}
+function openSeraEkleModal(){
+  openModal(`
+    <h2>Yeni Sera</h2>
+    ${seraFormFieldsHtml()}
+    <div class="modal-actions">
+      <button class="btn btn-muted" onclick="closeModal()">Vazgeç</button>
+      <button class="btn btn-primary" onclick="submitSeraEkle()">Ekle</button>
+    </div>
+  `);
+}
+function submitSeraEkle(){
+  const f = seraFormOku();
+  if(!f.ad){ alert('Sera adı girin.'); return; }
+  state.seralar.push({
+    id: uid(), ad: f.ad, unite: f.unite, kapasite: f.unite*AYARLAR.UNITE_KAPASITE,
+    donemler: [], olusturma: Date.now()
+  });
+  closeModal(); renderAll();
+}
+function openSeraDuzenleModal(id){
+  const s = seraBul(id);
+  if(!s) return;
+  openModal(`
+    <h2>Serayı Düzenle</h2>
+    ${seraFormFieldsHtml(s)}
+    <div class="modal-actions">
+      <button class="btn btn-muted" onclick="openSeraDetay('${s.id}')">Vazgeç</button>
+      <button class="btn btn-primary" onclick="submitSeraDuzenle('${s.id}')">Kaydet</button>
+    </div>
+  `);
+}
+function submitSeraDuzenle(id){
+  const s = seraBul(id);
+  if(!s) return;
+  const f = seraFormOku();
+  if(!f.ad){ alert('Sera adı girin.'); return; }
+  s.ad = f.ad; s.unite = f.unite; s.kapasite = f.unite*AYARLAR.UNITE_KAPASITE;
+  renderAll(); openSeraDetay(s.id);
+}
+
+/* ---- Dönem (kullanım döngüsü): her boşalt/doldur turu ayrı dönem kaydı ---- */
+function donemFormFieldsHtml(d){
+  d = d || {};
+  return `
+    <div class="row2">
+      <div class="field"><label>Tür</label><input id="dTur" type="text" value="${escapeHtml(d.tur||'')}"></div>
+      <div class="field"><label>Çeşit</label><input id="dCesit" type="text" value="${escapeHtml(d.cesit||'')}"></div>
+    </div>
+    <div class="row2">
+      <div class="field"><label>Giriş Tarihi</label><input id="dGiris" type="date" value="${d.girisTarihi||todayStr()}"></div>
+      <div class="field"><label>Branda Rengi</label>
+        <select id="dBranda">
+          <option value="beyaz" ${d.brandaRengi==='beyaz'?'selected':''}>Beyaz</option>
+          <option value="mavi" ${d.brandaRengi==='mavi'?'selected':''}>Mavi</option>
+        </select>
+      </div>
+    </div>
+    <div class="row3">
+      <div class="field"><label>Açılma Günü (girişten itibaren)</label><input id="dAcilmaGunu" type="number" min="0" step="1" value="${d.acilmaGunu??''}"></div>
+      <div class="field"><label>Kapalı Kalınan Gün</label><input id="dKapaliGun" type="number" min="0" step="1" value="${d.kapaliGunSayisi??''}"></div>
+      <div class="field"><label>Altı Sulanan Gün</label><input id="dSulananGun" type="number" min="0" step="1" value="${d.sulananGunSayisi??''}"></div>
+    </div>
+  `;
+}
+function donemFormOku(){
+  return {
+    tur: document.getElementById('dTur').value.trim(),
+    cesit: document.getElementById('dCesit').value.trim(),
+    girisTarihi: document.getElementById('dGiris').value || todayStr(),
+    brandaRengi: document.getElementById('dBranda').value,
+    acilmaGunu: Number(document.getElementById('dAcilmaGunu').value)||0,
+    kapaliGunSayisi: Number(document.getElementById('dKapaliGun').value)||0,
+    sulananGunSayisi: Number(document.getElementById('dSulananGun').value)||0
+  };
+}
+function submitDonemBaslat(seraId){
+  const s = seraBul(seraId);
+  if(!s) return;
+  if(seraAktifDonem(s)){ alert('Zaten aktif bir dönem var.'); return; }
+  const f = donemFormOku();
+  s.donemler = s.donemler || [];
+  s.donemler.push({ id: uid(), ...f, dolu: 0, kaynaklar: [], aktif: true, baslangic: Date.now(), bitis: null });
+  renderAll(); openSeraDetay(seraId);
+}
+function submitDonemGuncelle(seraId){
+  const s = seraBul(seraId);
+  if(!s) return;
+  const d = seraAktifDonem(s);
+  if(!d) return;
+  Object.assign(d, donemFormOku());
+  renderAll(); openSeraDetay(seraId);
+}
+function seraBosalt(id){
+  const s = seraBul(id);
+  if(!s) return;
+  const d = seraAktifDonem(s);
+  if(!d){ alert('Aktif dönem yok.'); return; }
+  if(!confirm('Bu dönem tamamlanıp arşivlensin mi? (Sera boşalacak, geçmiş dönem verisi saklanır)')) return;
+  d.aktif = false; d.bitis = Date.now();
+  renderAll(); openSeraDetay(id);
+}
+function seraSil(id){
+  if(!confirm('Bu sera silinsin mi? Tüm dönem geçmişi de silinecek. Bu işlem geri alınamaz.')) return;
+  state.seralar = state.seralar.filter(s=>s.id!==id);
+  closeModal(); renderAll();
+}
+
+function openSeraDetay(id){
+  const s = seraBul(id);
+  if(!s) return;
+  const d = seraAktifDonem(s);
+  const pct = (d && s.kapasite>0) ? (d.dolu/s.kapasite*100) : 0;
+  const dizilmisKg = seraGuncelDizilmisKg(s);
+  const tahminGun = (d && d.dolu>0) ? Math.ceil(d.dolu/AYARLAR.GUNLUK_ISLEME_DIZI) : 0;
+  const kaynakTarlalar = d ? [...new Set((d.kaynaklar||[]).map(k=>{
+    const t = tarlaBul(k.tarlaId);
+    return t ? t.ad : '(silinmiş tarla)';
+  }))] : [];
+  const gecmisDonemler = (s.donemler||[]).filter(x=>!x.aktif).sort((a,b)=>(b.bitis||0)-(a.bitis||0));
+  const gecmisHtml = gecmisDonemler.map(g=>{
+    const gecmisKg = (g.kaynaklar||[]).reduce((sum,k)=>sum+(Number(k.diziKg)||0),0);
+    const bitisStr = g.bitis ? new Date(g.bitis).toLocaleDateString('tr-TR') : '-';
+    return `<div class="item">${escapeHtml(g.girisTarihi||'-')} → ${bitisStr} — ${escapeHtml(g.tur||'-')} / ${escapeHtml(g.cesit||'-')} · ${fmt(g.dolu,0)} dizi (${fmt(gecmisKg,0)} kg) · ${g.brandaRengi==='beyaz'?'Beyaz':'Mavi'} branda</div>`;
+  }).join('') || '<div class="item">Geçmiş dönem yok</div>';
+  const aktifBlokHtml = d ? `
+    <div class="detail-grid">
+      <div>Doluluk<b>${fmt(pct,0)}%</b></div>
+      <div>Dolu<b>${fmt(d.dolu,0)} dizi</b></div>
+      <div>Dizilmiş Tütün<b>${fmt(dizilmisKg,0)} kg</b></div>
+      <div>Tahmini Boşalma<b>${tahminGun>0? '~'+tahminGun+' gün':'-'}</b></div>
+    </div>
+    <div class="field">
+      <label>Güncel Dönem (düzenlenebilir)</label>
+      ${donemFormFieldsHtml(d)}
+      <button class="btn btn-primary" style="margin-top:2px;" onclick="submitDonemGuncelle('${s.id}')">Dönem Bilgilerini Kaydet</button>
+    </div>
+    <div class="field">
+      <label>Kaynak Tarlalar (Güncel Dönem)</label>
+      <div class="list-small">${kaynakTarlalar.length? kaynakTarlalar.map(a=>`<div class="item">${escapeHtml(a)}</div>`).join('') : '<div class="item">Henüz kayıt yok</div>'}</div>
+    </div>
+  ` : `
+    <div class="hint-box">Aktif dönem yok. Kırım eklendiğinde otomatik başlar, ya da burada elle başlatabilirsiniz.</div>
+    <div class="field">
+      <label>Yeni Dönem Başlat</label>
+      ${donemFormFieldsHtml()}
+      <button class="btn btn-primary" style="margin-top:2px;" onclick="submitDonemBaslat('${s.id}')">Dönem Başlat</button>
+    </div>
+  `;
+  openModal(`
+    <h2>${escapeHtml(s.ad)}</h2>
+    <div class="detail-grid">
+      <div>Ünite<b>${s.unite}</b></div>
+      <div>Kapasite<b>${fmt(s.kapasite,0)} dizi</b></div>
+    </div>
+    ${aktifBlokHtml}
+    <div class="field">
+      <label>Geçmiş Dönemler</label>
+      <div class="list-small">${gecmisHtml}</div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-muted" onclick="closeModal()">Kapat</button>
+      <button class="btn" onclick="openSeraDuzenleModal('${s.id}')">Düzenle</button>
+      ${d? `<button class="btn" onclick="seraBosalt('${s.id}')">Boşalt</button>` : ''}
+      <button class="btn btn-danger" onclick="seraSil('${s.id}')">Sil</button>
+    </div>
+  `);
+}
+
+/* =========================================================
+   TARLA EKLE / DETAY / DÜZENLE
+   ========================================================= */
+let ilacRowCount = 0;
+function tarlaFormFieldsHtml(t){
+  t = t || {};
+  return `
+    <div class="row2">
+      <div class="field"><label>Tarla Adı</label><input id="fTarlaAd" type="text" value="${escapeHtml(t.ad||'')}"></div>
+      <div class="field"><label>Çiftçi</label><input id="fTarlaCiftci" type="text" value="${escapeHtml(t.ciftci||'')}"></div>
+    </div>
+    <div class="row2">
+      <div class="field"><label>Dekar</label><input id="fTarlaDekar" type="number" min="0" step="0.1" value="${t.dekar??''}"></div>
+      <div class="field"><label>Varyete Kodu / Çeşit</label><input id="fTarlaCesit" type="text" value="${escapeHtml(t.cesit||'')}"></div>
+    </div>
+    <div class="field">
+      <label>Bölge</label>
+      <select id="fTarlaBolge">
+        <option value="" ${!t.bolge?'selected':''}>Diğer / Belirtilmemiş</option>
+        <option value="tekeliler" ${t.bolge==='tekeliler'?'selected':''}>Tekeliler</option>
+        <option value="kalemli" ${t.bolge==='kalemli'?'selected':''}>Kalemli</option>
+      </select>
+    </div>
+    <div class="row2">
+      <div class="field"><label>Dikim Tarihi (Transplanting)</label><input id="fTarlaDikim" type="date" value="${t.dikimTarihi||''}"></div>
+      <div class="field"><label>Çapa Tarihi (Hoe)</label><input id="fTarlaCapa" type="date" value="${t.capaTarihi||''}"></div>
+    </div>
+    <div class="field"><label>Tahmini Hasat (kg)</label><input id="fTarlaHasatKg" type="number" min="0" step="1" value="${t.tahminiHasatKg??''}"></div>
+    <div class="field">
+      <label>Uygulanan İlaçlar (opsiyonel)</label>
+      <div id="ilacRows"></div>
+      <button class="btn btn-muted" type="button" onclick="ilacRowEkle()">+ İlaç Ekle</button>
+    </div>
+    <div class="field">
+      <label>Zararlılar (opsiyonel)</label>
+      <div id="zararliRows"></div>
+      <button class="btn btn-muted" type="button" onclick="zararliRowEkle()">+ Zararlı Ekle</button>
+    </div>
+  `;
+}
+function ilacRowEkle(prefill){
+  const idx = ilacRowCount++;
+  const p = prefill || {};
+  const wrap = document.createElement('div');
+  wrap.className = 'ilac-row';
+  wrap.id = 'ilacRow'+idx;
+  wrap.innerHTML = `
+    <input type="text" placeholder="İlaç adı" id="ilacAd${idx}" value="${escapeHtml(p.ad||'')}">
+    <input type="date" id="ilacTarih${idx}" value="${p.tarih||''}">
+    <input type="number" placeholder="PHI gün" id="ilacPhi${idx}" min="0" value="${p.phi??''}">
+    <button class="btn btn-muted" type="button" onclick="document.getElementById('ilacRow${idx}').remove()">×</button>
+  `;
+  document.getElementById('ilacRows').appendChild(wrap);
+}
+function tarlaIlaclarOku(){
+  const ilaclar = [];
+  for(let i=0;i<ilacRowCount;i++){
+    const rowEl = document.getElementById('ilacRow'+i);
+    if(!rowEl) continue;
+    const iAd = document.getElementById('ilacAd'+i)?.value.trim();
+    const iTarih = document.getElementById('ilacTarih'+i)?.value;
+    const iPhi = document.getElementById('ilacPhi'+i)?.value;
+    if(iAd && iTarih){ ilaclar.push({ ad:iAd, tarih:iTarih, phi:Number(iPhi)||0 }); }
+  }
+  return ilaclar;
+}
+let zararliRowCount = 0;
+function zararliRowEkle(prefill){
+  const idx = zararliRowCount++;
+  const p = prefill || {};
+  const wrap = document.createElement('div');
+  wrap.className = 'zararli-row';
+  wrap.id = 'zararliRow'+idx;
+  wrap.innerHTML = `
+    <input type="text" placeholder="Zararlı adı (örn. Yaprak biti)" id="zararliAd${idx}" value="${escapeHtml(p.ad||'')}">
+    <input type="date" id="zararliTarih${idx}" value="${p.tarih||''}">
+    <select id="zararliSiddet${idx}">
+      <option value="hafif" ${p.siddet==='hafif'?'selected':''}>Hafif</option>
+      <option value="orta" ${!p.siddet||p.siddet==='orta'?'selected':''}>Orta</option>
+      <option value="yogun" ${p.siddet==='yogun'?'selected':''}>Yoğun</option>
+    </select>
+    <button class="btn btn-muted" type="button" onclick="document.getElementById('zararliRow${idx}').remove()">×</button>
+  `;
+  document.getElementById('zararliRows').appendChild(wrap);
+}
+function tarlaZararlilarOku(){
+  const zararlilar = [];
+  for(let i=0;i<zararliRowCount;i++){
+    const rowEl = document.getElementById('zararliRow'+i);
+    if(!rowEl) continue;
+    const zAd = document.getElementById('zararliAd'+i)?.value.trim();
+    const zTarih = document.getElementById('zararliTarih'+i)?.value;
+    const zSiddet = document.getElementById('zararliSiddet'+i)?.value;
+    if(zAd && zTarih){ zararlilar.push({ ad:zAd, tarih:zTarih, siddet:zSiddet||'orta' }); }
+  }
+  return zararlilar;
+}
+function tarlaFormOku(){
+  return {
+    ad: document.getElementById('fTarlaAd').value.trim(),
+    ciftci: document.getElementById('fTarlaCiftci').value.trim(),
+    dekar: Number(document.getElementById('fTarlaDekar').value)||0,
+    cesit: document.getElementById('fTarlaCesit').value.trim(),
+    bolge: document.getElementById('fTarlaBolge').value || '',
+    dikimTarihi: document.getElementById('fTarlaDikim').value || '',
+    capaTarihi: document.getElementById('fTarlaCapa').value || '',
+    tahminiHasatKg: Number(document.getElementById('fTarlaHasatKg').value)||0,
+    ilaclar: tarlaIlaclarOku(),
+    zararlilar: tarlaZararlilarOku()
+  };
+}
+function openTarlaEkleModal(bolgeVarsayilan){
+  ilacRowCount = 0;
+  zararliRowCount = 0;
+  openModal(`
+    <h2>Yeni Tarla</h2>
+    ${tarlaFormFieldsHtml({ bolge: bolgeVarsayilan || '' })}
+    <div class="modal-actions">
+      <button class="btn btn-muted" onclick="closeModal()">Vazgeç</button>
+      <button class="btn btn-primary" onclick="submitTarlaEkle()">Ekle</button>
+    </div>
+  `);
+}
+function submitTarlaEkle(){
+  const f = tarlaFormOku();
+  if(!f.ad){ alert('Tarla adı girin.'); return; }
+  state.tarlalar.push({ id: uid(), ...f, olusturma: Date.now() });
+  closeModal(); renderAll();
+}
+function openTarlaDuzenleModal(id){
+  const t = tarlaBul(id);
+  if(!t) return;
+  ilacRowCount = 0;
+  zararliRowCount = 0;
+  openModal(`
+    <h2>Tarlayı Düzenle</h2>
+    ${tarlaFormFieldsHtml(t)}
+    <div class="modal-actions">
+      <button class="btn btn-muted" onclick="openTarlaDetay('${t.id}')">Vazgeç</button>
+      <button class="btn btn-primary" onclick="submitTarlaDuzenle('${t.id}')">Kaydet</button>
+    </div>
+  `);
+  (t.ilaclar||[]).forEach(ilac=>ilacRowEkle(ilac));
+  (t.zararlilar||[]).forEach(z=>zararliRowEkle(z));
+}
+function submitTarlaDuzenle(id){
+  const t = tarlaBul(id);
+  if(!t) return;
+  const f = tarlaFormOku();
+  if(!f.ad){ alert('Tarla adı girin.'); return; }
+  Object.assign(t, f);
+  renderAll(); openTarlaDetay(t.id);
+}
+
+function openTarlaDetay(id){
+  const t = tarlaBul(id);
+  if(!t) return;
+  const stats = tarlaStats(t.id);
+  const kgDekar = Number(t.dekar)>0 ? stats.toplamKg/Number(t.dekar) : null;
+  const today = new Date(todayStr());
+  const ilacHtml = (t.ilaclar||[]).map(ilac=>{
+    const bitis = new Date(new Date(ilac.tarih).getTime() + (Number(ilac.phi)||0)*86400000);
+    const kalan = Math.ceil((bitis-today)/86400000);
+    const durum = kalan>0 ? `<span class="warn-phi">Hasada ${kalan} gün</span>` : `<span class="ok-phi">PHI geçti (güvenli)</span>`;
+    return `<div class="item">${escapeHtml(ilac.ad)} — ${escapeHtml(ilac.tarih)} (PHI ${ilac.phi}g) — ${durum}</div>`;
+  }).join('') || '<div class="item">İlaç kaydı yok</div>';
+  const siddetEtiket = { hafif:'Hafif', orta:'Orta', yogun:'Yoğun' };
+  const zararliHtml = [...(t.zararlilar||[])].sort((a,b)=>b.tarih.localeCompare(a.tarih)).map(z=>
+    `<div class="item">🐛 ${escapeHtml(z.ad)} — ${escapeHtml(z.tarih)} — ${siddetEtiket[z.siddet]||'Orta'}</div>`
+  ).join('') || '<div class="item">Zararlı kaydı yok</div>';
+  const tarlaKirimlari = state.kirimlar.filter(k=>k.tarlaId===t.id).sort((a,b)=>b.tarih.localeCompare(a.tarih));
+  const kirimListHtml = tarlaKirimlari.map(k=>{
+    const tr = kirimTurev(k);
+    return `<div class="item">${escapeHtml(k.tarih)} — ${k.kirimNo}. kırım · ${fmt(tr.diziSayisi,0)} dizi · ${fmt(k.balyaSayisi||0,0)} balya · ${fmt(tr.toplamKg,0)} kg → ${escapeHtml(seraDagilimiEtiket(k.seraDagilimi))}
+      <button class="btn btn-muted" style="padding:1px 6px;font-size:10.5px;float:right;" onclick="kirimSil('${k.id}');openTarlaDetay('${t.id}')">×</button></div>`;
+  }).join('') || '<div class="item">Henüz kırım kaydı yok</div>';
+  openModal(`
+    <h2>${escapeHtml(t.ad)}</h2>
+    <div class="detail-grid">
+      <div>Çiftçi<b>${escapeHtml(t.ciftci||'-')}</b></div>
+      <div>Dekar<b>${fmt(t.dekar,1)}</b></div>
+      <div>Bölge<b>${t.bolge==='tekeliler'?'Tekeliler':t.bolge==='kalemli'?'Kalemli':'-'}</b></div>
+      <div>Varyete Kodu / Çeşit<b>${escapeHtml(t.cesit||'-')}</b></div>
+      <div>Kg/Dekar<b>${kgDekar==null?'-':fmt(kgDekar,1)}</b></div>
+      <div>Dikim Tarihi<b>${escapeHtml(t.dikimTarihi||'-')}</b></div>
+      <div>Çapa Tarihi<b>${escapeHtml(t.capaTarihi||'-')}</b></div>
+      <div>Kırım Durumu<b>${stats.maxKirimNo? stats.maxKirimNo+'. kırım yapıldı':'Henüz kırım yok'} (${stats.kayitSayisi} kayıt)</b></div>
+      <div>Total Harvest<b>${fmt(stats.toplamKg,0)} kg</b></div>
+      <div>Toplam Balya<b>${fmt(stats.toplamBalya,0)}</b></div>
+      <div>Ort. Balya Ağırlığı<b>${stats.ortBalyaKg==null?'-':fmt(stats.ortBalyaKg,1)+' kg'}</b></div>
+      <div>Estimated Harvest<b>${fmt(t.tahminiHasatKg,0)} kg</b></div>
+    </div>
+    <div class="field">
+      <label>İlaç Geçmişi &amp; PHI Durumu</label>
+      <div class="list-small">${ilacHtml}</div>
+    </div>
+    <div class="field">
+      <label>Zararlı Geçmişi</label>
+      <div class="list-small">${zararliHtml}</div>
+    </div>
+    <div class="field">
+      <label>Kırımlar (Hasat Kayıtları)</label>
+      <div class="list-small">${kirimListHtml}</div>
+      <button class="btn btn-primary" style="margin-top:6px;" onclick="openKirimModal('${t.id}')">+ Yeni Kırım Ekle</button>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-muted" onclick="closeModal()">Kapat</button>
+      <button class="btn" onclick="openTarlaDuzenleModal('${t.id}')">Düzenle</button>
+      <button class="btn btn-danger" onclick="tarlaSil('${t.id}')">Sil</button>
+    </div>
+  `);
+}
+function tarlaSil(id){
+  if(!confirm('Bu tarla silinsin mi? Bu işlem geri alınamaz.')) return;
+  state.tarlalar = state.tarlalar.filter(t=>t.id!==id);
+  closeModal(); renderAll();
+}
+
+/* =========================================================
+   KIRIM (DIZIM) MODALI
+   ========================================================= */
+let kirimModalPresetTarlaId = null;
+let seraRowCount = 0;
+function seraRowEkle(prefill){
+  const idx = seraRowCount++;
+  const p = prefill || {};
+  const seraOptions = state.seralar.map(s=>`<option value="${s.id}" ${s.id===p.seraId?'selected':''}>${escapeHtml(s.ad)}</option>`).join('');
+  const wrap = document.createElement('div');
+  wrap.className = 'sera-dagilim-row';
+  wrap.id = 'seraRow'+idx;
+  wrap.innerHTML = `
+    <select id="seraRowSera${idx}">${seraOptions}</select>
+    <input type="number" placeholder="Dizi Sayısı" id="seraRowDizi${idx}" min="0" step="1" value="${p.diziSayisi||''}" oninput="kirimTahminGuncelle()">
+    <button class="btn btn-muted" type="button" onclick="document.getElementById('seraRow${idx}').remove();kirimTahminGuncelle()">×</button>
+  `;
+  document.getElementById('seraDagilimRows').appendChild(wrap);
+}
+function seraDagilimOku(){
+  const dagilim = [];
+  for(let i=0;i<seraRowCount;i++){
+    const rowEl = document.getElementById('seraRow'+i);
+    if(!rowEl) continue;
+    const seraId = document.getElementById('seraRowSera'+i)?.value;
+    const dizi = Number(document.getElementById('seraRowDizi'+i)?.value)||0;
+    if(seraId && dizi>0){ dagilim.push({ seraId, diziSayisi: dizi }); }
+  }
+  return dagilim;
+}
+function openKirimModal(presetTarlaId){
+  if(!state.tarlalar.length){ alert('Önce en az bir tarla ekleyin.'); return; }
+  if(!state.seralar.length){ alert('Önce en az bir sera ekleyin. Kırım kaydı bir seraya gitmek zorunda.'); return; }
+  kirimModalPresetTarlaId = presetTarlaId || null;
+  seraRowCount = 0;
+  const tarlaOptions = state.tarlalar.map(t=>`<option value="${t.id}" ${t.id===presetTarlaId?'selected':''}>${escapeHtml(t.ad)}</option>`).join('');
+  let kirimNoVarsayilan = 1;
+  if(presetTarlaId){ kirimNoVarsayilan = Math.min(6, (tarlaStats(presetTarlaId).maxKirimNo||0)+1); }
+  openModal(`
+    <h2>Kırım Kaydı</h2>
+    <div class="row2">
+      <div class="field"><label>Tarih (Hasat Tarihi)</label><input id="kTarih" type="date" value="${todayStr()}"></div>
+      <div class="field"><label>Tarla</label><select id="kTarla" ${presetTarlaId?'disabled':''}>${tarlaOptions}</select></div>
+    </div>
+    <div class="row2">
+      <div class="field"><label>Kırım No (kaçıncı kırım)</label>
+        <select id="kKirimNo">${[1,2,3,4,5,6].map(n=>`<option value="${n}" ${n===kirimNoVarsayilan?'selected':''}>${n}. kırım</option>`).join('')}</select>
+      </div>
+      <div class="field"><label>Ort. Dizi Ağırlığı (kg)</label><input id="kOrtDiziKg" type="number" min="0" step="0.01" oninput="kirimTahminGuncelle()"></div>
+    </div>
+    <div class="row2">
+      <div class="field"><label>Balya Sayısı</label><input id="kBalyaSayisi" type="number" min="0" step="1" oninput="kirimTahminGuncelle()"></div>
+      <div class="field"><label>Ort. Balya Ağırlığı (kg)</label><input id="kOrtBalyaKg" type="number" min="0" step="0.1" oninput="kirimTahminGuncelle()"></div>
+    </div>
+    <div class="field">
+      <label>Sera Dağılımı (zorunlu — hangi seraya kaç dizi konduğunu girin)</label>
+      <div id="seraDagilimRows"></div>
+      <button class="btn btn-muted" type="button" onclick="seraRowEkle();kirimTahminGuncelle()">+ Sera Ekle</button>
+    </div>
+    <div class="hint-box" id="kirimTahminKutu">Toplam Kırılmış Tütün: 0 kg (balya sayısı × ort. balya kg) · Serada Dizilecek (toplam): 0 kg (toplam dizi × ort. dizi kg)</div>
+    <div class="row3">
+      <div class="field"><label>İşçi Sayısı</label><input id="kIsci" type="number" min="0" step="1"></div>
+      <div class="field"><label>Yevmiye (₺)</label><input id="kYevmiye" type="number" min="0" step="1"></div>
+      <div class="field"><label>Kayıp/Çürük Dizi (opsiyonel)</label><input id="kKayip" type="number" min="0" step="1"></div>
+    </div>
+    <div class="row2">
+      <div class="check-row"><input type="checkbox" id="kAltYas"><label for="kAltYas" style="text-transform:none;font-size:12.5px;">18 yaş altı çalışan yok</label></div>
+      <div class="field"><label>Çalışma Saati</label><input id="kCalismaSaati" type="number" min="0" step="0.5"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-muted" onclick="${presetTarlaId?`openTarlaDetay('${presetTarlaId}')`:'closeModal()'}">Vazgeç</button>
+      <button class="btn btn-primary" onclick="submitKirimEkle()">Kaydet</button>
+    </div>
+  `);
+  seraRowEkle();
+}
+function kirimTahminGuncelle(){
+  const ortDizi = Number(document.getElementById('kOrtDiziKg').value)||0;
+  const balyaSayisi = Number(document.getElementById('kBalyaSayisi').value)||0;
+  const ortBalya = Number(document.getElementById('kOrtBalyaKg').value)||0;
+  const toplamDizi = seraDagilimOku().reduce((s,d)=>s+d.diziSayisi,0);
+  document.getElementById('kirimTahminKutu').innerHTML =
+    `Toplam Kırılmış Tütün: <b>${fmt(balyaSayisi*ortBalya,0)} kg</b> (balya sayısı × ort. balya kg) · Serada Dizilecek (toplam): <b>${fmt(toplamDizi*ortDizi,0)} kg</b> (${fmt(toplamDizi,0)} dizi × ort. dizi kg)`;
+}
+function submitKirimEkle(){
+  const k = {
+    id: uid(),
+    tarih: document.getElementById('kTarih').value || todayStr(),
+    tarlaId: document.getElementById('kTarla').value,
+    kirimNo: Number(document.getElementById('kKirimNo').value),
+    ortDiziKg: Number(document.getElementById('kOrtDiziKg').value)||0,
+    balyaSayisi: Number(document.getElementById('kBalyaSayisi').value)||0,
+    ortBalyaKg: Number(document.getElementById('kOrtBalyaKg').value)||0,
+    seraDagilimi: seraDagilimOku(),
+    isciSayisi: Number(document.getElementById('kIsci').value)||0,
+    yevmiye: Number(document.getElementById('kYevmiye').value)||0,
+    kayipDizi: Number(document.getElementById('kKayip').value)||0,
+    altYasYok: document.getElementById('kAltYas').checked,
+    calismaSaati: Number(document.getElementById('kCalismaSaati').value)||0,
+    olusturma: Date.now()
+  };
+  if(!k.tarlaId){ alert('Tarla seçin.'); return; }
+  if(!k.seraDagilimi.length){ alert('En az bir sera için dizi sayısı girin — kırım kaydı bir seraya gitmek zorunda.'); return; }
+  if(k.ortDiziKg<=0){ alert('Ort. Dizi Ağırlığı girin (sera doluluğu bundan hesaplanır).'); return; }
+  k.seraDagilimi.forEach(d=>{
+    const sera = seraBul(d.seraId);
+    if(!sera) return;
+    let donem = seraAktifDonem(sera);
+    if(!donem){
+      donem = { id: uid(), tur:'', cesit:'', girisTarihi: k.tarih, brandaRengi:'beyaz', acilmaGunu:0, kapaliGunSayisi:0, sulananGunSayisi:0, dolu:0, kaynaklar:[], aktif:true, baslangic:Date.now(), bitis:null };
+      sera.donemler = sera.donemler || [];
+      sera.donemler.push(donem);
+    }
+    const diziKg = d.diziSayisi * k.ortDiziKg;
+    donem.dolu += d.diziSayisi;
+    donem.kaynaklar.push({ tarlaId: k.tarlaId, kirimId: k.id, dizi: d.diziSayisi, diziKg, tarih: k.tarih });
+  });
+  state.kirimlar.push(k);
+  if(kirimModalPresetTarlaId){ renderAll(); openTarlaDetay(kirimModalPresetTarlaId); }
+  else { closeModal(); renderAll(); }
+}
+function kirimSil(id){
+  if(!confirm('Bu kırım kaydı silinsin mi? İlgili sera dönemlerinin doluluğu da buna göre geri alınacak.')) return;
+  const k = state.kirimlar.find(x=>x.id===id);
+  if(!k) return;
+  (k.seraDagilimi||[]).forEach(d=>{
+    const sera = seraBul(d.seraId);
+    if(!sera) return;
+    const donem = donemBulByKirim(sera, id);
+    if(!donem) return;
+    donem.dolu = Math.max(0, donem.dolu - (Number(d.diziSayisi)||0));
+    donem.kaynaklar = (donem.kaynaklar||[]).filter(kn=>kn.kirimId!==id);
+  });
+  state.kirimlar = state.kirimlar.filter(x=>x.id!==id);
+  renderAll();
+}
+
+/* =========================================================
+   VERİ YÖNETİMİ (YEDEKLE / GERİ YÜKLE / EXCEL / CSV)
+   ========================================================= */
+function openVeriYonetimiModal(){
+  openModal(`
+    <h2>Veri Yönetimi</h2>
+    <div class="field">
+      <label>Senkronizasyon / Yedek (JSON — en hızlı ve eksiksiz format)</label>
+      <div class="modal-actions" style="justify-content:flex-start;flex-wrap:wrap;">
+        <button class="btn btn-primary" onclick="tumVerileriYedekle()">📥 Tüm Verileri Yedekle (.json)</button>
+        <button class="btn" onclick="yedekDosyaSec()">📤 Yedekten Geri Yükle (.json)</button>
+      </div>
+      <div class="hint-box">Bir cihazda "Yedekle" ile indirin, diğer cihaza aktarıp "Geri Yükle" ile açın — tüm tarla/sera/kırım/depo/sulama/harita verisi birebir taşınır. Geri yükleme, o cihazdaki mevcut verinin üzerine yazar.</div>
+    </div>
+    <div class="field">
+      <label>Rapor (dışa aktarım — geri yüklenemez)</label>
+      <div class="modal-actions" style="justify-content:flex-start;flex-wrap:wrap;">
+        <button class="btn" onclick="excelDisaAktar()">📊 Excel Raporu (.xlsx)</button>
+        <button class="btn" onclick="csvDisaAktar()">⭳ Kırım Kayıtları (.csv)</button>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-muted" onclick="closeModal()">Kapat</button>
+    </div>
+  `);
+}
+function tumVerileriYedekle(){
+  const json = JSON.stringify(state, null, 2);
+  const blob = new Blob([json], { type:'application/json;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'scv-yedek-' + todayStr() + '.json';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+function yedekDosyaSec(){
+  document.getElementById('yedekDosyaInput').click();
+}
+function yedekDosyaYuklendi(input){
+  const file = input.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e){
+    let yeniState;
+    try{ yeniState = JSON.parse(e.target.result); }
+    catch(err){ alert('Dosya okunamadı, geçerli bir JSON yedeği değil.'); input.value=''; return; }
+    if(!yeniState || !Array.isArray(yeniState.tarlalar)){
+      alert('Geçersiz yedek dosyası.'); input.value=''; return;
+    }
+    if(!confirm('Bu yedek yüklenirse bu cihazdaki MEVCUT tüm veriler bunun üzerine yazılacak. Emin misiniz?')){ input.value=''; return; }
+    state = yeniState;
+    stateNormalizeEt();
+    input.value = '';
+    closeModal();
+    renderAll();
+    alert('Yedek başarıyla geri yüklendi.');
+  };
+  reader.readAsText(file);
+}
+function excelDisaAktar(){
+  if(typeof XLSX==='undefined'){ alert('Excel kütüphanesi yüklenemedi. İnternet bağlantınızı kontrol edip tekrar deneyin.'); return; }
+  const wb = XLSX.utils.book_new();
+
+  const tarlaRows = state.tarlalar.map(t=>{
+    const stats = tarlaStats(t.id);
+    return {
+      Ad:t.ad, Çiftçi:t.ciftci, Bölge: t.bolge==='tekeliler'?'Tekeliler':t.bolge==='kalemli'?'Kalemli':'-',
+      Dekar:t.dekar, 'Varyete/Çeşit':t.cesit, 'Dikim Tarihi':t.dikimTarihi, 'Çapa Tarihi':t.capaTarihi,
+      'Toplam Hasat (kg)':Math.round(stats.toplamKg), 'Tahmini Hasat (kg)':t.tahminiHasatKg
+    };
+  });
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(tarlaRows), 'Tarlalar');
+
+  const seraRows = state.seralar.map(s=>{
+    const d = seraAktifDonem(s);
+    return {
+      Ad:s.ad, Ünite:s.unite, 'Kapasite (dizi)':s.kapasite,
+      'Aktif Dönem Tür': d?d.tur:'', 'Aktif Dönem Çeşit': d?d.cesit:'',
+      'Dolu (dizi)': d?d.dolu:0, 'Giriş Tarihi': d?d.girisTarihi:''
+    };
+  });
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(seraRows), 'Seralar');
+
+  const kirimRows = state.kirimlar.map(k=>{
+    const t = tarlaBul(k.tarlaId);
+    const tr = kirimTurev(k);
+    return {
+      Tarih:k.tarih, Tarla:t?t.ad:'', 'Kırım No':k.kirimNo, 'Dizi Sayısı':tr.diziSayisi,
+      'Ort. Dizi Kg':k.ortDiziKg, 'Balya Sayısı':k.balyaSayisi, 'Ort. Balya Kg':k.ortBalyaKg,
+      'Toplam Kg':Math.round(tr.toplamKg), 'Sera Dağılımı':seraDagilimiEtiket(k.seraDagilimi),
+      'İşçi Sayısı':k.isciSayisi, Yevmiye:k.yevmiye
+    };
+  });
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(kirimRows), 'Kırımlar');
+
+  const depoRows = state.depoKutulari.map(k=>({
+    Bölge: k.bolge==='tekeliler'?'Tekeliler':'Kalemli', 'Kutu No':k.kutuNo, Tarih:k.tarih, Kg:k.kg
+  }));
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(depoRows), 'Depo');
+
+  const sulamaRows = state.sulamaKayitlari.map(s=>{
+    const t = tarlaBul(s.tarlaId);
+    return { Tarih:s.tarih, Tarla:t?t.ad:'', Saat:s.saat };
+  });
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(sulamaRows), 'Sulama');
+
+  XLSX.writeFile(wb, 'scv-rapor-' + todayStr() + '.xlsx');
+}
+
+/* =========================================================
+   CSV DIŞA AKTAR
+   ========================================================= */
+function csvDisaAktar(){
+  const basliklar = [
+    'Tarih','Tarla','Çiftçi','Kırım No','Toplam Dizi Sayısı','Ort. Dizi Kg','Serada Dizilen Kg',
+    'Balya Sayısı','Ort. Balya Kg','Toplam Kırılmış Kg','İşçi Sayısı','Yevmiye',
+    'İşçi Maliyeti','Sera Dağılımı','Kayıp Dizi','18 Yaş Altı Yok','Çalışma Saati'
+  ];
+  const satirlar = state.kirimlar.map(k=>{
+    const t = tarlaBul(k.tarlaId);
+    const tr = kirimTurev(k);
+    const maliyet = (k.isciSayisi||0)*(k.yevmiye||0);
+    return [
+      k.tarih, t?t.ad:'', t?t.ciftci:'', k.kirimNo, fmt(tr.diziSayisi,0), k.ortDiziKg, fmt(tr.diziKg,0),
+      k.balyaSayisi, k.ortBalyaKg, fmt(tr.toplamKg,0), k.isciSayisi, k.yevmiye,
+      fmt(maliyet,0), seraDagilimiEtiket(k.seraDagilimi), k.kayipDizi||'', k.altYasYok?'Evet':'Hayır', k.calismaSaati||''
+    ];
+  });
+  const csvIcerik = [basliklar, ...satirlar]
+    .map(satir => satir.map(v => `"${String(v==null?'':v).replace(/"/g,'""')}"`).join(','))
+    .join('\r\n');
+  const blob = new Blob(['﻿' + csvIcerik], { type:'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'scv-kirim-kayitlari-' + todayStr() + '.csv';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+/* =========================================================
+   SAYFA GEÇİŞİ
+   ========================================================= */
+function sayfaGecis(sayfaId){
+  ['pageSaha','pageHaritalar','pageDepo','pageSulama'].forEach(id=>{
+    document.getElementById(id).classList.toggle('hidden', id!==sayfaId);
+    document.getElementById('tab_'+id).classList.toggle('active', id===sayfaId);
+  });
+  if(sayfaId==='pageHaritalar'){ haritaMapBaslat(); }
+  if(sayfaId==='pageDepo'){ renderDepo(); }
+  if(sayfaId==='pageSulama'){ renderSulama(); }
+}
+
+/* =========================================================
+   HARİTALAR (gerçek uydu haritası + GPS pin — Leaflet/Esri,
+   Kalemli ve Tekeliler için gerçek koordinatlar OSM/Nominatim'den alındı)
+   ========================================================= */
+const HARITA_BOLGELER = {
+  kalemli:   { lat: 38.796158, lng: 27.468126, zoom: 15 },
+  tekeliler: { lat: 38.711426, lng: 27.450628, zoom: 15 }
+};
+let haritaMap = null;
+let haritaMarkerlar = [];
+let haritaPinModuAktif = false;
+let pendingPinLatLng = null;
+
+function haritaMapBaslat(){
+  if(haritaMap){ setTimeout(()=>haritaMap.invalidateSize(), 50); return; }
+  if(typeof L==='undefined'){ alert('Harita kütüphanesi yüklenemedi. İnternet bağlantınızı kontrol edip sayfayı yenileyin.'); return; }
+  haritaMap = L.map('haritaMap');
+  L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+    maxZoom: 19,
+    attribution: 'Tiles &copy; Esri — Kaynak: Esri, Maxar, Earthstar Geographics'
+  }).addTo(haritaMap);
+  const k = HARITA_BOLGELER.kalemli, t = HARITA_BOLGELER.tekeliler;
+  haritaMap.fitBounds([[k.lat,k.lng],[t.lat,t.lng]], { padding:[60,60] });
+  haritaMap.on('click', haritaMapTiklandi);
+  setTimeout(()=>haritaMap.invalidateSize(), 50);
+  renderHaritalar();
+}
+function haritaBolgeyeGit(bolge){
+  if(!haritaMap) return;
+  const b = HARITA_BOLGELER[bolge];
+  haritaMap.setView([b.lat, b.lng], b.zoom);
+}
+function haritaPinModuDegistir(){
+  haritaPinModuAktif = !haritaPinModuAktif;
+  document.getElementById('haritaPinModBtn').classList.toggle('active', haritaPinModuAktif);
+  if(haritaMap){ haritaMap.getContainer().style.cursor = haritaPinModuAktif ? 'crosshair' : ''; }
+}
+function haritaMapTiklandi(e){
+  if(!haritaPinModuAktif) return;
+  pendingPinLatLng = e.latlng;
+  openPinTarlaSecModal();
+}
+function haritaKonumumlaPinEkle(){
+  if(!navigator.geolocation){ alert('Tarayıcınız konum özelliğini desteklemiyor.'); return; }
+  navigator.geolocation.getCurrentPosition(
+    pos=>{ pendingPinLatLng = { lat: pos.coords.latitude, lng: pos.coords.longitude }; openPinTarlaSecModal(); },
+    err=>alert('Konum alınamadı: ' + err.message),
+    { enableHighAccuracy:true, timeout:10000 }
+  );
+}
+function openPinTarlaSecModal(){
+  if(!state.tarlalar.length){ alert('Önce en az bir tarla ekleyin.'); pendingPinLatLng = null; return; }
+  const opts = state.tarlalar.map(t=>`<option value="${t.id}">${escapeHtml(t.ad)}</option>`).join('');
+  openModal(`
+    <h2>Pin Ekle</h2>
+    <div class="field"><label>Tarla</label><select id="pinTarla">${opts}</select></div>
+    <div class="modal-actions">
+      <button class="btn btn-muted" onclick="pendingPinLatLng=null;closeModal();">Vazgeç</button>
+      <button class="btn btn-primary" onclick="submitPinEkle()">Pin Ekle</button>
+    </div>
+  `);
+}
+function submitPinEkle(){
+  if(!pendingPinLatLng) return;
+  const tarlaId = document.getElementById('pinTarla').value;
+  state.haritaPinleri.push({ id: uid(), tarlaId, lat: pendingPinLatLng.lat, lng: pendingPinLatLng.lng });
+  pendingPinLatLng = null;
+  closeModal();
+  renderAll();
+}
+function openKoordinatTarlaEkleModal(){
+  ilacRowCount = 0;
+  zararliRowCount = 0;
+  openModal(`
+    <h2>Koordinat ile Tarla Ekle</h2>
+    <div class="hint-box">Tarlanın enlem/boylamını biliyorsanız (örn. Google Maps'te konuma basılı tutup kopyalayarak) buradan doğrudan tarla + harita pini oluşturabilirsiniz.</div>
+    ${tarlaFormFieldsHtml({})}
+    <div class="row2">
+      <div class="field"><label>Enlem (lat)</label><input id="fKoordLat" type="number" step="0.000001" placeholder="örn. 38.796158"></div>
+      <div class="field"><label>Boylam (lng)</label><input id="fKoordLng" type="number" step="0.000001" placeholder="örn. 27.468126"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-muted" onclick="closeModal()">Vazgeç</button>
+      <button class="btn btn-primary" onclick="submitKoordinatTarlaEkle()">Tarla + Pin Ekle</button>
+    </div>
+  `);
+}
+function submitKoordinatTarlaEkle(){
+  const f = tarlaFormOku();
+  if(!f.ad){ alert('Tarla adı girin.'); return; }
+  const lat = Number(document.getElementById('fKoordLat').value);
+  const lng = Number(document.getElementById('fKoordLng').value);
+  if(!lat || !lng){ alert('Enlem ve boylam girin.'); return; }
+  const tarlaId = uid();
+  state.tarlalar.push({ id: tarlaId, ...f, olusturma: Date.now() });
+  state.haritaPinleri.push({ id: uid(), tarlaId, lat, lng });
+  closeModal(); renderAll();
+  if(haritaMap) haritaMap.setView([lat, lng], 17);
+}
+function haritaPinTiklandi(pinId){
+  if(haritaPinModuAktif){ openPinAksiyonModal(pinId); return; }
+  const pin = state.haritaPinleri.find(p=>p.id===pinId);
+  if(pin) openTarlaDetay(pin.tarlaId);
+}
+function openPinAksiyonModal(pinId){
+  const pin = state.haritaPinleri.find(p=>p.id===pinId);
+  if(!pin) return;
+  const t = tarlaBul(pin.tarlaId);
+  openModal(`
+    <h2>${escapeHtml(t?t.ad:'Pin')}</h2>
+    <div class="field"><label>Konum</label><div>${pin.lat.toFixed(6)}, ${pin.lng.toFixed(6)}</div></div>
+    <div class="modal-actions" style="flex-wrap:wrap;">
+      <button class="btn btn-muted" onclick="closeModal()">Vazgeç</button>
+      <button class="btn btn-danger" onclick="haritaPinSilOnay('${pinId}')">Pini Sil</button>
+      <button class="btn btn-primary" onclick="haritaPinGpsIleGuncelle('${pinId}')">📍 Buradaki GPS Konumumu Kullan</button>
+    </div>
+  `);
+}
+function haritaPinGpsIleGuncelle(pinId){
+  if(!navigator.geolocation){ alert('Tarayıcınız konum özelliğini desteklemiyor.'); return; }
+  navigator.geolocation.getCurrentPosition(
+    pos=>{
+      const pin = state.haritaPinleri.find(p=>p.id===pinId);
+      if(pin){ pin.lat = pos.coords.latitude; pin.lng = pos.coords.longitude; }
+      closeModal(); renderAll();
+    },
+    err=>alert('Konum alınamadı: ' + err.message),
+    { enableHighAccuracy:true, timeout:10000 }
+  );
+}
+function haritaPinSilOnay(pinId){
+  if(!confirm('Bu pin silinsin mi?')) return;
+  state.haritaPinleri = state.haritaPinleri.filter(p=>p.id!==pinId);
+  closeModal(); renderAll();
+}
+function tesisPinTiklandi(pinId){
+  if(!haritaPinModuAktif) return;
+  const p = state.tesisPinleri.find(x=>x.id===pinId);
+  if(!p) return;
+  if(!confirm(`"${p.etiket}" silinsin mi?`)) return;
+  state.tesisPinleri = state.tesisPinleri.filter(x=>x.id!==pinId);
+  renderAll();
+}
+function renderHaritalar(){
+  if(!haritaMap) return;
+  haritaMarkerlar.forEach(m=>haritaMap.removeLayer(m));
+  haritaMarkerlar = [];
+  (state.haritaPinleri||[]).forEach(p=>{
+    const t = tarlaBul(p.tarlaId);
+    const ad = t ? t.ad : '(silinmiş tarla)';
+    const icon = L.divIcon({
+      className: '',
+      html: `<div class="harita-pin-icon"><div class="pin-label">${escapeHtml(ad)}</div><div class="pin-dot"></div></div>`,
+      iconSize: [16,36], iconAnchor: [8,34]
+    });
+    const marker = L.marker([p.lat, p.lng], { icon }).addTo(haritaMap);
+    marker.on('click', ()=>haritaPinTiklandi(p.id));
+    haritaMarkerlar.push(marker);
+  });
+  (state.tesisPinleri||[]).forEach(p=>{
+    const icon = L.divIcon({
+      className: '',
+      html: `<div class="tesis-pin-icon"><div class="tesis-label">${escapeHtml(p.etiket)}</div><div class="tesis-dot"></div></div>`,
+      iconSize: [12,30], iconAnchor: [6,28]
+    });
+    const marker = L.marker([p.lat, p.lng], { icon }).addTo(haritaMap);
+    marker.on('click', ()=>tesisPinTiklandi(p.id));
+    haritaMarkerlar.push(marker);
+  });
+}
+
+/* =========================================================
+   KROKİ VERİLERİNİ TOPLU İÇE AKTAR
+   (Tekeliler 2026 ve SCV 2026 Kalemli kroki fotoğraflarından —
+   konumlar kesin GPS değil, ölçek çubuğu + köy merkezi tahminiyle
+   yaklaşık yerleştirilir; sahada "Buradayım (GPS)" ile düzeltilebilir)
+   ========================================================= */
+function krokiKonumHesapla(anchor, index, kolonSayisi, araMetre){
+  kolonSayisi = kolonSayisi || 5;
+  araMetre = araMetre || 130;
+  const satir = Math.floor(index / kolonSayisi);
+  const kolon = index % kolonSayisi;
+  const merkezKolon = (kolonSayisi-1)/2;
+  const dLat = (araMetre * satir) / 111320;
+  const dLng = (araMetre * (kolon - merkezKolon)) / (111320 * Math.cos(anchor.lat * Math.PI/180));
+  return { lat: anchor.lat - dLat, lng: anchor.lng + dLng };
+}
+function krokiVerileriniIceAktar(){
+  if(!confirm('Tekeliler ve Kalemli krokilerindeki tarlalar + pompa/kuyu noktaları yaklaşık konumlarıyla eklenecek. Zaten aynı isimde tarla varsa atlanacak, tekrar tekrar çalıştırmak güvenlidir. Devam edilsin mi?')) return;
+
+  const TEKELILER_TARLA = [
+    {ad:'T1', dekar:64}, {ad:'T2', dekar:23}, {ad:'T3', dekar:53}, {ad:'T4', dekar:85},
+    {ad:'T5', dekar:53}, {ad:'T6', dekar:16}, {ad:'T7', dekar:28}, {ad:'T8', dekar:28},
+    {ad:'T9', dekar:22}, {ad:'T10', dekar:122}
+  ];
+  const KALEMLI_TARLA = [
+    {ad:'K3', dekar:33}, {ad:'K6', dekar:10}, {ad:'K7', dekar:21}, {ad:'K9', dekar:6},
+    {ad:'K10', dekar:30}, {ad:'K11', dekar:6.5}, {ad:'K12', dekar:10}, {ad:'K13', dekar:30},
+    {ad:'K14', dekar:22}, {ad:'K15', dekar:10}, {ad:'K16', dekar:15}, {ad:'K17', dekar:27},
+    {ad:'K18', dekar:17}, {ad:'K19', dekar:18.5}, {ad:'K20', dekar:10.5}, {ad:'K21', dekar:15},
+    {ad:'K22', dekar:35}, {ad:'K23', dekar:21}, {ad:'K24', dekar:24}, {ad:'K26', dekar:75}
+  ];
+  const TEKELILER_TESIS = [
+    'Pompa (23 DA, 60 TON/H)','Pompa (53 DA, 60 TON/H)','Pompa (64 DA, 60 TON/H)',
+    'Pompa (85 DA, 70 TON/H)','Pompa (Sera Alanı, 60 TON/H)','Pompa (28 DA, 60 TON/H)',
+    'Pompa (20 DA, 60 TON/H)','Pompa (28 DA, 50 TON/H)','Pompa (22/25 DA, 70 TON/H)',
+    'Sera Alanı (Tekeliler)'
+  ];
+  const KALEMLI_TESIS = [
+    'Sonda J1','Sonda J4','Sonda J6','Sonda J7','Sonda J8','Sonda J10','Sonda J13','Sonda J16','Sera Alanı (Kalemli)'
+  ];
+
+  let eklenenTarla = 0, atlananTarla = 0, eklenenTesis = 0;
+
+  function tarlaEkleVePinle(anchor, liste, bolge){
+    liste.forEach((f, i)=>{
+      const mevcut = state.tarlalar.find(t=>t.ad===f.ad);
+      let tarlaId;
+      if(mevcut){ tarlaId = mevcut.id; atlananTarla++; }
+      else{
+        tarlaId = uid();
+        state.tarlalar.push({ id: tarlaId, ad: f.ad, ciftci: '', dekar: f.dekar, cesit: '', bolge, dikimTarihi:'', capaTarihi:'', tahminiHasatKg:0, ilaclar: [], zararlilar: [], olusturma: Date.now() });
+        eklenenTarla++;
+      }
+      const varOlanPin = state.haritaPinleri.find(p=>p.tarlaId===tarlaId);
+      if(!varOlanPin){
+        const konum = krokiKonumHesapla(anchor, i, 5, 130);
+        state.haritaPinleri.push({ id: uid(), tarlaId, lat: konum.lat, lng: konum.lng });
+      }
+    });
+  }
+  function tesisEkle(anchor, liste){
+    liste.forEach((etiket, i)=>{
+      if(state.tesisPinleri.some(p=>p.etiket===etiket)) return;
+      const konum = krokiKonumHesapla(anchor, i, 5, 100);
+      state.tesisPinleri.push({ id: uid(), tip:'tesis', etiket, lat: konum.lat - 0.0009, lng: konum.lng });
+      eklenenTesis++;
+    });
+  }
+
+  tarlaEkleVePinle(HARITA_BOLGELER.tekeliler, TEKELILER_TARLA, 'tekeliler');
+  tarlaEkleVePinle(HARITA_BOLGELER.kalemli, KALEMLI_TARLA, 'kalemli');
+  tesisEkle(HARITA_BOLGELER.tekeliler, TEKELILER_TESIS);
+  tesisEkle(HARITA_BOLGELER.kalemli, KALEMLI_TESIS);
+
+  renderAll();
+  alert(`İçe aktarma tamamlandı.\nEklenen tarla: ${eklenenTarla}\nZaten mevcut olup atlanan: ${atlananTarla}\nEklenen tesis noktası: ${eklenenTesis}\n\nKonumlar YAKLAŞIKTIR (kroki fotoğrafındaki ölçek + köy merkezi tahminiyle hesaplandı, gerçek GPS ölçümü değildir). Sahaya gittiğinizde pine tıklayıp "Buradaki GPS Konumumu Kullan" ile veya "Buradayım (GPS ile Pin Ekle)" ile gerçek konumu düzeltebilirsiniz.`);
+}
+
+/* =========================================================
+   DEPO (KALEMLİ / TEKELİLER KUTU TAKİBİ)
+   ========================================================= */
+let depoBolgeAktif = 'tekeliler';
+function depoBolgeSekmeGecis(bolge){
+  depoBolgeAktif = bolge;
+  ['tekeliler','kalemli'].forEach(b=>{
+    document.getElementById('depoBolgeTab_'+b).classList.toggle('active', b===bolge);
+  });
+  renderDepo();
+}
+function openKutuEkleModal(){
+  openModal(`
+    <h2>Kutu Ekle</h2>
+    <div class="row2">
+      <div class="field"><label>Bölge</label>
+        <select id="fKutuBolge">
+          <option value="tekeliler" ${depoBolgeAktif==='tekeliler'?'selected':''}>Tekeliler</option>
+          <option value="kalemli" ${depoBolgeAktif==='kalemli'?'selected':''}>Kalemli</option>
+        </select>
+      </div>
+      <div class="field"><label>Kutu Ağırlığı (kg)</label><input id="fKutuKg" type="number" min="0" step="0.1"></div>
+    </div>
+    <div class="field"><label>Kutulanma Tarihi</label><input id="fKutuTarih" type="date" value="${todayStr()}"></div>
+    <div class="modal-actions">
+      <button class="btn btn-muted" onclick="closeModal()">Vazgeç</button>
+      <button class="btn btn-primary" onclick="submitKutuEkle()">Ekle</button>
+    </div>
+  `);
+}
+function submitKutuEkle(){
+  const bolge = document.getElementById('fKutuBolge').value;
+  const kg = Number(document.getElementById('fKutuKg').value)||0;
+  const tarih = document.getElementById('fKutuTarih').value || todayStr();
+  if(kg<=0){ alert('Kutu ağırlığı girin.'); return; }
+  const bolgedekiler = state.depoKutulari.filter(k=>k.bolge===bolge);
+  const kutuNo = bolgedekiler.length ? Math.max(...bolgedekiler.map(k=>k.kutuNo)) + 1 : 1;
+  state.depoKutulari.push({ id: uid(), bolge, kutuNo, kg, tarih, olusturma: Date.now() });
+  closeModal(); renderAll();
+}
+function kutuSil(id){
+  if(!confirm('Bu kutu kaydı silinsin mi?')) return;
+  state.depoKutulari = state.depoKutulari.filter(k=>k.id!==id);
+  renderAll();
+}
+function renderDepo(){
+  const ozetEl = document.getElementById('depoOzet');
+  const listeEl = document.getElementById('depoKutuListesi');
+  if(!ozetEl || !listeEl) return;
+  const liste = state.depoKutulari.filter(k=>k.bolge===depoBolgeAktif).sort((a,b)=> b.tarih.localeCompare(a.tarih) || b.kutuNo-a.kutuNo);
+  const toplamKg = liste.reduce((s,k)=>s+(Number(k.kg)||0),0);
+  ozetEl.innerHTML = `
+    <div>Kutu Sayısı<b>${liste.length}</b></div>
+    <div>Toplam Kg<b>${fmt(toplamKg,0)}</b></div>
+    <div>Ort. Kutu Kg<b>${liste.length?fmt(toplamKg/liste.length,1):'-'}</b></div>
+  `;
+  listeEl.innerHTML = liste.map(k=>`
+    <div class="item">Kutu #${k.kutuNo} — ${escapeHtml(k.tarih)} — ${fmt(k.kg,1)} kg
+      <button class="btn btn-muted" style="padding:1px 6px;font-size:10.5px;float:right;" onclick="kutuSil('${k.id}')">×</button>
+    </div>
+  `).join('') || '<div class="item">Henüz kutu kaydı yok</div>';
+}
+
+/* =========================================================
+   SULAMA TAKİP
+   ========================================================= */
+function openSulamaEkleModal(){
+  if(!state.tarlalar.length){ alert('Önce en az bir tarla ekleyin.'); return; }
+  const opts = state.tarlalar.map(t=>`<option value="${t.id}">${escapeHtml(t.ad)}</option>`).join('');
+  openModal(`
+    <h2>Sulama Kaydı Ekle</h2>
+    <div class="row2">
+      <div class="field"><label>Tarla</label><select id="fSulamaTarla">${opts}</select></div>
+      <div class="field"><label>Tarih</label><input id="fSulamaTarih" type="date" value="${todayStr()}"></div>
+    </div>
+    <div class="field"><label>Kaç Saat Sulandı</label><input id="fSulamaSaat" type="number" min="0" step="0.5"></div>
+    <div class="modal-actions">
+      <button class="btn btn-muted" onclick="closeModal()">Vazgeç</button>
+      <button class="btn btn-primary" onclick="submitSulamaEkle()">Ekle</button>
+    </div>
+  `);
+}
+function submitSulamaEkle(){
+  const tarlaId = document.getElementById('fSulamaTarla').value;
+  const tarih = document.getElementById('fSulamaTarih').value || todayStr();
+  const saat = Number(document.getElementById('fSulamaSaat').value)||0;
+  if(!tarlaId){ alert('Tarla seçin.'); return; }
+  if(saat<=0){ alert('Sulama saatini girin.'); return; }
+  state.sulamaKayitlari.push({ id: uid(), tarlaId, tarih, saat, olusturma: Date.now() });
+  closeModal(); renderAll();
+}
+function sulamaSil(id){
+  if(!confirm('Bu sulama kaydı silinsin mi?')) return;
+  state.sulamaKayitlari = state.sulamaKayitlari.filter(s=>s.id!==id);
+  renderAll();
+}
+function renderSulama(){
+  const ozetEl = document.getElementById('sulamaOzet');
+  const listeEl = document.getElementById('sulamaListesi');
+  if(!ozetEl || !listeEl) return;
+  const liste = [...state.sulamaKayitlari].sort((a,b)=>b.tarih.localeCompare(a.tarih));
+  const toplamSaat = liste.reduce((s,k)=>s+(Number(k.saat)||0),0);
+  ozetEl.innerHTML = `
+    <div>Kayıt Sayısı<b>${liste.length}</b></div>
+    <div>Toplam Saat<b>${fmt(toplamSaat,1)}</b></div>
+  `;
+  listeEl.innerHTML = liste.map(s=>{
+    const t = tarlaBul(s.tarlaId);
+    return `<div class="item">${escapeHtml(s.tarih)} — ${escapeHtml(t?t.ad:'(silinmiş tarla)')} — ${fmt(s.saat,1)} saat
+      <button class="btn btn-muted" style="padding:1px 6px;font-size:10.5px;float:right;" onclick="sulamaSil('${s.id}')">×</button>
+    </div>`;
+  }).join('') || '<div class="item">Henüz sulama kaydı yok</div>';
+}
+
+/* =========================================================
+   PWA: SERVİS WORKER + YÜKLEME İSTEMİ
+   ========================================================= */
+let deferredInstallPrompt = null;
+window.addEventListener('beforeinstallprompt', (e)=>{
+  e.preventDefault();
+  deferredInstallPrompt = e;
+  const btn = document.getElementById('installBtn');
+  if(btn) btn.style.display = '';
+});
+function pwaYukle(){
+  if(!deferredInstallPrompt) return;
+  deferredInstallPrompt.prompt();
+  deferredInstallPrompt.userChoice.finally(()=>{
+    deferredInstallPrompt = null;
+    const btn = document.getElementById('installBtn');
+    if(btn) btn.style.display = 'none';
+  });
+}
+window.addEventListener('appinstalled', ()=>{
+  const btn = document.getElementById('installBtn');
+  if(btn) btn.style.display = 'none';
+});
+if('serviceWorker' in navigator){
+  window.addEventListener('load', ()=>{
+    navigator.serviceWorker.register('sw.js').catch(()=>{ /* file:// veya SW desteklenmiyor: sessizce yut */ });
+  });
+}
+
+/* =========================================================
+   BAŞLAT
+   ========================================================= */
+renderAll();
+</script>
+</body>
+</html>
