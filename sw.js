@@ -1,4 +1,4 @@
-const CACHE_NAME = 'scv-saha-v1-cache-3';
+const CACHE_NAME = 'scv-saha-v1-cache-4';
 const CORE_ASSETS = [
   './scv-saha-v1.html',
   './manifest.json',
@@ -37,6 +37,25 @@ self.addEventListener('fetch', (event) => {
     return; // Firestore/Auth trafiğine dokunma - kendi ağ katmanını kullansın
   }
 
+  // HTML sayfası (uygulamanın kendisi): önce internetten en güncelini çek,
+  // sadece çevrimdışıyken önbelleğe düş. Böylece güncellemeler her zaman
+  // ilk açılışta gelir, eski sürüm takılı kalmaz.
+  const isHtmlNavigation = event.request.mode === 'navigate' || url.endsWith('.html') || url.endsWith('/');
+  if (isHtmlNavigation) {
+    event.respondWith(
+      fetch(event.request).then(response => {
+        if (response && response.status === 200) {
+          const clone = response.clone();
+          caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone));
+        }
+        return response;
+      }).catch(() => caches.match(event.request))
+    );
+    return;
+  }
+
+  // Diğer statik dosyalar (kütüphaneler, ikonlar): önbellekten hemen göster,
+  // arka planda güncelle (stale-while-revalidate) - bunlar sık değişmiyor.
   event.respondWith(
     caches.match(event.request).then(cached => {
       const networkFetch = fetch(event.request).then(response => {
