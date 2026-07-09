@@ -507,7 +507,7 @@ input,select,button,textarea{font-family:inherit;font-size:14px;}
       <div class="panel-body">
         <div class="dizim-plot" onclick="openKirimModal()">
           <b>+ Kırım Kaydı Gir</b>
-          <span>Tarla · El · Dizi/Balya · Hedef Sera</span>
+          <span>Tarla · El · Dizi · Hedef Sera</span>
         </div>
         <div class="son-kirimlar">
           <h3>Son Kırımlar</h3>
@@ -665,9 +665,9 @@ input,select,button,textarea{font-family:inherit;font-size:14px;}
    AYARLAR (tek ayar bloğu — sabitleri buradan değiştirin)
    ========================================================= */
 const AYARLAR = {
-  UNITE_KAPASITE: 480,        // 1 ünite sera kapasitesi (dizi)
+  UNITE_KAPASITE: 480,        // sera-box genişlik ölçeği için referans kapasite (dizi)
   GUNLUK_ISLEME_DIZI: 200,    // seranın günlük işlenen tahmini dizi hızı (boşalma tahmini için)
-  UNITE_PX: 40                // 1 ünitenin ekran genişliği (px) — kroki oranı
+  UNITE_PX: 40                // referans kapasitedeki sera-box genişliği (px) — kroki oranı
 };
 const STORAGE_KEY = 'scvSahaKrokiV1';
 
@@ -859,9 +859,8 @@ function seraDagilimiEtiket(seraDagilimi){
 }
 function kirimTurev(k){
   const diziSayisi = (k.seraDagilimi||[]).reduce((s,d)=>s+(Number(d.diziSayisi)||0),0);
-  const diziKg = diziSayisi * (Number(k.ortDiziKg)||0);       // serada dizilen tütün ağırlığı (kg)
-  const toplamKg = (Number(k.balyaSayisi)||0) * (Number(k.ortBalyaKg)||0); // toplam kırılmış/balyalanmış tütün ağırlığı (kg)
-  return { diziSayisi, diziKg, toplamKg };
+  const diziKg = diziSayisi * (Number(k.ortDiziKg)||0); // serada dizilen / kırılan tütün ağırlığı (kg)
+  return { diziSayisi, diziKg, toplamKg: diziKg };
 }
 
 function tarlaBul(id){ return state.tarlalar.find(t=>t.id===id); }
@@ -878,14 +877,14 @@ function donemBulByKirim(sera, kirimId){
 
 function tarlaStats(tarlaId){
   const kayitlar = state.kirimlar.filter(k=>k.tarlaId===tarlaId);
-  let maxKirimNo = 0, toplamKg = 0, toplamBalya = 0;
+  let maxKirimNo = 0, toplamKg = 0, toplamDizi = 0;
   kayitlar.forEach(k=>{
     if(Number(k.kirimNo) > maxKirimNo) maxKirimNo = Number(k.kirimNo);
-    toplamKg += kirimTurev(k).toplamKg;
-    toplamBalya += Number(k.balyaSayisi)||0;
+    const tr = kirimTurev(k);
+    toplamKg += tr.toplamKg;
+    toplamDizi += tr.diziSayisi;
   });
-  const ortBalyaKg = toplamBalya>0 ? toplamKg/toplamBalya : null;
-  return { kayitSayisi: kayitlar.length, maxKirimNo, toplamKg, toplamBalya, ortBalyaKg };
+  return { kayitSayisi: kayitlar.length, maxKirimNo, toplamKg, toplamDizi };
 }
 
 function tarlaPhiDurum(tarla){
@@ -905,13 +904,16 @@ function tarlaPhiDurum(tarla){
 
 function tarlaZararliDurum(tarla){
   if(!tarla.zararlilar || !tarla.zararlilar.length) return null;
-  const today = new Date(todayStr());
-  let enYeni = null;
+  // en şiddetli (yoğun > orta > hafif), eşitlikte en güncel tarihli kayıt gösterilir
+  const siddetSira = { yogun:3, orta:2, hafif:1 };
+  let enKotu = null;
   tarla.zararlilar.forEach(z=>{
-    const gun = Math.floor((today - new Date(z.tarih)) / 86400000);
-    if(gun>=0 && gun<=21 && (!enYeni || gun<enYeni.gun)) enYeni = { ad: z.ad, gun, siddet: z.siddet };
+    const puan = siddetSira[z.siddet] || 2;
+    if(!enKotu || puan > enKotu.puan || (puan === enKotu.puan && z.tarih > enKotu.tarih)){
+      enKotu = { ad: z.ad, siddet: z.siddet, tarih: z.tarih, puan };
+    }
   });
-  return enYeni;
+  return enKotu;
 }
 
 function seraDurumSinifi(pct){
@@ -955,17 +957,17 @@ function hesaplaRozetler(){
   const toplamDolu = state.seralar.reduce((s,x)=>s+seraGuncelDolu(x),0);
   const seraDoluluk = toplamKapasite>0 ? (toplamDolu/toplamKapasite*100) : null;
 
-  // Bu haftanın ort. balya kg
+  // Bu haftanın ort. dizi kg
   const haftaBasi = new Date(); haftaBasi.setDate(haftaBasi.getDate()-6);
-  const haftaKirimleri = state.kirimlar.filter(k => new Date(k.tarih) >= haftaBasi && Number(k.ortBalyaKg)>0);
-  const ortBalya = haftaKirimleri.length ? (haftaKirimleri.reduce((s,k)=>s+Number(k.ortBalyaKg),0)/haftaKirimleri.length) : null;
+  const haftaKirimleri = state.kirimlar.filter(k => new Date(k.tarih) >= haftaBasi && Number(k.ortDiziKg)>0);
+  const ortDizi = haftaKirimleri.length ? (haftaKirimleri.reduce((s,k)=>s+Number(k.ortDiziKg),0)/haftaKirimleri.length) : null;
 
   // Kayıp oranı
   const toplamDiziTum = state.kirimlar.reduce((s,k)=>s+kirimTurev(k).diziSayisi,0);
   const toplamKayip = state.kirimlar.reduce((s,k)=>s+(Number(k.kayipDizi)||0),0);
   const kayipOrani = toplamDiziTum>0 ? (toplamKayip/toplamDiziTum*100) : null;
 
-  return { kgDekarOrt, tlKg, seraDoluluk, ortBalya, kayipOrani };
+  return { kgDekarOrt, tlKg, seraDoluluk, ortDizi, kayipOrani };
 }
 
 /* =========================================================
@@ -998,7 +1000,7 @@ function renderBadges(){
     { label:'kg/dekar', val: r.kgDekarOrt==null?'-':fmt(r.kgDekarOrt,1), tip:'Kırım yapılmış tarlaların kg/dekar ortalaması.' },
     { label:'₺/kg', val: r.tlKg==null?'-':fmt(r.tlKg,2), tip:'Toplam işçi maliyeti ÷ toplam kg (tüm kayıtlar).' },
     { label:'Sera Doluluk', val: r.seraDoluluk==null?'-':fmt(r.seraDoluluk,0)+'%', tip:'Tüm seraların toplam dolu dizi ÷ toplam kapasite.' },
-    { label:'Ort. Balya (7g)', val: r.ortBalya==null?'-':fmt(r.ortBalya,1)+' kg', tip:'Son 7 gündeki kırımların ortalama balya ağırlığı.' },
+    { label:'Ort. Dizi (7g)', val: r.ortDizi==null?'-':fmt(r.ortDizi,2)+' kg', tip:'Son 7 gündeki kırımların ortalama dizi ağırlığı.' },
     { label:'Kayıp', val: r.kayipOrani==null?'-':fmt(r.kayipOrani,1)+'%', tip:'Kayıp/çürük dizi ÷ toplam dizi (girilen kayıtlara göre).' },
   ];
   document.getElementById('badgesRow').innerHTML = items.map(it=>`
@@ -1021,7 +1023,7 @@ function renderDizim(){
     return `<div class="mini-kirim">
       <div class="r1"><span>${escapeHtml(t?t.ad:'(silinmiş tarla)')}</span>
         <span>${escapeHtml(k.tarih)} <button class="btn btn-muted" style="padding:0 5px;font-size:10px;" title="Sil" onclick="kirimSil('${k.id}')">×</button></span></div>
-      <div class="r2">${k.kirimNo}. kırım · ${fmt(tr.diziSayisi,0)} dizi${k.balyaSayisi?' · '+fmt(k.balyaSayisi,0)+' balya':''} · ${fmt(tr.toplamKg,0)} kg</div>
+      <div class="r2">${k.kirimNo}. kırım · ${fmt(tr.diziSayisi,0)} dizi · ${fmt(tr.toplamKg,0)} kg</div>
     </div>`;
   }).join('');
 }
@@ -1051,17 +1053,14 @@ function renderToplamIstatistik(){
     return true;
   });
   const toplamDizi = kayitlar.reduce((s,k)=>s+kirimTurev(k).diziSayisi,0);
-  const toplamBalya = kayitlar.reduce((s,k)=>s+(Number(k.balyaSayisi)||0),0);
+  const toplamKg = kayitlar.reduce((s,k)=>s+kirimTurev(k).toplamKg,0);
   const toplamFire = kayitlar.reduce((s,k)=>s+(Number(k.kayipDizi)||0),0);
   const diziliKayitlar = kayitlar.filter(k=>Number(k.ortDiziKg)>0);
   const diziOrt = diziliKayitlar.length ? diziliKayitlar.reduce((s,k)=>s+Number(k.ortDiziKg),0)/diziliKayitlar.length : null;
-  const balyaliKayitlar = kayitlar.filter(k=>Number(k.ortBalyaKg)>0);
-  const balyaOrt = balyaliKayitlar.length ? balyaliKayitlar.reduce((s,k)=>s+Number(k.ortBalyaKg),0)/balyaliKayitlar.length : null;
   sonucEl.innerHTML = `
     <div>Toplam Dizim<b>${fmt(toplamDizi,0)}</b></div>
-    <div>Toplam Balya<b>${fmt(toplamBalya,0)}</b></div>
+    <div>Toplam Kg<b>${fmt(toplamKg,0)}</b></div>
     <div>Dizi Ortalaması<b>${diziOrt==null?'-':fmt(diziOrt,2)+' kg'}</b></div>
-    <div>Balya Ortalaması<b>${balyaOrt==null?'-':fmt(balyaOrt,1)+' kg'}</b></div>
     <div>Toplam Fire<b>${fmt(toplamFire,0)}</b></div>
   `;
 }
@@ -1075,7 +1074,7 @@ function renderSeralar(){
   el.innerHTML = state.seralar.map(s=>{
     const pct = s.kapasite>0 ? (seraGuncelDolu(s)/s.kapasite*100) : 0;
     const cls = seraDurumSinifiExact(pct);
-    const width = s.unite * AYARLAR.UNITE_PX;
+    const width = (s.kapasite/AYARLAR.UNITE_KAPASITE) * AYARLAR.UNITE_PX;
     const fillH = Math.min(pct,100);
     return `<div class="sera-box" style="width:${width}px" onclick="openSeraDetay('${s.id}')">
       <button class="sera-close" title="Sil" onclick="event.stopPropagation();seraSil('${s.id}')">×</button>
@@ -1146,6 +1145,13 @@ document.addEventListener('click', function(e){
 /* =========================================================
    SERA EKLE / DETAY / DÜZENLE
    ========================================================= */
+function seraKapasiteSecenekleriHtml(secili){
+  let opts = '';
+  for(let k=400;k<=500;k+=10){
+    opts += `<option value="${k}" ${Number(secili)===k?'selected':''}>${k} dizi</option>`;
+  }
+  return opts;
+}
 function seraFormFieldsHtml(s){
   s = s || {};
   return `
@@ -1154,21 +1160,15 @@ function seraFormFieldsHtml(s){
       <input id="fSeraAd" type="text" placeholder="örn. Sera 3" value="${escapeHtml(s.ad||'')}">
     </div>
     <div class="field">
-      <label>Ünite Sayısı (1 ünite = ${AYARLAR.UNITE_KAPASITE} dizi kapasite)</label>
-      <select id="fSeraUnite">
-        <option value="1" ${s.unite==1?'selected':''}>1 ünite (${AYARLAR.UNITE_KAPASITE} dizi)</option>
-        <option value="2" ${s.unite==2?'selected':''}>2 ünite (${AYARLAR.UNITE_KAPASITE*2} dizi)</option>
-        <option value="3" ${s.unite==3?'selected':''}>3 ünite (${AYARLAR.UNITE_KAPASITE*3} dizi)</option>
-        <option value="4" ${s.unite==4?'selected':''}>4 ünite (${AYARLAR.UNITE_KAPASITE*4} dizi)</option>
-        <option value="6" ${s.unite==6?'selected':''}>6 ünite (${AYARLAR.UNITE_KAPASITE*6} dizi)</option>
-      </select>
+      <label>Sera Dizi Kapasitesi</label>
+      <select id="fSeraKapasite">${seraKapasiteSecenekleriHtml(s.kapasite||450)}</select>
     </div>
   `;
 }
 function seraFormOku(){
   return {
     ad: document.getElementById('fSeraAd').value.trim(),
-    unite: Number(document.getElementById('fSeraUnite').value)
+    kapasite: Number(document.getElementById('fSeraKapasite').value)
   };
 }
 function openSeraEkleModal(){
@@ -1185,7 +1185,7 @@ function submitSeraEkle(){
   const f = seraFormOku();
   if(!f.ad){ alert('Sera adı girin.'); return; }
   state.seralar.push({
-    id: uid(), ad: f.ad, unite: f.unite, kapasite: f.unite*AYARLAR.UNITE_KAPASITE,
+    id: uid(), ad: f.ad, kapasite: f.kapasite,
     donemler: [], olusturma: Date.now()
   });
   closeModal(); renderAll();
@@ -1207,7 +1207,7 @@ function submitSeraDuzenle(id){
   if(!s) return;
   const f = seraFormOku();
   if(!f.ad){ alert('Sera adı girin.'); return; }
-  s.ad = f.ad; s.unite = f.unite; s.kapasite = f.unite*AYARLAR.UNITE_KAPASITE;
+  s.ad = f.ad; s.kapasite = f.kapasite;
   renderAll(); openSeraDetay(s.id);
 }
 
@@ -1322,7 +1322,6 @@ function openSeraDetay(id){
   openModal(`
     <h2>${escapeHtml(s.ad)}</h2>
     <div class="detail-grid">
-      <div>Ünite<b>${s.unite}</b></div>
       <div>Kapasite<b>${fmt(s.kapasite,0)} dizi</b></div>
     </div>
     ${aktifBlokHtml}
@@ -1512,7 +1511,7 @@ function openTarlaDetay(id){
   const tarlaKirimlari = state.kirimlar.filter(k=>k.tarlaId===t.id).sort((a,b)=>b.tarih.localeCompare(a.tarih));
   const kirimListHtml = tarlaKirimlari.map(k=>{
     const tr = kirimTurev(k);
-    return `<div class="item">${escapeHtml(k.tarih)} — ${k.kirimNo}. kırım · ${fmt(tr.diziSayisi,0)} dizi · ${fmt(k.balyaSayisi||0,0)} balya · ${fmt(tr.toplamKg,0)} kg → ${escapeHtml(seraDagilimiEtiket(k.seraDagilimi))}
+    return `<div class="item">${escapeHtml(k.tarih)} — ${k.kirimNo}. kırım · ${fmt(tr.diziSayisi,0)} dizi · ${fmt(tr.toplamKg,0)} kg → ${escapeHtml(seraDagilimiEtiket(k.seraDagilimi))}
       <button class="btn btn-muted" style="padding:1px 6px;font-size:10.5px;float:right;" onclick="kirimSil('${k.id}');openTarlaDetay('${t.id}')">×</button></div>`;
   }).join('') || '<div class="item">Henüz kırım kaydı yok</div>';
   openModal(`
@@ -1527,8 +1526,7 @@ function openTarlaDetay(id){
       <div>Çapa Tarihi<b>${escapeHtml(t.capaTarihi||'-')}</b></div>
       <div>Kırım Durumu<b>${stats.maxKirimNo? stats.maxKirimNo+'. kırım yapıldı':'Henüz kırım yok'} (${stats.kayitSayisi} kayıt)</b></div>
       <div>Total Harvest<b>${fmt(stats.toplamKg,0)} kg</b></div>
-      <div>Toplam Balya<b>${fmt(stats.toplamBalya,0)}</b></div>
-      <div>Ort. Balya Ağırlığı<b>${stats.ortBalyaKg==null?'-':fmt(stats.ortBalyaKg,1)+' kg'}</b></div>
+      <div>Toplam Dizi<b>${fmt(stats.toplamDizi,0)}</b></div>
       <div>Estimated Harvest<b>${fmt(t.tahminiHasatKg,0)} kg</b></div>
     </div>
     <div class="field">
@@ -1607,16 +1605,12 @@ function openKirimModal(presetTarlaId){
       </div>
       <div class="field"><label>Ort. Dizi Ağırlığı (kg)</label><input id="kOrtDiziKg" type="number" min="0" step="0.01" oninput="kirimTahminGuncelle()"></div>
     </div>
-    <div class="row2">
-      <div class="field"><label>Balya Sayısı</label><input id="kBalyaSayisi" type="number" min="0" step="1" oninput="kirimTahminGuncelle()"></div>
-      <div class="field"><label>Ort. Balya Ağırlığı (kg)</label><input id="kOrtBalyaKg" type="number" min="0" step="0.1" oninput="kirimTahminGuncelle()"></div>
-    </div>
     <div class="field">
       <label>Sera Dağılımı (zorunlu — hangi seraya kaç dizi konduğunu girin)</label>
       <div id="seraDagilimRows"></div>
       <button class="btn btn-muted" type="button" onclick="seraRowEkle();kirimTahminGuncelle()">+ Sera Ekle</button>
     </div>
-    <div class="hint-box" id="kirimTahminKutu">Toplam Kırılmış Tütün: 0 kg (balya sayısı × ort. balya kg) · Serada Dizilecek (toplam): 0 kg (toplam dizi × ort. dizi kg)</div>
+    <div class="hint-box" id="kirimTahminKutu">Toplam Kırılan Tütün: 0 kg (toplam dizi × ort. dizi kg)</div>
     <div class="row3">
       <div class="field"><label>İşçi Sayısı</label><input id="kIsci" type="number" min="0" step="1"></div>
       <div class="field"><label>Yevmiye (₺)</label><input id="kYevmiye" type="number" min="0" step="1"></div>
@@ -1635,11 +1629,9 @@ function openKirimModal(presetTarlaId){
 }
 function kirimTahminGuncelle(){
   const ortDizi = Number(document.getElementById('kOrtDiziKg').value)||0;
-  const balyaSayisi = Number(document.getElementById('kBalyaSayisi').value)||0;
-  const ortBalya = Number(document.getElementById('kOrtBalyaKg').value)||0;
   const toplamDizi = seraDagilimOku().reduce((s,d)=>s+d.diziSayisi,0);
   document.getElementById('kirimTahminKutu').innerHTML =
-    `Toplam Kırılmış Tütün: <b>${fmt(balyaSayisi*ortBalya,0)} kg</b> (balya sayısı × ort. balya kg) · Serada Dizilecek (toplam): <b>${fmt(toplamDizi*ortDizi,0)} kg</b> (${fmt(toplamDizi,0)} dizi × ort. dizi kg)`;
+    `Toplam Kırılan Tütün: <b>${fmt(toplamDizi*ortDizi,0)} kg</b> (${fmt(toplamDizi,0)} dizi × ort. dizi kg)`;
 }
 function submitKirimEkle(){
   const k = {
@@ -1648,8 +1640,6 @@ function submitKirimEkle(){
     tarlaId: document.getElementById('kTarla').value,
     kirimNo: Number(document.getElementById('kKirimNo').value),
     ortDiziKg: Number(document.getElementById('kOrtDiziKg').value)||0,
-    balyaSayisi: Number(document.getElementById('kBalyaSayisi').value)||0,
-    ortBalyaKg: Number(document.getElementById('kOrtBalyaKg').value)||0,
     seraDagilimi: seraDagilimOku(),
     isciSayisi: Number(document.getElementById('kIsci').value)||0,
     yevmiye: Number(document.getElementById('kYevmiye').value)||0,
@@ -1773,7 +1763,7 @@ function excelDisaAktar(){
   const seraRows = state.seralar.map(s=>{
     const d = seraAktifDonem(s);
     return {
-      Ad:s.ad, Ünite:s.unite, 'Kapasite (dizi)':s.kapasite,
+      Ad:s.ad, 'Kapasite (dizi)':s.kapasite,
       'Aktif Dönem Tür': d?d.tur:'', 'Aktif Dönem Çeşit': d?d.cesit:'',
       'Dolu (dizi)': d?d.dolu:0, 'Giriş Tarihi': d?d.girisTarihi:''
     };
@@ -1785,7 +1775,7 @@ function excelDisaAktar(){
     const tr = kirimTurev(k);
     return {
       Tarih:k.tarih, Tarla:t?t.ad:'', 'Kırım No':k.kirimNo, 'Dizi Sayısı':tr.diziSayisi,
-      'Ort. Dizi Kg':k.ortDiziKg, 'Balya Sayısı':k.balyaSayisi, 'Ort. Balya Kg':k.ortBalyaKg,
+      'Ort. Dizi Kg':k.ortDiziKg,
       'Toplam Kg':Math.round(tr.toplamKg), 'Sera Dağılımı':seraDagilimiEtiket(k.seraDagilimi),
       'İşçi Sayısı':k.isciSayisi, Yevmiye:k.yevmiye
     };
@@ -1812,7 +1802,7 @@ function excelDisaAktar(){
 function csvDisaAktar(){
   const basliklar = [
     'Tarih','Tarla','Çiftçi','Kırım No','Toplam Dizi Sayısı','Ort. Dizi Kg','Serada Dizilen Kg',
-    'Balya Sayısı','Ort. Balya Kg','Toplam Kırılmış Kg','İşçi Sayısı','Yevmiye',
+    'Toplam Kırılan Kg','İşçi Sayısı','Yevmiye',
     'İşçi Maliyeti','Sera Dağılımı','Kayıp Dizi','18 Yaş Altı Yok','Çalışma Saati'
   ];
   const satirlar = state.kirimlar.map(k=>{
@@ -1821,7 +1811,7 @@ function csvDisaAktar(){
     const maliyet = (k.isciSayisi||0)*(k.yevmiye||0);
     return [
       k.tarih, t?t.ad:'', t?t.ciftci:'', k.kirimNo, fmt(tr.diziSayisi,0), k.ortDiziKg, fmt(tr.diziKg,0),
-      k.balyaSayisi, k.ortBalyaKg, fmt(tr.toplamKg,0), k.isciSayisi, k.yevmiye,
+      fmt(tr.toplamKg,0), k.isciSayisi, k.yevmiye,
       fmt(maliyet,0), seraDagilimiEtiket(k.seraDagilimi), k.kayipDizi||'', k.altYasYok?'Evet':'Hayır', k.calismaSaati||''
     ];
   });
