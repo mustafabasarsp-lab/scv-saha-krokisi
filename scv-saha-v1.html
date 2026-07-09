@@ -691,11 +691,15 @@ let state = bosState();
 function saveState(){
   try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
   catch(e){ /* sessizce yut, veri bu oturum için bellekte kalmaya devam eder */ }
-  if(!isApplyingRemoteState) pushStateToFirestore();
+  pushStateToFirestore();
 }
 
 /* =========================================================
    FIREBASE: GİRİŞ + GERÇEK ZAMANLI SENKRONİZASYON
+   (her kayıt türü — tarla, sera, kırım, vb. — kendi koleksiyonunda
+   AYRI bir belge olarak tutulur; böylece aynı anda farklı kişilerin
+   eklediği FARKLI kayıtlar asla birbirinin üzerine yazmaz. Sadece
+   aynı kaydı aynı anda iki kişi düzenlerse en son yazan kazanır.)
    ========================================================= */
 const FIREBASE_CONFIG = {
   projectId: "tarla-app",
@@ -712,21 +716,49 @@ const fbDb = firebase.firestore();
 fbAuth.setPersistence(firebase.auth.Auth.Persistence.LOCAL).catch(()=>{});
 fbDb.enablePersistence({ synchronizeTabs:true }).catch(()=>{ /* birden fazla sekme/deste desteklenmiyorsa sessizce yut */ });
 
-let isApplyingRemoteState = false;
-let firestoreUnsubscribe = null;
+const SYNC_KOLEKSIYONLARI = ['tarlalar','seralar','kirimlar','haritaPinleri','tesisPinleri','depoKutulari','sulamaKayitlari'];
+let lastSyncedSnapshot = {};
+SYNC_KOLEKSIYONLARI.forEach(c=>{ lastSyncedSnapshot[c] = {}; });
+let firestoreUnsubscribes = [];
 let firestorePushTimer = null;
-const SCV_DOC_REF = fbDb.collection('scvSaha').doc('state');
 
 function pushStateToFirestore(){
   if(!fbAuth.currentUser) return;
   clearTimeout(firestorePushTimer);
-  firestorePushTimer = setTimeout(()=>{
-    SCV_DOC_REF.set(JSON.parse(JSON.stringify(state))).then(()=>{
-      setSyncStatus(true);
-    }).catch(()=>{
-      setSyncStatus(false);
+  firestorePushTimer = setTimeout(syncOutgoingNow, 600);
+}
+
+function syncOutgoingNow(){
+  if(!fbAuth.currentUser) return;
+  SYNC_KOLEKSIYONLARI.forEach(collName=>{
+    const arr = state[collName] || [];
+    const currentMap = {};
+    arr.forEach(item=>{ if(item && item.id){ currentMap[item.id] = JSON.stringify(item); } });
+    const lastMap = lastSyncedSnapshot[collName];
+    const batch = fbDb.batch();
+    let hasOps = false;
+    Object.keys(currentMap).forEach(id=>{
+      if(lastMap[id] !== currentMap[id]){
+        const item = arr.find(x=>x.id===id);
+        batch.set(fbDb.collection(collName).doc(id), JSON.parse(JSON.stringify(item)));
+        hasOps = true;
+      }
     });
-  }, 600);
+    Object.keys(lastMap).forEach(id=>{
+      if(!(id in currentMap)){
+        batch.delete(fbDb.collection(collName).doc(id));
+        hasOps = true;
+      }
+    });
+    if(hasOps){
+      batch.commit().then(()=>{
+        lastSyncedSnapshot[collName] = currentMap;
+        setSyncStatus(true);
+      }).catch(()=>{ setSyncStatus(false); });
+    } else {
+      lastSyncedSnapshot[collName] = currentMap;
+    }
+  });
 }
 
 function setSyncStatus(online){
@@ -738,26 +770,41 @@ function setSyncStatus(online){
 }
 
 function baglamFirestoreDinleyici(){
-  if(firestoreUnsubscribe) return;
-  firestoreUnsubscribe = SCV_DOC_REF.onSnapshot(snap=>{
-    if(!snap.exists){
-      SCV_DOC_REF.set(JSON.parse(JSON.stringify(state)));
+  if(firestoreUnsubscribes.length) return;
+  SYNC_KOLEKSIYONLARI.forEach(collName=>{
+    const unsub = fbDb.collection(collName).onSnapshot(snap=>{
+      let degisti = false;
+      snap.docChanges().forEach(change=>{
+        if(change.doc.metadata.hasPendingWrites) return; // kendi yazdığımız, tekrar uygulamaya gerek yok
+        const id = change.doc.id;
+        if(change.type === 'removed'){
+          if(!(id in lastSyncedSnapshot[collName])) return;
+          delete lastSyncedSnapshot[collName][id];
+          const before = state[collName].length;
+          state[collName] = state[collName].filter(x=>x.id!==id);
+          if(state[collName].length !== before) degisti = true;
+        } else {
+          const data = change.doc.data();
+          const json = JSON.stringify(data);
+          if(lastSyncedSnapshot[collName][id] === json) return;
+          lastSyncedSnapshot[collName][id] = json;
+          const idx = state[collName].findIndex(x=>x.id===id);
+          if(idx>=0) state[collName][idx] = data; else state[collName].push(data);
+          degisti = true;
+        }
+      });
       setSyncStatus(true);
-      return;
-    }
-    setSyncStatus(true);
-    if(snap.metadata.hasPendingWrites) return; // kendi yazdığımız veri, tekrar uygulamaya gerek yok
-    const remote = snap.data();
-    if(JSON.stringify(remote) === JSON.stringify(state)) return;
-    isApplyingRemoteState = true;
-    state = remote;
-    stateNormalizeEt();
-    renderAll();
-    isApplyingRemoteState = false;
-  }, ()=>{ setSyncStatus(false); });
+      if(degisti){
+        stateNormalizeEt();
+        renderAll();
+      }
+    }, ()=>{ setSyncStatus(false); });
+    firestoreUnsubscribes.push(unsub);
+  });
 }
 function kopukFirestoreDinleyici(){
-  if(firestoreUnsubscribe){ firestoreUnsubscribe(); firestoreUnsubscribe = null; }
+  firestoreUnsubscribes.forEach(u=>u());
+  firestoreUnsubscribes = [];
 }
 
 function girisYap(){
