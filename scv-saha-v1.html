@@ -2365,6 +2365,10 @@ if('serviceWorker' in navigator){
   });
   window.addEventListener('load', ()=>{
     navigator.serviceWorker.register('sw.js').then(reg=>{
+      // kayıttan hemen sonra bir kontrol daha tetikle — özellikle iOS'ta
+      // ana ekrandan açılan uygulamalarda arka plan kontrolü Android'e göre
+      // daha gecikmeli/güvenilmez olabiliyor, bu yüzden fazladan tetikliyoruz
+      reg.update().catch(()=>{});
       // uygulama uzun süre açık kaldıysa (PWA hiç kapanmadıysa) yeni
       // sürümü kontrol etmesi için sekme görünür olduğunda ve saatte
       // bir güncelleme kontrolü tetikle
@@ -2373,6 +2377,14 @@ if('serviceWorker' in navigator){
       });
       setInterval(()=>reg.update().catch(()=>{}), 60*60*1000);
     }).catch(()=>{ /* file:// veya SW desteklenmiyor: sessizce yut */ });
+  });
+  // iOS'ta uygulama son kullanılan uygulamalar listesinden (bfcache) geri
+  // getirildiğinde 'load' tekrar tetiklenmeyebilir; bu durumda da kontrol et
+  window.addEventListener('pageshow', (e)=>{
+    if(!e.persisted) return;
+    navigator.serviceWorker.getRegistration().then(reg=>{
+      if(reg) reg.update().catch(()=>{});
+    });
   });
 }
 
