@@ -241,9 +241,10 @@ input,select,button,textarea{font-family:inherit;font-size:14px;}
   background:#e5e7e0;
 }
 .sera-box .label{
-  position:absolute;top:3px;left:0;right:0;
-  text-align:center;font-size:10.5px;font-weight:700;color:var(--ink);
-  z-index:3;text-shadow:0 1px 2px rgba(255,255,255,.6);
+  position:absolute;top:50%;left:0;right:0;
+  transform:translateY(-50%);
+  text-align:center;font-size:11px;font-weight:700;color:var(--ink);
+  z-index:3;text-shadow:0 1px 3px rgba(255,255,255,.85),0 0 4px rgba(255,255,255,.6);
   padding:0 4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
 }
 .sera-box .pct{
@@ -275,6 +276,28 @@ input,select,button,textarea{font-family:inherit;font-size:14px;}
   padding:0;
 }
 .empty-hint{color:var(--muted);font-size:12px;text-align:center;padding:20px 6px;}
+
+/* ---------- ARAMA ÇUBUĞU ---------- */
+.search-input{
+  border:1px solid var(--border);border-radius:20px;padding:5px 12px;
+  font-size:12px;background:#fff;color:var(--ink);width:130px;
+  -webkit-appearance:none;appearance:none;
+}
+.search-input::placeholder{color:var(--muted);}
+.search-input:focus{outline:none;border-color:var(--green-500);}
+
+/* ---------- TAM EKRAN PANEL ---------- */
+.icon-btn.fullscreen-close{display:none;}
+.panel-fullscreen{
+  position:fixed !important;
+  inset:10px;
+  z-index:60;
+  width:auto !important;height:auto !important;
+  max-height:none !important;
+}
+.panel-fullscreen .fullscreen-close{display:flex;}
+.panel-fullscreen .panel-body{flex:1;}
+body.has-fullscreen-panel{overflow:hidden;}
 
 /* ---------- ALT: TARLALAR ---------- */
 .bottom-panel{
@@ -472,6 +495,10 @@ input,select,button,textarea{font-family:inherit;font-size:14px;}
   #haritaMap{min-height:260px;}
   .harita-toolbar{gap:6px;}
   .harita-toolbar .btn{padding:6px 10px;font-size:12px;}
+  .search-input{width:100%;flex:1 1 100%;order:5;}
+  .panel-head-left{width:100%;}
+  .panel-fullscreen{inset:6px;}
+  .panel-fullscreen .tarla-plot,.panel-fullscreen .sera-plot{max-height:none;}
 }
 </style>
 </head>
@@ -502,8 +529,14 @@ input,select,button,textarea{font-family:inherit;font-size:14px;}
   <div class="middle">
 
     <!-- SOL: DIZIM ALANI -->
-    <div class="panel">
-      <div class="panel-head"><h2>Dizim Alanı</h2></div>
+    <div class="panel" id="dizimPanelBox">
+      <div class="panel-head">
+        <h2>Dizim Alanı</h2>
+        <div style="display:flex;align-items:center;gap:6px;">
+          <button class="icon-btn ghost" onclick="panelTamEkranAc('dizimPanelBox')" title="Tam Ekran">⤢</button>
+          <button class="icon-btn fullscreen-close" onclick="panelTamEkranKapat('dizimPanelBox')" title="Tam Ekranı Kapat">×</button>
+        </div>
+      </div>
       <div class="panel-body">
         <div class="dizim-plot" onclick="openKirimModal()">
           <b>+ Kırım Kaydı Gir</b>
@@ -546,16 +579,29 @@ input,select,button,textarea{font-family:inherit;font-size:14px;}
             <div><b id="qsTarla">0</b>Tarla</div>
             <div><b id="qsSera">0</b>Sera</div>
             <div><b id="qsKirim">0</b>Kırım Kaydı</div>
+            <div><b id="qsSeraDoluluk">-</b>Sera Doluluk</div>
           </div>
         </div>
       </div>
     </div>
 
     <!-- SAG: SERALAR -->
-    <div class="panel">
+    <div class="panel" id="seraPanelBox">
       <div class="panel-head">
-        <h2>Seralar</h2>
-        <button class="icon-btn" onclick="openSeraEkleModal()">+</button>
+        <div class="panel-head-left" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+          <h2>Seralar</h2>
+          <input type="search" id="seraAramaInput" class="search-input" placeholder="Sera ara…" oninput="renderSeralar()">
+          <div class="page-tabs" id="seraBolgeTabs">
+            <button class="tab-btn active" id="seraBolgeTab_tumu" onclick="seraBolgeSekmeGecis('tumu')">Tümü</button>
+            <button class="tab-btn" id="seraBolgeTab_tekeliler" onclick="seraBolgeSekmeGecis('tekeliler')">Tekeliler</button>
+            <button class="tab-btn" id="seraBolgeTab_kalemli" onclick="seraBolgeSekmeGecis('kalemli')">Kalemli</button>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:6px;">
+          <button class="icon-btn ghost" onclick="panelTamEkranAc('seraPanelBox')" title="Tam Ekran">⤢</button>
+          <button class="icon-btn fullscreen-close" onclick="panelTamEkranKapat('seraPanelBox')" title="Tam Ekranı Kapat">×</button>
+          <button class="icon-btn" onclick="openSeraEkleModalAktifBolgeIle()">+</button>
+        </div>
       </div>
       <div class="panel-body">
         <div class="sera-plot" id="seraPlot"></div>
@@ -565,17 +611,22 @@ input,select,button,textarea{font-family:inherit;font-size:14px;}
   </div>
 
   <!-- ALT: TARLALAR -->
-  <div class="bottom-panel">
+  <div class="bottom-panel" id="tarlalarPanelBox">
     <div class="panel-head" style="margin:-8px -10px 4px -10px;">
-      <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
+      <div class="panel-head-left" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
         <h2>Tarlalar</h2>
+        <input type="search" id="tarlaAramaInput" class="search-input" placeholder="Tarla ara…" oninput="renderTarlalar()">
         <div class="page-tabs" id="tarlaBolgeTabs">
           <button class="tab-btn active" id="tarlaBolgeTab_tumu" onclick="tarlaBolgeSekmeGecis('tumu')">Tümü</button>
           <button class="tab-btn" id="tarlaBolgeTab_tekeliler" onclick="tarlaBolgeSekmeGecis('tekeliler')">Tekeliler</button>
           <button class="tab-btn" id="tarlaBolgeTab_kalemli" onclick="tarlaBolgeSekmeGecis('kalemli')">Kalemli</button>
         </div>
       </div>
-      <button class="icon-btn" onclick="openTarlaEkleModalAktifBolgeIle()">+</button>
+      <div style="display:flex;align-items:center;gap:6px;">
+        <button class="icon-btn ghost" onclick="panelTamEkranAc('tarlalarPanelBox')" title="Tam Ekran">⤢</button>
+        <button class="icon-btn fullscreen-close" onclick="panelTamEkranKapat('tarlalarPanelBox')" title="Tam Ekranı Kapat">×</button>
+        <button class="icon-btn" onclick="openTarlaEkleModalAktifBolgeIle()">+</button>
+      </div>
     </div>
     <div class="tarla-plot" id="tarlaPlot"></div>
   </div>
@@ -691,6 +742,9 @@ function stateNormalizeEt(){
     t.zararlilar.forEach(z=>{
       if(z.yuzde==null && z.siddet){ z.yuzde = eskiSiddetYuzde[z.siddet] ?? 50; }
     });
+  });
+  state.seralar.forEach(s=>{
+    if(s.bolge==null) s.bolge = '';
   });
 }
 
@@ -847,6 +901,19 @@ fbAuth.onAuthStateChanged(user=>{
 
 function uid(){ return 'id' + Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
 function todayStr(){ return new Date().toISOString().slice(0,10); }
+function mevcutKullaniciAdi(){
+  const email = fbAuth.currentUser && fbAuth.currentUser.email;
+  if(!email) return 'Bilinmeyen';
+  return email.split('@')[0];
+}
+function sonIslemDamgasi(){
+  return { sonDuzenleyen: mevcutKullaniciAdi(), sonDuzenlemeZamani: Date.now() };
+}
+function sonIslemEtiket(kayit){
+  if(!kayit || !kayit.sonDuzenleyen) return '-';
+  const tarih = kayit.sonDuzenlemeZamani ? new Date(kayit.sonDuzenlemeZamani).toLocaleString('tr-TR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}) : '';
+  return escapeHtml(kayit.sonDuzenleyen) + (tarih ? ' · ' + tarih : '');
+}
 function escapeHtml(s){
   return String(s==null?'':s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
@@ -995,6 +1062,8 @@ function renderQuickStats(){
   document.getElementById('qsTarla').textContent = state.tarlalar.length;
   document.getElementById('qsSera').textContent = state.seralar.length;
   document.getElementById('qsKirim').textContent = state.kirimlar.length;
+  const r = hesaplaRozetler();
+  document.getElementById('qsSeraDoluluk').textContent = r.seraDoluluk==null ? '-' : fmt(r.seraDoluluk,0)+'%';
 }
 
 function renderBadges(){
@@ -1026,7 +1095,7 @@ function renderDizim(){
     return `<div class="mini-kirim">
       <div class="r1"><span>${escapeHtml(t?t.ad:'(silinmiş tarla)')}</span>
         <span>${escapeHtml(k.tarih)} <button class="btn btn-muted" style="padding:0 5px;font-size:10px;" title="Sil" onclick="kirimSil('${k.id}')">×</button></span></div>
-      <div class="r2">${k.kirimNo}. kırım · ${fmt(tr.diziSayisi,0)} dizi · ${fmt(tr.toplamKg,0)} kg</div>
+      <div class="r2">${k.kirimNo}. kırım · ${fmt(tr.diziSayisi,0)} dizi · ${fmt(tr.toplamKg,0)} kg${k.sonDuzenleyen?' · '+escapeHtml(k.sonDuzenleyen):''}</div>
     </div>`;
   }).join('');
 }
@@ -1068,13 +1137,31 @@ function renderToplamIstatistik(){
   `;
 }
 
+let seraBolgeAktif = 'tumu';
+function seraBolgeSekmeGecis(bolge){
+  seraBolgeAktif = bolge;
+  ['tumu','tekeliler','kalemli'].forEach(b=>{
+    document.getElementById('seraBolgeTab_'+b).classList.toggle('active', b===bolge);
+  });
+  renderSeralar();
+}
+function openSeraEkleModalAktifBolgeIle(){
+  openSeraEkleModal(seraBolgeAktif==='tumu' ? '' : seraBolgeAktif);
+}
 function renderSeralar(){
   const el = document.getElementById('seraPlot');
-  if(!state.seralar.length){
-    el.innerHTML = '<div class="empty-hint">Henüz sera yok. "+" ile ekleyin.</div>';
+  let liste = seraBolgeAktif==='tumu' ? state.seralar : state.seralar.filter(s=>s.bolge===seraBolgeAktif);
+  const aramaInput = document.getElementById('seraAramaInput');
+  const arama = aramaInput ? aramaInput.value.trim().toLocaleLowerCase('tr') : '';
+  if(arama) liste = liste.filter(s=>(s.ad||'').toLocaleLowerCase('tr').includes(arama));
+  if(!liste.length){
+    let msg = 'Henüz sera yok. "+" ile ekleyin.';
+    if(state.seralar.length && arama) msg = 'Arama sonucu bulunamadı.';
+    else if(state.seralar.length) msg = 'Bu bölgede sera yok.';
+    el.innerHTML = `<div class="empty-hint">${msg}</div>`;
     return;
   }
-  el.innerHTML = state.seralar.map(s=>{
+  el.innerHTML = liste.map(s=>{
     const pct = s.kapasite>0 ? (seraGuncelDolu(s)/s.kapasite*100) : 0;
     const cls = seraDurumSinifiExact(pct);
     const width = (s.kapasite/AYARLAR.UNITE_KAPASITE) * AYARLAR.UNITE_PX;
@@ -1101,9 +1188,15 @@ function openTarlaEkleModalAktifBolgeIle(){
 }
 function renderTarlalar(){
   const el = document.getElementById('tarlaPlot');
-  const liste = tarlaBolgeAktif==='tumu' ? state.tarlalar : state.tarlalar.filter(t=>t.bolge===tarlaBolgeAktif);
+  let liste = tarlaBolgeAktif==='tumu' ? state.tarlalar : state.tarlalar.filter(t=>t.bolge===tarlaBolgeAktif);
+  const aramaInput = document.getElementById('tarlaAramaInput');
+  const arama = aramaInput ? aramaInput.value.trim().toLocaleLowerCase('tr') : '';
+  if(arama) liste = liste.filter(t=>(t.ad||'').toLocaleLowerCase('tr').includes(arama));
   if(!liste.length){
-    el.innerHTML = `<div class="empty-hint">${state.tarlalar.length?'Bu bölgede tarla yok.':'Henüz tarla yok. "+" ile ekleyin.'}</div>`;
+    let msg = 'Henüz tarla yok. "+" ile ekleyin.';
+    if(state.tarlalar.length && arama) msg = 'Arama sonucu bulunamadı.';
+    else if(state.tarlalar.length) msg = 'Bu bölgede tarla yok.';
+    el.innerHTML = `<div class="empty-hint">${msg}</div>`;
     return;
   }
   el.innerHTML = liste.map(t=>{
@@ -1124,6 +1217,27 @@ function renderTarlalar(){
     </div>`;
   }).join('');
 }
+
+/* =========================================================
+   PANEL TAM EKRAN
+   ========================================================= */
+let fullscreenPanelId = null;
+function panelTamEkranAc(panelElId){
+  const el = document.getElementById(panelElId);
+  if(!el) return;
+  el.classList.add('panel-fullscreen');
+  fullscreenPanelId = panelElId;
+  document.body.classList.add('has-fullscreen-panel');
+}
+function panelTamEkranKapat(panelElId){
+  const el = document.getElementById(panelElId || fullscreenPanelId);
+  if(el) el.classList.remove('panel-fullscreen');
+  fullscreenPanelId = null;
+  document.body.classList.remove('has-fullscreen-panel');
+}
+document.addEventListener('keydown', function(e){
+  if(e.key==='Escape' && fullscreenPanelId){ panelTamEkranKapat(fullscreenPanelId); }
+});
 
 /* =========================================================
    MODAL YARDIMCI
@@ -1166,18 +1280,27 @@ function seraFormFieldsHtml(s){
       <label>Sera Dizi Kapasitesi</label>
       <select id="fSeraKapasite">${seraKapasiteSecenekleriHtml(s.kapasite||450)}</select>
     </div>
+    <div class="field">
+      <label>Bölge</label>
+      <select id="fSeraBolge">
+        <option value="" ${!s.bolge?'selected':''}>Diğer / Belirtilmemiş</option>
+        <option value="tekeliler" ${s.bolge==='tekeliler'?'selected':''}>Tekeliler</option>
+        <option value="kalemli" ${s.bolge==='kalemli'?'selected':''}>Kalemli</option>
+      </select>
+    </div>
   `;
 }
 function seraFormOku(){
   return {
     ad: document.getElementById('fSeraAd').value.trim(),
-    kapasite: Number(document.getElementById('fSeraKapasite').value)
+    kapasite: Number(document.getElementById('fSeraKapasite').value),
+    bolge: document.getElementById('fSeraBolge').value || ''
   };
 }
-function openSeraEkleModal(){
+function openSeraEkleModal(bolgeVarsayilan){
   openModal(`
     <h2>Yeni Sera</h2>
-    ${seraFormFieldsHtml()}
+    ${seraFormFieldsHtml({ bolge: bolgeVarsayilan || '' })}
     <div class="modal-actions">
       <button class="btn btn-muted" onclick="closeModal()">Vazgeç</button>
       <button class="btn btn-primary" onclick="submitSeraEkle()">Ekle</button>
@@ -1188,8 +1311,8 @@ function submitSeraEkle(){
   const f = seraFormOku();
   if(!f.ad){ alert('Sera adı girin.'); return; }
   state.seralar.push({
-    id: uid(), ad: f.ad, kapasite: f.kapasite,
-    donemler: [], olusturma: Date.now()
+    id: uid(), ad: f.ad, kapasite: f.kapasite, bolge: f.bolge,
+    donemler: [], olusturma: Date.now(), ...sonIslemDamgasi()
   });
   closeModal(); renderAll();
 }
@@ -1210,7 +1333,8 @@ function submitSeraDuzenle(id){
   if(!s) return;
   const f = seraFormOku();
   if(!f.ad){ alert('Sera adı girin.'); return; }
-  s.ad = f.ad; s.kapasite = f.kapasite;
+  s.ad = f.ad; s.kapasite = f.kapasite; s.bolge = f.bolge;
+  Object.assign(s, sonIslemDamgasi());
   renderAll(); openSeraDetay(s.id);
 }
 
@@ -1326,6 +1450,8 @@ function openSeraDetay(id){
     <h2>${escapeHtml(s.ad)}</h2>
     <div class="detail-grid">
       <div>Kapasite<b>${fmt(s.kapasite,0)} dizi</b></div>
+      <div>Bölge<b>${s.bolge==='tekeliler'?'Tekeliler':s.bolge==='kalemli'?'Kalemli':'-'}</b></div>
+      <div>Son İşlem<b>${sonIslemEtiket(s)}</b></div>
     </div>
     ${aktifBlokHtml}
     <div class="field">
@@ -1463,7 +1589,7 @@ function openTarlaEkleModal(bolgeVarsayilan){
 function submitTarlaEkle(){
   const f = tarlaFormOku();
   if(!f.ad){ alert('Tarla adı girin.'); return; }
-  state.tarlalar.push({ id: uid(), ...f, olusturma: Date.now() });
+  state.tarlalar.push({ id: uid(), ...f, olusturma: Date.now(), ...sonIslemDamgasi() });
   closeModal(); renderAll();
 }
 function openTarlaDuzenleModal(id){
@@ -1487,7 +1613,7 @@ function submitTarlaDuzenle(id){
   if(!t) return;
   const f = tarlaFormOku();
   if(!f.ad){ alert('Tarla adı girin.'); return; }
-  Object.assign(t, f);
+  Object.assign(t, f, sonIslemDamgasi());
   renderAll(); openTarlaDetay(t.id);
 }
 
@@ -1526,6 +1652,7 @@ function openTarlaDetay(id){
       <div>Total Harvest<b>${fmt(stats.toplamKg,0)} kg</b></div>
       <div>Toplam Dizi<b>${fmt(stats.toplamDizi,0)}</b></div>
       <div>Estimated Harvest<b>${fmt(t.tahminiHasatKg,0)} kg</b></div>
+      <div>Son İşlem<b>${sonIslemEtiket(t)}</b></div>
     </div>
     <div class="field">
       <label>İlaç Geçmişi &amp; PHI Durumu</label>
@@ -1644,7 +1771,8 @@ function submitKirimEkle(){
     kayipDizi: Number(document.getElementById('kKayip').value)||0,
     altYasYok: document.getElementById('kAltYas').checked,
     calismaSaati: Number(document.getElementById('kCalismaSaati').value)||0,
-    olusturma: Date.now()
+    olusturma: Date.now(),
+    ...sonIslemDamgasi()
   };
   if(!k.tarlaId){ alert('Tarla seçin.'); return; }
   if(!k.seraDagilimi.length){ alert('En az bir sera için dizi sayısı girin — kırım kaydı bir seraya gitmek zorunda.'); return; }
@@ -2227,8 +2355,24 @@ window.addEventListener('appinstalled', ()=>{
   if(btn) btn.style.display = 'none';
 });
 if('serviceWorker' in navigator){
+  let swGuncellemeYenilendi = false;
+  navigator.serviceWorker.addEventListener('controllerchange', ()=>{
+    // yeni sürüm devreye girdi: açık kalan sekme otomatik olarak
+    // en güncel sürümü yükler, kullanıcı elle yeniden yüklemesin
+    if(swGuncellemeYenilendi) return;
+    swGuncellemeYenilendi = true;
+    window.location.reload();
+  });
   window.addEventListener('load', ()=>{
-    navigator.serviceWorker.register('sw.js').catch(()=>{ /* file:// veya SW desteklenmiyor: sessizce yut */ });
+    navigator.serviceWorker.register('sw.js').then(reg=>{
+      // uygulama uzun süre açık kaldıysa (PWA hiç kapanmadıysa) yeni
+      // sürümü kontrol etmesi için sekme görünür olduğunda ve saatte
+      // bir güncelleme kontrolü tetikle
+      document.addEventListener('visibilitychange', ()=>{
+        if(document.visibilityState==='visible') reg.update().catch(()=>{});
+      });
+      setInterval(()=>reg.update().catch(()=>{}), 60*60*1000);
+    }).catch(()=>{ /* file:// veya SW desteklenmiyor: sessizce yut */ });
   });
 }
 

@@ -1,0 +1,21 @@
+#!/bin/sh
+# scv-saha-v1.html, manifest.json, ikonlar veya sw.js bu commit'te değiştiyse
+# sw.js içindeki CACHE_NAME sürüm numarasını otomatik artırır. Böylece
+# service worker yeni bir dosya olarak algılanır, eski önbellek silinir ve
+# PWA kullanıcıları güncel linki yeniden kurmadan otomatik güncellenir.
+#
+# Bu dosya tekrar kurulmak istenirse (ör. depo yeniden klonlandıysa):
+#   cp githooks/pre-commit .git/hooks/pre-commit
+#   chmod +x .git/hooks/pre-commit
+
+set -e
+
+CHANGED=$(git diff --cached --name-only)
+
+if echo "$CHANGED" | grep -qE '^(scv-saha-v1\.html|manifest\.json|icon-192\.png|icon-512\.png|sw\.js)$'; then
+  CURRENT=$(grep -oE "cache-[0-9]+" sw.js | grep -oE '[0-9]+' | head -1)
+  NEXT=$((CURRENT + 1))
+  sed -i "s/cache-[0-9]\+/cache-$NEXT/" sw.js
+  git add sw.js
+  echo "PWA önbellek sürümü otomatik olarak cache-$NEXT olarak güncellendi (sw.js)."
+fi
