@@ -17,5 +17,9 @@ if echo "$CHANGED" | grep -qE '^(scv-saha-v1\.html|manifest\.json|icon-192\.png|
   NEXT=$((CURRENT + 1))
   sed -i "s/cache-[0-9]\+/cache-$NEXT/" sw.js
   git add sw.js
-  echo "PWA önbellek sürümü otomatik olarak cache-$NEXT olarak güncellendi (sw.js)."
+  if [ -f scv-saha-v1.html ]; then
+    sed -i "s/APP_SURUM = 'v[0-9]\+'/APP_SURUM = 'v$NEXT'/" scv-saha-v1.html
+    git add scv-saha-v1.html
+  fi
+  echo "PWA sürümü otomatik olarak v$NEXT / cache-$NEXT olarak güncellendi (sw.js + APP_SURUM)."
 fi
