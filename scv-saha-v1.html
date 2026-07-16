@@ -746,7 +746,7 @@ const AYARLAR = {
   UNITE_PX: 40                // referans kapasitedeki sera-box genişliği (px) — kroki oranı
 };
 const STORAGE_KEY = 'scvSahaKrokiV1';
-const APP_SURUM = 'v10'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
+const APP_SURUM = 'v11'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
 
 /* =========================================================
    STORE
@@ -972,6 +972,13 @@ function kirimTurev(k){
 }
 
 function tarlaBul(id){ return state.tarlalar.find(t=>t.id===id); }
+function fideYontemiEtiket(t){
+  const v = Number(t.viyolDekar)||0, y = Number(t.yerOcagiDekar)||0;
+  if(v>0 && y>0) return `Viyol (${fmt(v,1)} da) + Yer Ocağı (${fmt(y,1)} da)`;
+  if(v>0) return 'Viyol';
+  if(y>0) return 'Yer Ocağı';
+  return '-';
+}
 function seraBul(id){ return state.seralar.find(s=>s.id===id); }
 function seraAktifDonem(sera){ return (sera && sera.donemler || []).find(d=>d.aktif) || null; }
 function seraGuncelDolu(sera){ const d = seraAktifDonem(sera); return d ? (Number(d.dolu)||0) : 0; }
@@ -1535,6 +1542,10 @@ function tarlaFormFieldsHtml(t){
       <div class="field"><label>Dikim Tarihi (Transplanting)</label><input id="fTarlaDikim" type="date" value="${t.dikimTarihi||''}"></div>
       <div class="field"><label>Çapa Tarihi (Hoe)</label><input id="fTarlaCapa" type="date" value="${t.capaTarihi||''}"></div>
     </div>
+    <div class="row2">
+      <div class="field"><label>Viyol (dekar)</label><input id="fTarlaViyol" type="number" min="0" step="0.1" value="${t.viyolDekar??''}"></div>
+      <div class="field"><label>Yer Ocağı (dekar)</label><input id="fTarlaYerOcagi" type="number" min="0" step="0.1" value="${t.yerOcagiDekar??''}"></div>
+    </div>
     <div class="field"><label>Tahmini Hasat (kg)</label><input id="fTarlaHasatKg" type="number" min="0" step="1" value="${t.tahminiHasatKg??''}"></div>
     <div class="field">
       <label>Uygulanan İlaçlar (opsiyonel)</label>
@@ -1610,6 +1621,8 @@ function tarlaFormOku(){
     bolge: document.getElementById('fTarlaBolge').value || '',
     dikimTarihi: document.getElementById('fTarlaDikim').value || '',
     capaTarihi: document.getElementById('fTarlaCapa').value || '',
+    viyolDekar: Number(document.getElementById('fTarlaViyol').value)||0,
+    yerOcagiDekar: Number(document.getElementById('fTarlaYerOcagi').value)||0,
     tahminiHasatKg: Number(document.getElementById('fTarlaHasatKg').value)||0,
     ilaclar: tarlaIlaclarOku(),
     zararlilar: tarlaZararlilarOku()
@@ -1689,6 +1702,7 @@ function openTarlaDetay(id){
       <div>Kg/Dekar<b>${kgDekar==null?'-':fmt(kgDekar,1)}</b></div>
       <div>Dikim Tarihi<b>${escapeHtml(t.dikimTarihi||'-')}</b></div>
       <div>Çapa Tarihi<b>${escapeHtml(t.capaTarihi||'-')}</b></div>
+      <div>Fide Yöntemi<b>${fideYontemiEtiket(t)}</b></div>
       <div>Kırım Durumu<b>${stats.maxKirimNo? stats.maxKirimNo+'. kırım yapıldı':'Henüz kırım yok'} (${stats.kayitSayisi} kayıt)</b></div>
       <div>Total Harvest<b>${fmt(stats.toplamKg,0)} kg</b></div>
       <div>Toplam Dizi<b>${fmt(stats.toplamDizi,0)}</b></div>
@@ -1872,10 +1886,57 @@ function openVeriYonetimiModal(){
         <button class="btn" onclick="csvDisaAktar()">⭳ Kırım Kayıtları (.csv)</button>
       </div>
     </div>
+    <div class="field">
+      <label>Tek Seferlik Güncellemeler</label>
+      <div class="modal-actions" style="justify-content:flex-start;flex-wrap:wrap;">
+        <button class="btn" onclick="kalemliFideBilgileriniGuncelle()">🌱 Kalemli Fide Defteri Verilerini Uygula (2026-07)</button>
+      </div>
+      <div class="hint-box">Kalemli bölgesindeki K1-K26 tarlalarının dekar, çeşit ve Viyol/Yer Ocağı fide bilgilerini el yazısı defterden okunan güncel verilerle günceller. Sadece adı K1-K26 olan ve zaten var olan tarlaları günceller, yeni tarla eklemez.</div>
+    </div>
     <div class="modal-actions">
       <button class="btn btn-muted" onclick="closeModal()">Kapat</button>
     </div>
   `);
+}
+function kalemliFideBilgileriniGuncelle(){
+  const veriler = [
+    {ad:'K1',  dekar:20, cesit:'ITB 6179', viyolDekar:20, yerOcagiDekar:0},
+    {ad:'K2',  dekar:76, cesit:'PVH 2310, BSB 6202', viyolDekar:32, yerOcagiDekar:37},
+    {ad:'K3',  dekar:33, cesit:'PVH 2310, BSB 6202', viyolDekar:0, yerOcagiDekar:33},
+    {ad:'K4',  dekar:10, cesit:'BSB 6195', viyolDekar:10, yerOcagiDekar:0},
+    {ad:'K5',  dekar:36, cesit:'PVH 2310', viyolDekar:20, yerOcagiDekar:15},
+    {ad:'K6',  dekar:10, cesit:'BSB 6195', viyolDekar:0, yerOcagiDekar:10},
+    {ad:'K7',  dekar:21, cesit:'ITB 6179', viyolDekar:0, yerOcagiDekar:21},
+    {ad:'K8',  dekar:23, cesit:'Mix', viyolDekar:0, yerOcagiDekar:23},
+    {ad:'K9',  dekar:6,  cesit:'PVH 2310', viyolDekar:6, yerOcagiDekar:0},
+    {ad:'K10', dekar:30, cesit:'BSB 6202', viyolDekar:0, yerOcagiDekar:30},
+    {ad:'K11', dekar:61, cesit:'Deneme (51 da) + BSB 6195 (10 da)', viyolDekar:0, yerOcagiDekar:0},
+    {ad:'K12', dekar:11, cesit:'BSB 6202', viyolDekar:0, yerOcagiDekar:11},
+    {ad:'K13', dekar:30, cesit:'BSB 6202', viyolDekar:25, yerOcagiDekar:5},
+    {ad:'K14', dekar:22, cesit:'BSB 6195', viyolDekar:22, yerOcagiDekar:0},
+    {ad:'K15', dekar:10, cesit:'PVH 2310', viyolDekar:0, yerOcagiDekar:10},
+    {ad:'K16', dekar:15, cesit:'ITB 6179, PVH 2310', viyolDekar:0, yerOcagiDekar:15},
+    {ad:'K17', dekar:27, cesit:'PVH 2310', viyolDekar:0, yerOcagiDekar:27},
+    {ad:'K18', dekar:17, cesit:'PVH 2310', viyolDekar:0, yerOcagiDekar:17},
+    {ad:'K19', dekar:18, cesit:'ITB 6179', viyolDekar:18, yerOcagiDekar:0},
+    {ad:'K20', dekar:11, cesit:'PVH 2310', viyolDekar:0, yerOcagiDekar:11},
+    {ad:'K21', dekar:51, cesit:'PVH 2310', viyolDekar:21, yerOcagiDekar:30},
+    {ad:'K22', dekar:35, cesit:'PVH 2310', viyolDekar:20, yerOcagiDekar:15},
+    {ad:'K23', dekar:21, cesit:'BSB 6195', viyolDekar:21, yerOcagiDekar:0},
+    {ad:'K24', dekar:24, cesit:'PVH 2310', viyolDekar:0, yerOcagiDekar:24},
+    {ad:'K25', dekar:75, cesit:'PVH 2310', viyolDekar:0, yerOcagiDekar:75},
+    {ad:'K26', dekar:17, cesit:'PVH 2310', viyolDekar:0, yerOcagiDekar:17}
+  ];
+  if(!confirm(`Kalemli defterinden okunan veriler K1-K26 tarlalarına uygulanacak (dekar, çeşit, Viyol/Yer Ocağı). Sadece bu isimde zaten var olan tarlalar güncellenecek, olmayanlar atlanacak. Not: K11'in "Deneme" kısmının fide yöntemi henüz bilinmiyor, boş bırakıldı. Devam edilsin mi?`)) return;
+  let guncellenen = 0, bulunamayan = [];
+  veriler.forEach(v=>{
+    const t = state.tarlalar.find(x=>x.ad===v.ad);
+    if(!t){ bulunamayan.push(v.ad); return; }
+    Object.assign(t, { dekar:v.dekar, cesit:v.cesit, viyolDekar:v.viyolDekar, yerOcagiDekar:v.yerOcagiDekar }, sonIslemDamgasi());
+    guncellenen++;
+  });
+  renderAll(); closeModal();
+  alert(`Güncellenen tarla: ${guncellenen}${bulunamayan.length? '\nBulunamayan (atlanan): '+bulunamayan.join(', ') : ''}`);
 }
 function tumVerileriYedekle(){
   const json = JSON.stringify(state, null, 2);
@@ -1922,6 +1983,7 @@ function excelDisaAktar(){
     return {
       Ad:t.ad, Çiftçi:t.ciftci, Bölge: t.bolge==='tekeliler'?'Tekeliler':t.bolge==='kalemli'?'Kalemli':'-',
       Dekar:t.dekar, 'Varyete/Çeşit':t.cesit, 'Dikim Tarihi':t.dikimTarihi, 'Çapa Tarihi':t.capaTarihi,
+      'Viyol (da)':t.viyolDekar||0, 'Yer Ocağı (da)':t.yerOcagiDekar||0,
       'Toplam Hasat (kg)':Math.round(stats.toplamKg), 'Tahmini Hasat (kg)':t.tahminiHasatKg
     };
   });
