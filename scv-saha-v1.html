@@ -746,7 +746,7 @@ const AYARLAR = {
   UNITE_PX: 40                // referans kapasitedeki sera-box genişliği (px) — kroki oranı
 };
 const STORAGE_KEY = 'scvSahaKrokiV1';
-const APP_SURUM = 'v11'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
+const APP_SURUM = 'v12'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
 
 /* =========================================================
    STORE
@@ -1927,16 +1927,25 @@ function kalemliFideBilgileriniGuncelle(){
     {ad:'K25', dekar:75, cesit:'PVH 2310', viyolDekar:0, yerOcagiDekar:75},
     {ad:'K26', dekar:17, cesit:'PVH 2310', viyolDekar:0, yerOcagiDekar:17}
   ];
-  if(!confirm(`Kalemli defterinden okunan veriler K1-K26 tarlalarına uygulanacak (dekar, çeşit, Viyol/Yer Ocağı). Sadece bu isimde zaten var olan tarlalar güncellenecek, olmayanlar atlanacak. Not: K11'in "Deneme" kısmının fide yöntemi henüz bilinmiyor, boş bırakıldı. Devam edilsin mi?`)) return;
-  let guncellenen = 0, bulunamayan = [];
-  veriler.forEach(v=>{
-    const t = state.tarlalar.find(x=>x.ad===v.ad);
-    if(!t){ bulunamayan.push(v.ad); return; }
+  if(!confirm(`Kalemli defterinden okunan veriler K1-K26 tarlalarına uygulanacak (dekar, çeşit, Viyol/Yer Ocağı). Var olan tarlalar güncellenecek, eksik olanlar (haritada yaklaşık konumla) yeni eklenecek. Not: K11'in "Deneme" kısmının fide yöntemi henüz bilinmiyor, boş bırakıldı. Devam edilsin mi?`)) return;
+  let guncellenen = 0, eklenen = [];
+  veriler.forEach((v,i)=>{
+    let t = state.tarlalar.find(x=>x.ad===v.ad);
+    if(!t){
+      t = { id: uid(), ad:v.ad, ciftci:'', bolge:'kalemli', dikimTarihi:'', capaTarihi:'', tahminiHasatKg:0, ilaclar:[], zararlilar:[], olusturma: Date.now() };
+      state.tarlalar.push(t);
+      eklenen.push(v.ad);
+      const varOlanPin = state.haritaPinleri.find(p=>p.tarlaId===t.id);
+      if(!varOlanPin){
+        const konum = krokiKonumHesapla(HARITA_BOLGELER.kalemli, i, 5, 130);
+        state.haritaPinleri.push({ id: uid(), tarlaId: t.id, lat: konum.lat, lng: konum.lng });
+      }
+    }
     Object.assign(t, { dekar:v.dekar, cesit:v.cesit, viyolDekar:v.viyolDekar, yerOcagiDekar:v.yerOcagiDekar }, sonIslemDamgasi());
     guncellenen++;
   });
   renderAll(); closeModal();
-  alert(`Güncellenen tarla: ${guncellenen}${bulunamayan.length? '\nBulunamayan (atlanan): '+bulunamayan.join(', ') : ''}`);
+  alert(`Güncellenen/eklenen tarla: ${guncellenen}${eklenen.length? '\nYeni eklenen: '+eklenen.join(', ')+' (harita konumu yaklaşıktır, sahada GPS ile düzeltebilirsiniz)' : ''}`);
 }
 function tumVerileriYedekle(){
   const json = JSON.stringify(state, null, 2);
