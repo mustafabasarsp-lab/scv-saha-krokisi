@@ -125,7 +125,24 @@ input,select,button,textarea{font-family:inherit;font-size:14px;}
   box-shadow:var(--shadow);
 }
 .badge.open .badge-tip{display:block;}
-.header-actions{display:flex;gap:8px;}
+.header-actions{display:flex;gap:8px;align-items:center;}
+.user-menu{position:relative;}
+.user-menu-dropdown{
+  display:none;
+  position:absolute;top:120%;right:0;
+  z-index:150;
+  background:var(--panel);
+  border:1px solid var(--border);
+  border-radius:8px;
+  box-shadow:var(--shadow);
+  padding:10px;
+  min-width:190px;
+  text-align:left;
+}
+.user-menu.open .user-menu-dropdown{display:block;}
+.user-menu-dropdown .user-menu-label{font-size:11px;color:var(--muted);margin-bottom:2px;}
+.user-menu-dropdown .user-menu-name{font-family:'Barlow Semi Condensed',sans-serif;font-weight:700;font-size:15px;color:var(--green-900);margin-bottom:8px;}
+.user-menu-dropdown button{width:100%;}
 .btn-csv{
   background:var(--green-700);
   color:#fff;
@@ -520,6 +537,14 @@ body.has-fullscreen-panel{overflow:hidden;}
     <div class="header-actions">
       <button class="btn-csv" id="installBtn" style="display:none;" onclick="pwaYukle()">⬇️ Uygulamayı Yükle</button>
       <button class="btn-csv" onclick="openVeriYonetimiModal()">💾 Veri Yönetimi</button>
+      <div class="user-menu" id="userMenu">
+        <button class="btn-csv" onclick="kullaniciMenusuAcKapa(event)">👤 <span id="userMenuBtnAd"></span></button>
+        <div class="user-menu-dropdown" id="userMenuDropdown">
+          <div class="user-menu-label">Giriş yapan</div>
+          <div class="user-menu-name" id="userMenuAd"></div>
+          <button class="btn btn-muted" onclick="hesaptanCik()">🚪 Çıkış Yap / Hesap Değiştir</button>
+        </div>
+      </div>
     </div>
     <input type="file" id="yedekDosyaInput" accept="application/json,.json" style="display:none" onchange="yedekDosyaYuklendi(this)">
   </div>
@@ -721,7 +746,7 @@ const AYARLAR = {
   UNITE_PX: 40                // referans kapasitedeki sera-box genişliği (px) — kroki oranı
 };
 const STORAGE_KEY = 'scvSahaKrokiV1';
-const APP_SURUM = 'v9'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
+const APP_SURUM = 'v10'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
 
 /* =========================================================
    STORE
@@ -898,7 +923,18 @@ fbAuth.onAuthStateChanged(user=>{
     kopukFirestoreDinleyici();
     setSyncStatus(false);
   }
+  const ad = mevcutKullaniciAdi();
+  document.getElementById('userMenuBtnAd').textContent = user ? ad : '';
+  document.getElementById('userMenuAd').textContent = ad;
 });
+function kullaniciMenusuAcKapa(e){
+  e.stopPropagation();
+  document.getElementById('userMenu').classList.toggle('open');
+}
+function hesaptanCik(){
+  document.getElementById('userMenu').classList.remove('open');
+  fbAuth.signOut();
+}
 
 function uid(){ return 'id' + Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
 function todayStr(){ return new Date().toISOString().slice(0,10); }
@@ -1258,6 +1294,9 @@ document.getElementById('overlay').addEventListener('click', function(e){
 document.addEventListener('click', function(e){
   if(!e.target.closest('.badge')){
     document.querySelectorAll('.badge.open').forEach(b=>b.classList.remove('open'));
+  }
+  if(!e.target.closest('.user-menu')){
+    document.querySelectorAll('.user-menu.open').forEach(b=>b.classList.remove('open'));
   }
 });
 
