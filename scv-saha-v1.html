@@ -721,7 +721,7 @@ const AYARLAR = {
   UNITE_PX: 40                // referans kapasitedeki sera-box genişliği (px) — kroki oranı
 };
 const STORAGE_KEY = 'scvSahaKrokiV1';
-const APP_SURUM = 'v8'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
+const APP_SURUM = 'v9'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
 
 /* =========================================================
    STORE
@@ -883,7 +883,7 @@ function girisYap(){
   const hataEl = document.getElementById('loginError');
   hataEl.textContent = '';
   if(!kullanici || !sifre){ hataEl.textContent = 'Kullanıcı adı ve şifre girin.'; return; }
-  const email = kullanici.includes('@') ? kullanici : kullanici + '@saha.local';
+  const email = kullanici.includes('@') ? kullanici : kullanici + '@saha.app';
   fbAuth.signInWithEmailAndPassword(email, sifre).catch(()=>{
     hataEl.textContent = 'Giriş başarısız: kullanıcı adı veya şifre hatalı.';
   });
