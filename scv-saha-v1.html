@@ -479,6 +479,16 @@ body.has-fullscreen-panel{overflow:hidden;}
 .list-small .item:last-child{border-bottom:none;}
 .warn-phi{color:var(--red);font-weight:700;}
 .ok-phi{color:var(--green-700);font-weight:700;}
+.bar-chart{display:flex;flex-direction:column;gap:7px;margin:8px 0 4px;}
+.bar-row{display:flex;align-items:center;gap:8px;}
+.bar-row .bar-label{width:112px;flex-shrink:0;font-size:11.5px;color:var(--muted);text-align:right;}
+.bar-row .bar-track{flex:1;background:var(--green-100);border-radius:5px;height:16px;position:relative;}
+.bar-row .bar-fill{height:100%;border-radius:5px;min-width:3px;}
+.bar-row .bar-value{width:64px;flex-shrink:0;font-size:11.5px;font-weight:700;color:var(--green-900);}
+.uyarilar-baslik{font-size:11px;font-weight:700;color:var(--green-900);margin-top:10px;}
+.uyarilar-box{max-height:110px;overflow-y:auto;margin-top:4px;}
+.uyarilar-box .item{font-size:11px;padding:4px 7px;border-radius:5px;margin-bottom:4px;background:var(--green-100);}
+.uyarilar-box .item.danger{background:#fbe4e1;color:var(--red);}
 
 /* ---------- GİRİŞ / SENKRON DURUMU ---------- */
 #loginOverlay{z-index:200;}
@@ -531,6 +541,7 @@ body.has-fullscreen-panel{overflow:hidden;}
       <button class="tab-btn" id="tab_pageHaritalar" onclick="sayfaGecis('pageHaritalar')" data-i18n="🗺️ Haritalar">🗺️ Haritalar</button>
       <button class="tab-btn" id="tab_pageDepo" onclick="sayfaGecis('pageDepo')" data-i18n="📦 Depo">📦 Depo</button>
       <button class="tab-btn" id="tab_pageSulama" onclick="sayfaGecis('pageSulama')" data-i18n="💧 Sulama Takip">💧 Sulama Takip</button>
+      <button class="tab-btn" id="tab_pageRapor" onclick="sayfaGecis('pageRapor')" data-i18n="📊 Genel Özet">📊 Genel Özet</button>
     </div>
     <div class="badges" id="badgesRow"></div>
     <div class="sync-status" id="syncStatus"><span class="dot"></span><span id="syncStatusText">Bağlanıyor…</span></div>
@@ -607,6 +618,8 @@ body.has-fullscreen-panel{overflow:hidden;}
             <div><b id="qsKirim">0</b><span data-i18n="Kırım Kaydı">Kırım Kaydı</span></div>
             <div><b id="qsSeraDoluluk">-</b><span data-i18n="Sera Doluluk">Sera Doluluk</span></div>
           </div>
+          <div class="uyarilar-baslik" data-i18n="⚠️ Uyarılar">⚠️ Uyarılar</div>
+          <div class="uyarilar-box" id="sahaUyarilar"></div>
         </div>
       </div>
     </div>
@@ -719,6 +732,30 @@ body.has-fullscreen-panel{overflow:hidden;}
     </div>
   </div>
 
+  <!-- SAYFA: GENEL ÖZET / RAPOR -->
+  <div class="page hidden" id="pageRapor">
+    <div class="panel" style="min-height:0;">
+      <div class="panel-head">
+        <h2 data-i18n="Genel Özet">Genel Özet</h2>
+      </div>
+      <div class="panel-body">
+        <div class="detail-grid" id="raporOzet"></div>
+        <div class="field" style="margin-top:12px;">
+          <label data-i18n="Bölgeye Göre Gerçekleşen Hasat (kg)">Bölgeye Göre Gerçekleşen Hasat (kg)</label>
+          <div class="bar-chart" id="raporBolgeChart"></div>
+        </div>
+        <div class="field">
+          <label data-i18n="Kırım Bazında Toplam Hasat (kg)">Kırım Bazında Toplam Hasat (kg)</label>
+          <div class="bar-chart" id="raporKirimChart"></div>
+        </div>
+        <div class="field">
+          <label data-i18n="Depo Kalite Dağılımı (kg)">Depo Kalite Dağılımı (kg)</label>
+          <div class="bar-chart" id="raporKaliteChart"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
 </div>
 
 <div class="overlay hidden" id="overlay">
@@ -747,7 +784,7 @@ const AYARLAR = {
   UNITE_PX: 40                // referans kapasitedeki sera-box genişliği (px) — kroki oranı
 };
 const STORAGE_KEY = 'scvSahaKrokiV1';
-const APP_SURUM = 'v14'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
+const APP_SURUM = 'v15'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
 
 /* =========================================================
    DİL (TR/EN) — ana ekran, menü ve buton/etiket metinleri
@@ -800,6 +837,11 @@ const I18N_EN = {
   '18 yaş altı çalışan yok':'No workers under 18', 'Çalışma Saati':'Working Hours',
   'Kutu Sayısı':'Box Count', 'Toplam Kg':'Total Kg', 'Ort. Kutu Kg':'Avg. Box Kg',
   'Kaç Saat Sulandı':'Hours Irrigated', 'Kayıt Sayısı':'Record Count', 'Toplam Saat':'Total Hours', 'Henüz sulama kaydı yok':'No irrigation records yet',
+  '📊 Genel Özet':'📊 Overview', 'Genel Özet':'Overview',
+  'Bölgeye Göre Gerçekleşen Hasat (kg)':'Harvested by Region (kg)', 'Kırım Bazında Toplam Hasat (kg)':'Harvest by Round (kg)', 'Depo Kalite Dağılımı (kg)':'Storage Quality Distribution (kg)',
+  'Veri yok':'No data', 'Toplam Tarla':'Total Fields', 'Toplam Dekar':'Total Decares', 'Gerçekleşen Hasat':'Harvested', 'Tahmini Hasat':'Estimated Harvest',
+  'Toplam Sulama Saati':'Total Irrigation Hours', 'Toplam Depo Kg':'Total Storage Kg',
+  '⚠️ Uyarılar':'⚠️ Warnings', 'hasada':'harvest in', 'Aktif uyarı yok':'No active warnings',
   'Kırım Kaydı':'Harvest Record', 'Veri Yönetimi':'Data Management', 'Pin Ekle':'Add Pin', 'Koordinat ile Tarla Ekle':'Add Field by Coordinates',
   'Kutu Ekle':'Add Box', 'Sulama Kaydı Ekle':'Add Irrigation Record',
   'Tarla Adı':'Field Name', 'Çiftçi':'Farmer', 'Dekar':'Decares', 'Varyete Kodu / Çeşit':'Variety Code / Type', 'Bölge':'Region',
@@ -1186,11 +1228,13 @@ function renderAll(){
   renderSeralar();
   renderTarlalar();
   renderQuickStats();
+  renderSahaUyarilar();
   populateCesitFiltre();
   renderToplamIstatistik();
   renderHaritalar();
   renderDepo();
   renderSulama();
+  renderRapor();
   saveState();
 }
 
@@ -1200,6 +1244,26 @@ function renderQuickStats(){
   document.getElementById('qsKirim').textContent = state.kirimlar.length;
   const r = hesaplaRozetler();
   document.getElementById('qsSeraDoluluk').textContent = r.seraDoluluk==null ? '-' : fmt(r.seraDoluluk,0)+'%';
+}
+
+function renderSahaUyarilar(){
+  const el = document.getElementById('sahaUyarilar');
+  if(!el) return;
+  const uyarilar = [];
+  state.tarlalar.forEach(t=>{
+    const phi = tarlaPhiDurum(t);
+    if(phi && phi.kalanGun>0){
+      uyarilar.push({ tip:'phi', sira: phi.kalanGun, html: `⏳ <b>${escapeHtml(t.ad)}</b>: ${escapeHtml(phi.ad)} — ${i18n('hasada')} ${phi.kalanGun} ${i18n('gün')}` });
+    }
+    const zararli = tarlaZararliDurum(t);
+    if(zararli && zararli.yuzde>0){
+      uyarilar.push({ tip:'zararli', sira: -zararli.yuzde, html: `🐛 <b>${escapeHtml(t.ad)}</b>: ${escapeHtml(zararli.ad)} — %${zararli.yuzde}` });
+    }
+  });
+  uyarilar.sort((a,b)=> (a.tip===b.tip ? a.sira-b.sira : (a.tip==='phi'?-1:1)));
+  el.innerHTML = uyarilar.length
+    ? uyarilar.map(u=>`<div class="item${u.tip==='phi'?' danger':''}">${u.html}</div>`).join('')
+    : `<div class="item">${i18n('Aktif uyarı yok')}</div>`;
 }
 
 function renderBadges(){
@@ -2286,13 +2350,14 @@ function csvDisaAktar(){
    SAYFA GEÇİŞİ
    ========================================================= */
 function sayfaGecis(sayfaId){
-  ['pageSaha','pageHaritalar','pageDepo','pageSulama'].forEach(id=>{
+  ['pageSaha','pageHaritalar','pageDepo','pageSulama','pageRapor'].forEach(id=>{
     document.getElementById(id).classList.toggle('hidden', id!==sayfaId);
     document.getElementById('tab_'+id).classList.toggle('active', id===sayfaId);
   });
   if(sayfaId==='pageHaritalar'){ haritaMapBaslat(); }
   if(sayfaId==='pageDepo'){ renderDepo(); }
   if(sayfaId==='pageSulama'){ renderSulama(); }
+  if(sayfaId==='pageRapor'){ renderRapor(); }
 }
 
 /* =========================================================
@@ -2692,6 +2757,73 @@ function renderSulama(){
       <button class="btn btn-muted" style="padding:1px 6px;font-size:10.5px;float:right;" onclick="sulamaSil('${s.id}')">×</button>
     </div>`;
   }).join('') || `<div class="item">${i18n('Henüz sulama kaydı yok')}</div>`;
+}
+
+/* =========================================================
+   GENEL ÖZET / RAPOR
+   ========================================================= */
+function barChartHtml(items){
+  if(!items.length) return `<div class="item">${i18n('Veri yok')}</div>`;
+  const max = Math.max(1, ...items.map(i=>Number(i.value)||0));
+  return items.map(i=>{
+    const pct = Math.max(2, (Number(i.value)||0)/max*100);
+    return `<div class="bar-row">
+      <span class="bar-label">${escapeHtml(i.label)}</span>
+      <span class="bar-track"><span class="bar-fill" style="width:${pct}%;background:${i.color||'var(--green-700)'}"></span></span>
+      <span class="bar-value">${fmt(i.value,0)}</span>
+    </div>`;
+  }).join('');
+}
+function renderRapor(){
+  const ozetEl = document.getElementById('raporOzet');
+  if(!ozetEl) return;
+  const toplamDekar = state.tarlalar.reduce((s,t)=>s+(Number(t.dekar)||0),0);
+  const toplamTahmini = state.tarlalar.reduce((s,t)=>s+(Number(t.tahminiHasatKg)||0),0);
+  const toplamGercek = state.tarlalar.reduce((s,t)=>s+tarlaStats(t.id).toplamKg,0);
+  const kgDekar = toplamDekar>0 ? toplamGercek/toplamDekar : null;
+  const toplamSulamaSaat = state.sulamaKayitlari.reduce((s,k)=>s+(Number(k.saat)||0),0);
+  const toplamDepoKg = state.depoKutulari.reduce((s,k)=>s+(Number(k.kg)||0),0);
+
+  ozetEl.innerHTML = `
+    <div>${i18n('Toplam Tarla')}<b>${state.tarlalar.length}</b></div>
+    <div>${i18n('Toplam Dekar')}<b>${fmt(toplamDekar,1)}</b></div>
+    <div>${i18n('Gerçekleşen Hasat')}<b>${fmt(toplamGercek,0)} kg</b></div>
+    <div>${i18n('Tahmini Hasat')}<b>${fmt(toplamTahmini,0)} kg</b></div>
+    <div>Kg/Dekar<b>${kgDekar==null?'-':fmt(kgDekar,1)}</b></div>
+    <div>${i18n('Toplam Sulama Saati')}<b>${fmt(toplamSulamaSaat,1)}</b></div>
+    <div>${i18n('Toplam Depo Kg')}<b>${fmt(toplamDepoKg,0)}</b></div>
+  `;
+
+  const bolgeKg = { tekeliler:0, kalemli:0 };
+  state.tarlalar.forEach(t=>{ if(bolgeKg[t.bolge]!==undefined) bolgeKg[t.bolge] += tarlaStats(t.id).toplamKg; });
+  const bolgeEl = document.getElementById('raporBolgeChart');
+  if(bolgeEl) bolgeEl.innerHTML = barChartHtml([
+    { label:'Tekeliler', value:bolgeKg.tekeliler, color:'var(--green-700)' },
+    { label:'Kalemli', value:bolgeKg.kalemli, color:'var(--amber)' }
+  ]);
+
+  const kirimKg = {};
+  state.kirimlar.forEach(k=>{
+    const tr = kirimTurev(k);
+    kirimKg[k.kirimNo] = (kirimKg[k.kirimNo]||0) + tr.toplamKg;
+  });
+  const kirimNolari = Object.keys(kirimKg).map(Number).sort((a,b)=>a-b);
+  const kirimShades = ['#dff0dd','#b9dfb6','#8fca8c','#4c8f52','#0a7a4f','#00543c'];
+  const kirimEl = document.getElementById('raporKirimChart');
+  if(kirimEl) kirimEl.innerHTML = barChartHtml(kirimNolari.map((no,idx)=>({
+    label: no+'. '+i18n('kırım'), value: kirimKg[no], color: kirimShades[Math.min(idx,kirimShades.length-1)]
+  })));
+
+  const kaliteKg = {};
+  const kaliteRenk = { X1:'var(--green-700)', X2:'var(--green-500)', XX1:'var(--amber)' };
+  state.depoKutulari.forEach(k=>{
+    const key = k.kalite || i18n('Belirtilmemiş');
+    kaliteKg[key] = (kaliteKg[key]||0) + (Number(k.kg)||0);
+  });
+  const kaliteEl = document.getElementById('raporKaliteChart');
+  if(kaliteEl) kaliteEl.innerHTML = barChartHtml(Object.keys(kaliteKg).map(k=>({
+    label:k, value:kaliteKg[k], color: kaliteRenk[k] || 'var(--muted)'
+  })));
 }
 
 /* =========================================================
