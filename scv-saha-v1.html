@@ -496,6 +496,32 @@ body.has-fullscreen-panel{overflow:hidden;}
 .iklim-chart-title{font-size:11.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.03em;margin:10px 0 2px;}
 .iklim-chart-svg{width:100%;display:block;}
 
+/* ---------- İKLİM TAKİP: EXCEL-BENZERİ DÜZENLENEBİLİR TABLO ---------- */
+.iklim-table-wrap{max-height:360px;overflow:auto;border:1px solid var(--border);border-radius:8px;background:#fff;}
+.iklim-table{width:100%;min-width:520px;border-collapse:collapse;font-size:12px;}
+.iklim-table thead th{position:sticky;top:0;background:var(--green-700);color:#fff;font-size:10px;text-transform:uppercase;letter-spacing:.03em;padding:7px 8px;text-align:left;z-index:1;}
+.iklim-table thead th.num{text-align:right;}
+.iklim-table tbody tr{border-bottom:1px solid var(--border);}
+.iklim-table tbody tr:nth-child(even){background:var(--panel-2);}
+.iklim-table tbody tr:hover{background:var(--green-100);}
+.iklim-table td{padding:2px 5px;vertical-align:middle;}
+.iklim-table td.num{text-align:right;}
+.iklim-table input,.iklim-table select{
+  width:100%;border:1px solid transparent;background:transparent;border-radius:5px;
+  padding:5px 5px;font-size:12px;font-family:inherit;color:var(--ink);
+}
+.iklim-table input:hover,.iklim-table select:hover{border-color:var(--border);}
+.iklim-table input:focus,.iklim-table select:focus{outline:none;border-color:var(--green-500);background:#fff;box-shadow:0 0 0 2px var(--green-100);}
+.iklim-table input[type=number]{text-align:right;font-weight:700;}
+.iklim-table input[type=number].iklim-normal{background:var(--green-100);color:var(--green-900);}
+.iklim-table input[type=number].iklim-hot{background:#fbe4e1;color:var(--red);}
+.iklim-table input[type=number].iklim-cold{background:#e3eefa;color:var(--blue);}
+.iklim-table input[type=number].iklim-dry{background:#fdf1da;color:var(--amber);}
+.iklim-table input[type=number].iklim-humid{background:#e3eefa;color:var(--blue);}
+.iklim-table-empty{padding:18px;text-align:center;color:var(--muted);font-size:12px;}
+.iklim-row-del{border:none;background:transparent;color:var(--muted);font-size:15px;line-height:1;cursor:pointer;padding:4px 7px;border-radius:5px;}
+.iklim-row-del:hover{background:#fbe4e1;color:var(--red);}
+
 /* ---------- GİRİŞ / SENKRON DURUMU ---------- */
 #loginOverlay{z-index:200;}
 #loginOverlay .modal{max-width:340px;text-align:center;}
@@ -526,6 +552,7 @@ body.has-fullscreen-panel{overflow:hidden;}
      panel yüksekliği sabitlenmez, sayfa gerekirse kendi kaydırılır */
   #pageHaritalar .panel{height:auto;max-height:none;}
   #haritaMap{min-height:260px;}
+  .iklim-table-wrap{max-height:220px;}
   .harita-toolbar{gap:6px;}
   .harita-toolbar .btn{padding:6px 10px;font-size:12px;}
   .search-input{width:100%;flex:1 1 100%;order:5;}
@@ -753,7 +780,7 @@ body.has-fullscreen-panel{overflow:hidden;}
         <div class="detail-grid" id="iklimOzet"></div>
         <div class="field" style="margin-top:10px;">
           <label data-i18n="Sıcaklık/Nem Kayıtları">Sıcaklık/Nem Kayıtları</label>
-          <div class="list-small" id="iklimListesi"></div>
+          <div class="iklim-table-wrap" id="iklimListesi"></div>
         </div>
       </div>
     </div>
@@ -811,7 +838,7 @@ const AYARLAR = {
   UNITE_PX: 40                // referans kapasitedeki sera-box genişliği (px) — kroki oranı
 };
 const STORAGE_KEY = 'scvSahaKrokiV1';
-const APP_SURUM = 'v16'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
+const APP_SURUM = 'v17'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
 
 /* =========================================================
    DİL (TR/EN) — ana ekran, menü ve buton/etiket metinleri
@@ -839,6 +866,7 @@ const I18N_EN = {
   '📈 Grafik':'📈 Chart', 'Saat':'Time', 'Sıcaklık (°C)':'Temperature (°C)', 'Nem (%)':'Humidity (%)',
   'Sıcaklık/Nem Kaydı Ekle':'Add Temperature/Humidity Record', 'Sıcaklık/Nem Kaydını Düzenle':'Edit Temperature/Humidity Record',
   'Ort. Sıcaklık':'Avg. Temperature', 'Ort. Nem':'Avg. Humidity', 'Henüz sıcaklık/nem kaydı yok':'No temperature/humidity records yet',
+  'Son Ölçüm':'Latest Reading',
   '(silinmiş sera)':'(deleted greenhouse)', 'Sıcaklık / Nem Grafiği':'Temperature / Humidity Chart', 'Son Kaç Kayıt':'How Many Recent Records',
   'SCV Saha Krokisi — Giriş':'SCV Field Layout — Login', 'Kullanıcı Adı':'Username', 'Şifre':'Password', 'Giriş Yap':'Log In',
   'Vazgeç':'Cancel', 'Kaydet':'Save', 'Ekle':'Add', 'Kapat':'Close', 'Düzenle':'Edit', 'Sil':'Delete',
@@ -2847,34 +2875,43 @@ function submitIklimEkle(){
   state.iklimKayitlari.push({ id: uid(), ...f, olusturma: Date.now() });
   closeModal(); renderAll();
 }
-function openIklimDuzenleModal(id){
-  const k = state.iklimKayitlari.find(x=>x.id===id);
-  if(!k) return;
-  openModal(`
-    <h2>${i18n('Sıcaklık/Nem Kaydını Düzenle')}</h2>
-    ${iklimFormFieldsHtml(k)}
-    <div class="modal-actions">
-      <button class="btn btn-muted" onclick="closeModal()">${i18n('Vazgeç')}</button>
-      <button class="btn btn-danger" onclick="iklimSil('${k.id}')">${i18n('Sil')}</button>
-      <button class="btn btn-primary" onclick="submitIklimDuzenle('${k.id}')">${i18n('Kaydet')}</button>
-    </div>
-  `);
-}
-function submitIklimDuzenle(id){
-  const k = state.iklimKayitlari.find(x=>x.id===id);
-  if(!k) return;
-  const f = iklimFormOku();
-  if(!f.seraId){ alert('Sera seçin.'); return; }
-  if(!f.saat){ alert('Saat girin.'); return; }
-  if(document.getElementById('fIklimSicaklik').value===''){ alert('Sıcaklık girin.'); return; }
-  if(document.getElementById('fIklimNem').value===''){ alert('Nem girin.'); return; }
-  Object.assign(k, f);
-  closeModal(); renderAll();
-}
 function iklimSil(id){
   if(!confirm('Bu sıcaklık/nem kaydı silinsin mi?')) return;
   state.iklimKayitlari = state.iklimKayitlari.filter(k=>k.id!==id);
-  closeModal(); renderAll();
+  renderAll();
+}
+function iklimSicaklikSinifi(v){
+  const n = Number(v);
+  if(isNaN(n) || v==='') return '';
+  if(n < 12) return 'iklim-cold';
+  if(n > 32) return 'iklim-hot';
+  return 'iklim-normal';
+}
+function iklimNemSinifi(v){
+  const n = Number(v);
+  if(isNaN(n) || v==='') return '';
+  if(n < 40) return 'iklim-dry';
+  if(n > 75) return 'iklim-humid';
+  return 'iklim-normal';
+}
+function iklimHucreGuncelle(id, alan, deger, sayisalMi){
+  const k = state.iklimKayitlari.find(x=>x.id===id);
+  if(!k) return;
+  if(sayisalMi && deger===''){ renderAll(); return; }
+  k[alan] = sayisalMi ? Number(deger) : deger;
+  renderAll();
+}
+function iklimTablosuSatirHtml(k){
+  const seraOpts = state.seralar.map(s=>`<option value="${s.id}" ${s.id===k.seraId?'selected':''}>${escapeHtml(s.ad)}</option>`).join('');
+  return `
+    <tr data-id="${k.id}">
+      <td><input type="date" value="${escapeHtml(k.tarih||'')}" onchange="iklimHucreGuncelle('${k.id}','tarih',this.value)"></td>
+      <td><input type="time" value="${escapeHtml(k.saat||'')}" onchange="iklimHucreGuncelle('${k.id}','saat',this.value)"></td>
+      <td><select onchange="iklimHucreGuncelle('${k.id}','seraId',this.value)">${seraOpts}</select></td>
+      <td class="num"><input class="${iklimSicaklikSinifi(k.sicaklik)}" type="number" step="0.1" value="${k.sicaklik??''}" onchange="iklimHucreGuncelle('${k.id}','sicaklik',this.value,true)"></td>
+      <td class="num"><input class="${iklimNemSinifi(k.nem)}" type="number" step="1" min="0" max="100" value="${k.nem??''}" onchange="iklimHucreGuncelle('${k.id}','nem',this.value,true)"></td>
+      <td><button class="iklim-row-del" onclick="iklimSil('${k.id}')" title="${i18n('Sil')}">×</button></td>
+    </tr>`;
 }
 function renderIklim(){
   const ozetEl = document.getElementById('iklimOzet');
@@ -2883,34 +2920,63 @@ function renderIklim(){
   const liste = [...state.iklimKayitlari].sort((a,b)=> (b.tarih+(b.saat||'')).localeCompare(a.tarih+(a.saat||'')));
   const ortSicaklik = liste.length ? liste.reduce((s,k)=>s+(Number(k.sicaklik)||0),0)/liste.length : null;
   const ortNem = liste.length ? liste.reduce((s,k)=>s+(Number(k.nem)||0),0)/liste.length : null;
+  const son = liste[0];
+  const sonSera = son ? seraBul(son.seraId) : null;
   ozetEl.innerHTML = `
     <div>${i18n('Kayıt Sayısı')}<b>${liste.length}</b></div>
     <div>${i18n('Ort. Sıcaklık')}<b>${ortSicaklik==null?'-':fmt(ortSicaklik,1)+'°C'}</b></div>
     <div>${i18n('Ort. Nem')}<b>${ortNem==null?'-':fmt(ortNem,0)+'%'}</b></div>
+    <div>${i18n('Son Ölçüm')}<b>${son?fmt(son.sicaklik,1)+'°C / %'+fmt(son.nem,0):'-'}</b>${son?`<span style="display:block;font-size:10.5px;color:var(--muted);font-weight:400;">${escapeHtml(sonSera?sonSera.ad:i18n('(silinmiş sera)'))}</span>`:''}</div>
   `;
-  listeEl.innerHTML = liste.map(k=>{
-    const s = seraBul(k.seraId);
-    return `<div class="item clickable" onclick="openIklimDuzenleModal('${k.id}')">${escapeHtml(k.tarih)} · ${escapeHtml(s?s.ad:i18n('(silinmiş sera)'))} · ${escapeHtml(k.saat||'')} — ${fmt(k.sicaklik,1)}°C / %${fmt(k.nem,0)}
-      <button class="btn btn-muted" style="padding:1px 6px;font-size:10.5px;float:right;" onclick="event.stopPropagation();iklimSil('${k.id}')">×</button>
-    </div>`;
-  }).join('') || `<div class="item">${i18n('Henüz sıcaklık/nem kaydı yok')}</div>`;
+  listeEl.innerHTML = `
+    <table class="iklim-table">
+      <thead>
+        <tr>
+          <th>${i18n('Tarih')}</th>
+          <th>${i18n('Saat')}</th>
+          <th>${i18n('Sera')}</th>
+          <th class="num">${i18n('Sıcaklık (°C)')}</th>
+          <th class="num">${i18n('Nem (%)')}</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        ${liste.length ? liste.map(iklimTablosuSatirHtml).join('') : `<tr><td colspan="6" class="iklim-table-empty">${i18n('Henüz sıcaklık/nem kaydı yok')}</td></tr>`}
+      </tbody>
+    </table>
+  `;
 }
 function iklimKisaTarihSaat(tarih, saat){
   const p = (tarih||'').split('-');
   return (p.length===3 ? p[2]+'.'+p[1] : (tarih||'')) + ' ' + (saat||'');
 }
-function iklimCizgiGrafikSvg(values, labels, color, birim){
-  const W = 640, H = 170, padL = 34, padR = 10, padT = 12, padB = 26;
+function iklimYumusakYolD(pts){
+  if(pts.length<2) return '';
+  if(pts.length===2) return `M${pts[0][0].toFixed(1)} ${pts[0][1].toFixed(1)} L${pts[1][0].toFixed(1)} ${pts[1][1].toFixed(1)}`;
+  let d = `M${pts[0][0].toFixed(1)} ${pts[0][1].toFixed(1)} `;
+  for(let i=0;i<pts.length-1;i++){
+    const p0 = pts[i-1] || pts[i];
+    const p1 = pts[i];
+    const p2 = pts[i+1];
+    const p3 = pts[i+2] || p2;
+    const c1x = p1[0] + (p2[0]-p0[0])/6, c1y = p1[1] + (p2[1]-p0[1])/6;
+    const c2x = p2[0] - (p3[0]-p1[0])/6, c2y = p2[1] - (p3[1]-p1[1])/6;
+    d += `C${c1x.toFixed(1)} ${c1y.toFixed(1)} ${c2x.toFixed(1)} ${c2y.toFixed(1)} ${p2[0].toFixed(1)} ${p2[1].toFixed(1)} `;
+  }
+  return d.trim();
+}
+function iklimCizgiGrafikSvg(values, labels, color, birim, gradId){
+  const W = 640, H = 190, padL = 36, padR = 14, padT = 16, padB = 26;
   const innerW = W - padL - padR, innerH = H - padT - padB;
   const min = Math.min(...values), max = Math.max(...values);
   const range = (max - min) || 1;
-  const yPad = range * 0.15;
+  const yPad = range * 0.18;
   const yMin = min - yPad, yMax = max + yPad;
   const n = values.length;
+  const avg = values.reduce((s,v)=>s+v,0)/n;
   const x = i => n<=1 ? padL + innerW/2 : padL + (innerW * i/(n-1));
   const y = v => padT + innerH - ((v - yMin)/(yMax - yMin)) * innerH;
-
-  const pathD = values.map((v,i)=> (i===0?'M':'L') + x(i).toFixed(1) + ' ' + y(v).toFixed(1)).join(' ');
+  const pts = values.map((v,i)=>[x(i), y(v)]);
 
   const gridLines = [yMax, (yMax+yMin)/2, yMin].map(v=>`
     <line x1="${padL}" y1="${y(v).toFixed(1)}" x2="${W-padR}" y2="${y(v).toFixed(1)}" stroke="var(--border)" stroke-width="1"/>
@@ -2924,13 +2990,39 @@ function iklimCizgiGrafikSvg(values, labels, color, birim){
     return `<text x="${x(i).toFixed(1)}" y="${H-8}" font-size="9" fill="var(--muted)" text-anchor="${anchor}">${escapeHtml(labels[i]||'')}</text>`;
   }).join('');
 
-  const points = values.map((v,i)=>`<circle cx="${x(i).toFixed(1)}" cy="${y(v).toFixed(1)}" r="4" fill="${color}"><title>${escapeHtml(labels[i]||'')}: ${fmt(v,1)}${birim}</title></circle>`).join('');
+  const lineD = iklimYumusakYolD(pts);
+  const areaD = `${lineD} L${x(n-1).toFixed(1)} ${(padT+innerH).toFixed(1)} L${x(0).toFixed(1)} ${(padT+innerH).toFixed(1)} Z`;
+  const avgY = y(avg);
+  const avgLine = `
+    <line x1="${padL}" y1="${avgY.toFixed(1)}" x2="${W-padR}" y2="${avgY.toFixed(1)}" stroke="${color}" stroke-width="1" stroke-dasharray="4 3" opacity=".55"/>
+    <text x="${W-padR}" y="${(avgY-4).toFixed(1)}" font-size="9" fill="${color}" text-anchor="end" opacity=".8">Ort ${fmt(avg,1)}</text>`;
 
-  const directLabels = n<=14 ? values.map((v,i)=>`<text x="${x(i).toFixed(1)}" y="${(y(v)-9).toFixed(1)}" font-size="9.5" font-weight="700" fill="${color}" text-anchor="middle">${fmt(v,1)}</text>`).join('') : '';
+  let minI=0, maxI=0;
+  values.forEach((v,i)=>{ if(v<values[minI]) minI=i; if(v>values[maxI]) maxI=i; });
+
+  const points = values.map((v,i)=>{
+    const isEdge = (i===minI || i===maxI) && n>1;
+    const r = isEdge ? 5 : 3.5;
+    return `<circle cx="${x(i).toFixed(1)}" cy="${y(v).toFixed(1)}" r="${r}" fill="${isEdge?'#fff':color}" stroke="${color}" stroke-width="${isEdge?2.5:0}"><title>${escapeHtml(labels[i]||'')}: ${fmt(v,1)}${birim}</title></circle>`;
+  }).join('');
+
+  const directLabels = values.map((v,i)=>{
+    const isEdge = (i===minI || i===maxI) && n>1;
+    if(n>14 && !isEdge) return '';
+    return `<text x="${x(i).toFixed(1)}" y="${(y(v)-9).toFixed(1)}" font-size="9.5" font-weight="700" fill="${color}" text-anchor="middle">${fmt(v,1)}</text>`;
+  }).join('');
 
   return `<svg viewBox="0 0 ${W} ${H}" class="iklim-chart-svg">
+    <defs>
+      <linearGradient id="iklimGrad${gradId}" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="${color}" stop-opacity=".38"/>
+        <stop offset="100%" stop-color="${color}" stop-opacity="0"/>
+      </linearGradient>
+    </defs>
     ${gridLines}
-    <path d="${pathD}" fill="none" stroke="${color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="${areaD}" fill="url(#iklimGrad${gradId})" stroke="none"/>
+    ${avgLine}
+    <path d="${lineD}" fill="none" stroke="${color}" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"/>
     ${points}
     ${directLabels}
     ${xLabels}
@@ -2976,8 +3068,8 @@ function renderIklimGrafik(){
     return;
   }
   const etiketler = liste.map(k=>iklimKisaTarihSaat(k.tarih, k.saat));
-  sicaklikEl.innerHTML = iklimCizgiGrafikSvg(liste.map(k=>Number(k.sicaklik)||0), etiketler, 'var(--amber)', '°C');
-  nemEl.innerHTML = iklimCizgiGrafikSvg(liste.map(k=>Number(k.nem)||0), etiketler, 'var(--blue)', '%');
+  sicaklikEl.innerHTML = iklimCizgiGrafikSvg(liste.map(k=>Number(k.sicaklik)||0), etiketler, 'var(--amber)', '°C', 'sic');
+  nemEl.innerHTML = iklimCizgiGrafikSvg(liste.map(k=>Number(k.nem)||0), etiketler, 'var(--blue)', '%', 'nem');
 }
 
 /* =========================================================
