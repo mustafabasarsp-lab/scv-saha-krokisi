@@ -498,6 +498,7 @@ body.has-fullscreen-panel{overflow:hidden;}
 
 /* ---------- İKLİM TAKİP: EXCEL-BENZERİ DÜZENLENEBİLİR TABLO ---------- */
 .iklim-table-wrap{max-height:360px;overflow:auto;border:1px solid var(--border);border-radius:8px;background:#fff;}
+.panel-fullscreen .iklim-table-wrap{max-height:none;}
 .iklim-table{width:100%;min-width:520px;border-collapse:collapse;font-size:12px;}
 .iklim-table thead th{position:sticky;top:0;background:var(--green-700);color:#fff;font-size:10px;text-transform:uppercase;letter-spacing:.03em;padding:7px 8px;text-align:left;z-index:1;}
 .iklim-table thead th.num{text-align:right;}
@@ -768,12 +769,14 @@ body.has-fullscreen-panel{overflow:hidden;}
 
   <!-- SAYFA: İKLİM TAKİP (SERA SICAKLIK/NEM) -->
   <div class="page hidden" id="pageIklim">
-    <div class="panel" style="min-height:0;">
+    <div class="panel" id="iklimPanelBox" style="min-height:0;">
       <div class="panel-head">
         <h2 data-i18n="İklim Takip">İklim Takip</h2>
         <div style="display:flex;align-items:center;gap:6px;">
           <button class="btn" onclick="openIklimGrafikModal()" data-i18n="📈 Grafik">📈 Grafik</button>
           <button class="icon-btn" onclick="openIklimEkleModal()">+</button>
+          <button class="icon-btn ghost" onclick="panelTamEkranAc('iklimPanelBox')" title="Tam Ekran" data-i18n-title="Tam Ekran">⤢</button>
+          <button class="icon-btn fullscreen-close" onclick="panelTamEkranKapat('iklimPanelBox')" title="Tam Ekranı Kapat" data-i18n-title="Tam Ekranı Kapat">×</button>
         </div>
       </div>
       <div class="panel-body">
@@ -838,7 +841,7 @@ const AYARLAR = {
   UNITE_PX: 40                // referans kapasitedeki sera-box genişliği (px) — kroki oranı
 };
 const STORAGE_KEY = 'scvSahaKrokiV1';
-const APP_SURUM = 'v17'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
+const APP_SURUM = 'v18'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
 
 /* =========================================================
    DİL (TR/EN) — ana ekran, menü ve buton/etiket metinleri
