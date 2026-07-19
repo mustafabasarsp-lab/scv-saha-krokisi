@@ -33,6 +33,7 @@
   --plot-outline:#a13a2e;
   --amber:#e0a02c;
   --red:#c0392b;
+  --blue:#2f7cba;
   --border:#c9ded0;
   --shadow:0 2px 6px rgba(20,50,30,.14);
 }
@@ -489,6 +490,11 @@ body.has-fullscreen-panel{overflow:hidden;}
 .uyarilar-box{max-height:110px;overflow-y:auto;margin-top:4px;}
 .uyarilar-box .item{font-size:11px;padding:4px 7px;border-radius:5px;margin-bottom:4px;background:var(--green-100);}
 .uyarilar-box .item.danger{background:#fbe4e1;color:var(--red);}
+.modal.modal-wide{max-width:880px;}
+.list-small .item.clickable{cursor:pointer;}
+.list-small .item.clickable:hover{background:var(--green-100);}
+.iklim-chart-title{font-size:11.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.03em;margin:10px 0 2px;}
+.iklim-chart-svg{width:100%;display:block;}
 
 /* ---------- GİRİŞ / SENKRON DURUMU ---------- */
 #loginOverlay{z-index:200;}
@@ -541,6 +547,7 @@ body.has-fullscreen-panel{overflow:hidden;}
       <button class="tab-btn" id="tab_pageHaritalar" onclick="sayfaGecis('pageHaritalar')" data-i18n="🗺️ Haritalar">🗺️ Haritalar</button>
       <button class="tab-btn" id="tab_pageDepo" onclick="sayfaGecis('pageDepo')" data-i18n="📦 Depo">📦 Depo</button>
       <button class="tab-btn" id="tab_pageSulama" onclick="sayfaGecis('pageSulama')" data-i18n="💧 Sulama Takip">💧 Sulama Takip</button>
+      <button class="tab-btn" id="tab_pageIklim" onclick="sayfaGecis('pageIklim')" data-i18n="🌡️ İklim Takip">🌡️ İklim Takip</button>
       <button class="tab-btn" id="tab_pageRapor" onclick="sayfaGecis('pageRapor')" data-i18n="📊 Genel Özet">📊 Genel Özet</button>
     </div>
     <div class="badges" id="badgesRow"></div>
@@ -732,6 +739,26 @@ body.has-fullscreen-panel{overflow:hidden;}
     </div>
   </div>
 
+  <!-- SAYFA: İKLİM TAKİP (SERA SICAKLIK/NEM) -->
+  <div class="page hidden" id="pageIklim">
+    <div class="panel" style="min-height:0;">
+      <div class="panel-head">
+        <h2 data-i18n="İklim Takip">İklim Takip</h2>
+        <div style="display:flex;align-items:center;gap:6px;">
+          <button class="btn" onclick="openIklimGrafikModal()" data-i18n="📈 Grafik">📈 Grafik</button>
+          <button class="icon-btn" onclick="openIklimEkleModal()">+</button>
+        </div>
+      </div>
+      <div class="panel-body">
+        <div class="detail-grid" id="iklimOzet"></div>
+        <div class="field" style="margin-top:10px;">
+          <label data-i18n="Sıcaklık/Nem Kayıtları">Sıcaklık/Nem Kayıtları</label>
+          <div class="list-small" id="iklimListesi"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- SAYFA: GENEL ÖZET / RAPOR -->
   <div class="page hidden" id="pageRapor">
     <div class="panel" style="min-height:0;">
@@ -784,7 +811,7 @@ const AYARLAR = {
   UNITE_PX: 40                // referans kapasitedeki sera-box genişliği (px) — kroki oranı
 };
 const STORAGE_KEY = 'scvSahaKrokiV1';
-const APP_SURUM = 'v15'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
+const APP_SURUM = 'v16'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
 
 /* =========================================================
    DİL (TR/EN) — ana ekran, menü ve buton/etiket metinleri
@@ -808,6 +835,11 @@ const I18N_EN = {
   '📥 Kroki Verilerini İçe Aktar':'📥 Import Layout Data',
   'Depo':'Storage', 'Kutular':'Boxes',
   'Sulama Takip':'Irrigation Tracking', 'Sulama Kayıtları':'Irrigation Records',
+  '🌡️ İklim Takip':'🌡️ Climate Tracking', 'İklim Takip':'Climate Tracking', 'Sıcaklık/Nem Kayıtları':'Temperature/Humidity Records',
+  '📈 Grafik':'📈 Chart', 'Saat':'Time', 'Sıcaklık (°C)':'Temperature (°C)', 'Nem (%)':'Humidity (%)',
+  'Sıcaklık/Nem Kaydı Ekle':'Add Temperature/Humidity Record', 'Sıcaklık/Nem Kaydını Düzenle':'Edit Temperature/Humidity Record',
+  'Ort. Sıcaklık':'Avg. Temperature', 'Ort. Nem':'Avg. Humidity', 'Henüz sıcaklık/nem kaydı yok':'No temperature/humidity records yet',
+  '(silinmiş sera)':'(deleted greenhouse)', 'Sıcaklık / Nem Grafiği':'Temperature / Humidity Chart', 'Son Kaç Kayıt':'How Many Recent Records',
   'SCV Saha Krokisi — Giriş':'SCV Field Layout — Login', 'Kullanıcı Adı':'Username', 'Şifre':'Password', 'Giriş Yap':'Log In',
   'Vazgeç':'Cancel', 'Kaydet':'Save', 'Ekle':'Add', 'Kapat':'Close', 'Düzenle':'Edit', 'Sil':'Delete',
   'Yeni Sera':'New Greenhouse', 'Serayı Düzenle':'Edit Greenhouse', 'Yeni Tarla':'New Field', 'Tarlayı Düzenle':'Edit Field',
@@ -884,12 +916,13 @@ function uygulaStatikDil(){
 /* =========================================================
    STORE
    ========================================================= */
-function bosState(){ return { tarlalar: [], seralar: [], kirimlar: [], haritaPinleri: [], tesisPinleri: [], depoKutulari: [], sulamaKayitlari: [] }; }
+function bosState(){ return { tarlalar: [], seralar: [], kirimlar: [], haritaPinleri: [], tesisPinleri: [], depoKutulari: [], sulamaKayitlari: [], iklimKayitlari: [] }; }
 function stateNormalizeEt(){
   state.haritaPinleri = state.haritaPinleri || [];
   state.tesisPinleri = state.tesisPinleri || [];
   state.depoKutulari = state.depoKutulari || [];
   state.sulamaKayitlari = state.sulamaKayitlari || [];
+  state.iklimKayitlari = state.iklimKayitlari || [];
   state.tarlalar.forEach(t=>{
     if(!t.bolge){
       if(/^T\d/i.test(t.ad)) t.bolge = 'tekeliler';
@@ -944,7 +977,7 @@ const fbDb = firebase.firestore();
 fbAuth.setPersistence(firebase.auth.Auth.Persistence.LOCAL).catch(()=>{});
 fbDb.enablePersistence({ synchronizeTabs:true }).catch(()=>{ /* birden fazla sekme/deste desteklenmiyorsa sessizce yut */ });
 
-const SYNC_KOLEKSIYONLARI = ['tarlalar','seralar','kirimlar','haritaPinleri','tesisPinleri','depoKutulari','sulamaKayitlari'];
+const SYNC_KOLEKSIYONLARI = ['tarlalar','seralar','kirimlar','haritaPinleri','tesisPinleri','depoKutulari','sulamaKayitlari','iklimKayitlari'];
 let lastSyncedSnapshot = {};
 SYNC_KOLEKSIYONLARI.forEach(c=>{ lastSyncedSnapshot[c] = {}; });
 let firestoreUnsubscribes = [];
@@ -1234,6 +1267,7 @@ function renderAll(){
   renderHaritalar();
   renderDepo();
   renderSulama();
+  renderIklim();
   renderRapor();
   saveState();
 }
@@ -1442,8 +1476,9 @@ document.addEventListener('keydown', function(e){
 /* =========================================================
    MODAL YARDIMCI
    ========================================================= */
-function openModal(html){
+function openModal(html, wide){
   document.getElementById('modalContent').innerHTML = html;
+  document.getElementById('modalContent').classList.toggle('modal-wide', !!wide);
   document.getElementById('overlay').classList.remove('hidden');
 }
 function closeModal(){
@@ -2156,7 +2191,7 @@ function openVeriYonetimiModal(){
         <button class="btn btn-primary" onclick="tumVerileriYedekle()">${i18n('📥 Tüm Verileri Yedekle (.json)')}</button>
         <button class="btn" onclick="yedekDosyaSec()">${i18n('📤 Yedekten Geri Yükle (.json)')}</button>
       </div>
-      <div class="hint-box">Bir cihazda "Yedekle" ile indirin, diğer cihaza aktarıp "Geri Yükle" ile açın — tüm tarla/sera/kırım/depo/sulama/harita verisi birebir taşınır. Geri yükleme, o cihazdaki mevcut verinin üzerine yazar.</div>
+      <div class="hint-box">Bir cihazda "Yedekle" ile indirin, diğer cihaza aktarıp "Geri Yükle" ile açın — tüm tarla/sera/kırım/depo/sulama/iklim/harita verisi birebir taşınır. Geri yükleme, o cihazdaki mevcut verinin üzerine yazar.</div>
     </div>
     <div class="field">
       <label>${i18n('Rapor (dışa aktarım — geri yüklenemez)')}</label>
@@ -2310,6 +2345,12 @@ function excelDisaAktar(){
   });
   XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(sulamaRows), 'Sulama');
 
+  const iklimRows = state.iklimKayitlari.map(k=>{
+    const s = seraBul(k.seraId);
+    return { Tarih:k.tarih, Sera: s?s.ad:'', Saat:k.saat, 'Sıcaklık (°C)':k.sicaklik, 'Nem (%)':k.nem };
+  });
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(iklimRows), 'İklim');
+
   XLSX.writeFile(wb, 'scv-rapor-' + todayStr() + '.xlsx');
 }
 
@@ -2350,13 +2391,14 @@ function csvDisaAktar(){
    SAYFA GEÇİŞİ
    ========================================================= */
 function sayfaGecis(sayfaId){
-  ['pageSaha','pageHaritalar','pageDepo','pageSulama','pageRapor'].forEach(id=>{
+  ['pageSaha','pageHaritalar','pageDepo','pageSulama','pageIklim','pageRapor'].forEach(id=>{
     document.getElementById(id).classList.toggle('hidden', id!==sayfaId);
     document.getElementById('tab_'+id).classList.toggle('active', id===sayfaId);
   });
   if(sayfaId==='pageHaritalar'){ haritaMapBaslat(); }
   if(sayfaId==='pageDepo'){ renderDepo(); }
   if(sayfaId==='pageSulama'){ renderSulama(); }
+  if(sayfaId==='pageIklim'){ renderIklim(); }
   if(sayfaId==='pageRapor'){ renderRapor(); }
 }
 
@@ -2757,6 +2799,185 @@ function renderSulama(){
       <button class="btn btn-muted" style="padding:1px 6px;font-size:10.5px;float:right;" onclick="sulamaSil('${s.id}')">×</button>
     </div>`;
   }).join('') || `<div class="item">${i18n('Henüz sulama kaydı yok')}</div>`;
+}
+
+/* =========================================================
+   İKLİM TAKİP (SERA SICAKLIK/NEM)
+   ========================================================= */
+function iklimFormFieldsHtml(k){
+  const opts = state.seralar.map(s=>`<option value="${s.id}" ${s.id===k.seraId?'selected':''}>${escapeHtml(s.ad)}</option>`).join('');
+  return `
+    <div class="row2">
+      <div class="field"><label>${i18n('Sera')}</label><select id="fIklimSera">${opts}</select></div>
+      <div class="field"><label>${i18n('Tarih')}</label><input id="fIklimTarih" type="date" value="${escapeHtml(k.tarih||todayStr())}"></div>
+    </div>
+    <div class="row3">
+      <div class="field"><label>${i18n('Saat')}</label><input id="fIklimSaat" type="time" value="${escapeHtml(k.saat||'')}"></div>
+      <div class="field"><label>${i18n('Sıcaklık (°C)')}</label><input id="fIklimSicaklik" type="number" step="0.1" value="${k.sicaklik??''}"></div>
+      <div class="field"><label>${i18n('Nem (%)')}</label><input id="fIklimNem" type="number" step="1" min="0" max="100" value="${k.nem??''}"></div>
+    </div>
+  `;
+}
+function iklimFormOku(){
+  return {
+    seraId: document.getElementById('fIklimSera').value,
+    tarih: document.getElementById('fIklimTarih').value || todayStr(),
+    saat: document.getElementById('fIklimSaat').value,
+    sicaklik: Number(document.getElementById('fIklimSicaklik').value),
+    nem: Number(document.getElementById('fIklimNem').value)
+  };
+}
+function openIklimEkleModal(){
+  if(!state.seralar.length){ alert('Önce en az bir sera ekleyin.'); return; }
+  openModal(`
+    <h2>${i18n('Sıcaklık/Nem Kaydı Ekle')}</h2>
+    ${iklimFormFieldsHtml({ tarih: todayStr(), saat: new Date().toTimeString().slice(0,5) })}
+    <div class="modal-actions">
+      <button class="btn btn-muted" onclick="closeModal()">${i18n('Vazgeç')}</button>
+      <button class="btn btn-primary" onclick="submitIklimEkle()">${i18n('Ekle')}</button>
+    </div>
+  `);
+}
+function submitIklimEkle(){
+  const f = iklimFormOku();
+  if(!f.seraId){ alert('Sera seçin.'); return; }
+  if(!f.saat){ alert('Saat girin.'); return; }
+  if(document.getElementById('fIklimSicaklik').value===''){ alert('Sıcaklık girin.'); return; }
+  if(document.getElementById('fIklimNem').value===''){ alert('Nem girin.'); return; }
+  state.iklimKayitlari.push({ id: uid(), ...f, olusturma: Date.now() });
+  closeModal(); renderAll();
+}
+function openIklimDuzenleModal(id){
+  const k = state.iklimKayitlari.find(x=>x.id===id);
+  if(!k) return;
+  openModal(`
+    <h2>${i18n('Sıcaklık/Nem Kaydını Düzenle')}</h2>
+    ${iklimFormFieldsHtml(k)}
+    <div class="modal-actions">
+      <button class="btn btn-muted" onclick="closeModal()">${i18n('Vazgeç')}</button>
+      <button class="btn btn-danger" onclick="iklimSil('${k.id}')">${i18n('Sil')}</button>
+      <button class="btn btn-primary" onclick="submitIklimDuzenle('${k.id}')">${i18n('Kaydet')}</button>
+    </div>
+  `);
+}
+function submitIklimDuzenle(id){
+  const k = state.iklimKayitlari.find(x=>x.id===id);
+  if(!k) return;
+  const f = iklimFormOku();
+  if(!f.seraId){ alert('Sera seçin.'); return; }
+  if(!f.saat){ alert('Saat girin.'); return; }
+  if(document.getElementById('fIklimSicaklik').value===''){ alert('Sıcaklık girin.'); return; }
+  if(document.getElementById('fIklimNem').value===''){ alert('Nem girin.'); return; }
+  Object.assign(k, f);
+  closeModal(); renderAll();
+}
+function iklimSil(id){
+  if(!confirm('Bu sıcaklık/nem kaydı silinsin mi?')) return;
+  state.iklimKayitlari = state.iklimKayitlari.filter(k=>k.id!==id);
+  closeModal(); renderAll();
+}
+function renderIklim(){
+  const ozetEl = document.getElementById('iklimOzet');
+  const listeEl = document.getElementById('iklimListesi');
+  if(!ozetEl || !listeEl) return;
+  const liste = [...state.iklimKayitlari].sort((a,b)=> (b.tarih+(b.saat||'')).localeCompare(a.tarih+(a.saat||'')));
+  const ortSicaklik = liste.length ? liste.reduce((s,k)=>s+(Number(k.sicaklik)||0),0)/liste.length : null;
+  const ortNem = liste.length ? liste.reduce((s,k)=>s+(Number(k.nem)||0),0)/liste.length : null;
+  ozetEl.innerHTML = `
+    <div>${i18n('Kayıt Sayısı')}<b>${liste.length}</b></div>
+    <div>${i18n('Ort. Sıcaklık')}<b>${ortSicaklik==null?'-':fmt(ortSicaklik,1)+'°C'}</b></div>
+    <div>${i18n('Ort. Nem')}<b>${ortNem==null?'-':fmt(ortNem,0)+'%'}</b></div>
+  `;
+  listeEl.innerHTML = liste.map(k=>{
+    const s = seraBul(k.seraId);
+    return `<div class="item clickable" onclick="openIklimDuzenleModal('${k.id}')">${escapeHtml(k.tarih)} · ${escapeHtml(s?s.ad:i18n('(silinmiş sera)'))} · ${escapeHtml(k.saat||'')} — ${fmt(k.sicaklik,1)}°C / %${fmt(k.nem,0)}
+      <button class="btn btn-muted" style="padding:1px 6px;font-size:10.5px;float:right;" onclick="event.stopPropagation();iklimSil('${k.id}')">×</button>
+    </div>`;
+  }).join('') || `<div class="item">${i18n('Henüz sıcaklık/nem kaydı yok')}</div>`;
+}
+function iklimKisaTarihSaat(tarih, saat){
+  const p = (tarih||'').split('-');
+  return (p.length===3 ? p[2]+'.'+p[1] : (tarih||'')) + ' ' + (saat||'');
+}
+function iklimCizgiGrafikSvg(values, labels, color, birim){
+  const W = 640, H = 170, padL = 34, padR = 10, padT = 12, padB = 26;
+  const innerW = W - padL - padR, innerH = H - padT - padB;
+  const min = Math.min(...values), max = Math.max(...values);
+  const range = (max - min) || 1;
+  const yPad = range * 0.15;
+  const yMin = min - yPad, yMax = max + yPad;
+  const n = values.length;
+  const x = i => n<=1 ? padL + innerW/2 : padL + (innerW * i/(n-1));
+  const y = v => padT + innerH - ((v - yMin)/(yMax - yMin)) * innerH;
+
+  const pathD = values.map((v,i)=> (i===0?'M':'L') + x(i).toFixed(1) + ' ' + y(v).toFixed(1)).join(' ');
+
+  const gridLines = [yMax, (yMax+yMin)/2, yMin].map(v=>`
+    <line x1="${padL}" y1="${y(v).toFixed(1)}" x2="${W-padR}" y2="${y(v).toFixed(1)}" stroke="var(--border)" stroke-width="1"/>
+    <text x="${padL-6}" y="${(y(v)+3).toFixed(1)}" font-size="9" fill="var(--muted)" text-anchor="end">${fmt(v,1)}</text>
+  `).join('');
+
+  const labelStep = Math.max(1, Math.ceil(n/6));
+  const xLabels = values.map((v,i)=>{
+    if(i%labelStep!==0 && i!==n-1) return '';
+    const anchor = i===0 ? 'start' : (i===n-1 ? 'end' : 'middle');
+    return `<text x="${x(i).toFixed(1)}" y="${H-8}" font-size="9" fill="var(--muted)" text-anchor="${anchor}">${escapeHtml(labels[i]||'')}</text>`;
+  }).join('');
+
+  const points = values.map((v,i)=>`<circle cx="${x(i).toFixed(1)}" cy="${y(v).toFixed(1)}" r="4" fill="${color}"><title>${escapeHtml(labels[i]||'')}: ${fmt(v,1)}${birim}</title></circle>`).join('');
+
+  const directLabels = n<=14 ? values.map((v,i)=>`<text x="${x(i).toFixed(1)}" y="${(y(v)-9).toFixed(1)}" font-size="9.5" font-weight="700" fill="${color}" text-anchor="middle">${fmt(v,1)}</text>`).join('') : '';
+
+  return `<svg viewBox="0 0 ${W} ${H}" class="iklim-chart-svg">
+    ${gridLines}
+    <path d="${pathD}" fill="none" stroke="${color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    ${points}
+    ${directLabels}
+    ${xLabels}
+  </svg>`;
+}
+function openIklimGrafikModal(){
+  if(!state.iklimKayitlari.length){ alert('Henüz sıcaklık/nem kaydı yok.'); return; }
+  const seraIdleri = [...new Set(state.iklimKayitlari.map(k=>k.seraId))];
+  const opts = seraIdleri.map(id=>{ const s=seraBul(id); return `<option value="${id}">${escapeHtml(s?s.ad:i18n('(silinmiş sera)'))}</option>`; }).join('');
+  openModal(`
+    <h2>${i18n('Sıcaklık / Nem Grafiği')}</h2>
+    <div class="row2">
+      <div class="field"><label>${i18n('Sera')}</label><select id="fIklimGrafikSera" onchange="renderIklimGrafik()">${opts}</select></div>
+      <div class="field"><label>${i18n('Son Kaç Kayıt')}</label>
+        <select id="fIklimGrafikSayi" onchange="renderIklimGrafik()">
+          <option value="20">20</option><option value="40" selected>40</option><option value="100">100</option><option value="999999">${i18n('Tümü')}</option>
+        </select>
+      </div>
+    </div>
+    <div class="iklim-chart-title">${i18n('Sıcaklık (°C)')}</div>
+    <div id="iklimGrafikSicaklik"></div>
+    <div class="iklim-chart-title">${i18n('Nem (%)')}</div>
+    <div id="iklimGrafikNem"></div>
+    <div class="modal-actions">
+      <button class="btn btn-muted" onclick="closeModal()">${i18n('Kapat')}</button>
+    </div>
+  `, true);
+  renderIklimGrafik();
+}
+function renderIklimGrafik(){
+  const seraSel = document.getElementById('fIklimGrafikSera');
+  const sayiSel = document.getElementById('fIklimGrafikSayi');
+  const sicaklikEl = document.getElementById('iklimGrafikSicaklik');
+  const nemEl = document.getElementById('iklimGrafikNem');
+  if(!seraSel || !sicaklikEl || !nemEl) return;
+  const seraId = seraSel.value;
+  const sayi = Number(sayiSel.value) || 40;
+  let liste = state.iklimKayitlari.filter(k=>k.seraId===seraId);
+  liste.sort((a,b)=> (a.tarih+(a.saat||'')).localeCompare(b.tarih+(b.saat||'')));
+  liste = liste.slice(-sayi);
+  if(!liste.length){
+    sicaklikEl.innerHTML = nemEl.innerHTML = `<div class="item">${i18n('Veri yok')}</div>`;
+    return;
+  }
+  const etiketler = liste.map(k=>iklimKisaTarihSaat(k.tarih, k.saat));
+  sicaklikEl.innerHTML = iklimCizgiGrafikSvg(liste.map(k=>Number(k.sicaklik)||0), etiketler, 'var(--amber)', '°C');
+  nemEl.innerHTML = iklimCizgiGrafikSvg(liste.map(k=>Number(k.nem)||0), etiketler, 'var(--blue)', '%');
 }
 
 /* =========================================================
