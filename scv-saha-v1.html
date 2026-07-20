@@ -841,7 +841,7 @@ const AYARLAR = {
   UNITE_PX: 40                // referans kapasitedeki sera-box genişliği (px) — kroki oranı
 };
 const STORAGE_KEY = 'scvSahaKrokiV1';
-const APP_SURUM = 'v18'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
+const APP_SURUM = 'v19'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
 
 /* =========================================================
    DİL (TR/EN) — ana ekran, menü ve buton/etiket metinleri
@@ -2920,6 +2920,7 @@ function renderIklim(){
   const ozetEl = document.getElementById('iklimOzet');
   const listeEl = document.getElementById('iklimListesi');
   if(!ozetEl || !listeEl) return;
+  if(listeEl.contains(document.activeElement)) return; // kullanıcı bir hücrede yazarken tabloyu yeniden çizme; başka kullanıcıdan gelen eşzamanlı bir değişiklik girilmekte olan değeri silmesin
   const liste = [...state.iklimKayitlari].sort((a,b)=> (b.tarih+(b.saat||'')).localeCompare(a.tarih+(a.saat||'')));
   const ortSicaklik = liste.length ? liste.reduce((s,k)=>s+(Number(k.sicaklik)||0),0)/liste.length : null;
   const ortNem = liste.length ? liste.reduce((s,k)=>s+(Number(k.nem)||0),0)/liste.length : null;
