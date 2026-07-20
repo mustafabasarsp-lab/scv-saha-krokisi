@@ -490,8 +490,6 @@ body.has-fullscreen-panel{overflow:hidden;}
 .uyarilar-box .item{font-size:11px;padding:4px 7px;border-radius:5px;margin-bottom:4px;background:var(--green-100);}
 .uyarilar-box .item.danger{background:#fbe4e1;color:var(--red);}
 .modal.modal-wide{max-width:880px;}
-.list-small .item.clickable{cursor:pointer;}
-.list-small .item.clickable:hover{background:var(--green-100);}
 .dizim-row{display:flex;align-items:center;gap:8px;padding:3px 0;}
 .dizim-row-main{flex:1;min-width:0;}
 .dizim-row-top{display:flex;align-items:center;gap:7px;margin-bottom:3px;}
@@ -859,7 +857,7 @@ const AYARLAR = {
   UNITE_PX: 40                // referans kapasitedeki sera-box genişliği (px) — kroki oranı
 };
 const STORAGE_KEY = 'scvSahaKrokiV1';
-const APP_SURUM = 'v27'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
+const APP_SURUM = 'v28'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
 
 /* =========================================================
    DİL (TR/EN) — ana ekran, menü ve buton/etiket metinleri
@@ -874,10 +872,10 @@ const I18N_EN = {
   '+ Kırım Kaydı Gir':'+ Enter Harvest Record', 'Tarla · Kırım No · Dizi Sayısı':'Field · Harvest No. · String Count',
   'Bekleyen Kırımlar (dizilmemiş)':'Pending Harvests (not yet strung)', 'Bekleyen kırım yok — tüm kırımlar seralara dizilmiş.':'No pending harvests — all harvests have been strung.',
   'Seraya Dağıt':'Distribute to Greenhouse', 'Tütün Dizimi Ekle':'Add Tobacco Stringing', '+ Tütün Dizimi Ekle':'+ Add Tobacco Stringing',
-  'Bekleyen Kırım':'Pending Harvest', 'Dizim Tarihi':'Stringing Date', 'Kalan':'Remaining', 'Hasat':'Harvest', 'Dizim':'Stringing', 'bekliyor':'pending',
+  'Bekleyen Kırım':'Pending Harvest', 'Dizim Tarihi':'Stringing Date', 'Kalan':'Remaining', 'bekliyor':'pending',
   'Dizi Sayısı':'String Count',
   'Bu tütün hangi seraya dizilecek, hemen seçmek zorunda değilsiniz — daha sonra sera ekranından "Tütün Dizimi Ekle" ile atayabilirsiniz.':'You don\'t have to pick which greenhouse this goes to right away — assign it later from the greenhouse screen with "Add Tobacco Stringing".',
-  'Bekleyen Kırımdan Seç':'Choose From Pending Harvest', 'Yeni Giriş':'New Entry', 'Kırım Tarihi':'Harvest Date', 'Varyete':'Variety',
+  'Bekleyen Kırımdan Seç':'Choose From Pending Harvest', 'Yeni Giriş':'New Entry',
   'aynı gün':'same day', 'gün bekledi':'day(s) waited',
   'Bu tarladan bu seraya doğrudan tütün girişi kaydedilecek; Kırım sekmesindeki toplam kırılan kg\'a da yansıyacak.':'This records tobacco going directly from this field into this greenhouse; it will also count toward total harvested kg in the Harvest tab.',
   'Son Kırımlar':'Recent Harvests', 'Toplam İstatistik':'Total Statistics',
@@ -1253,14 +1251,6 @@ function tarlaZararliDurum(tarla){
   return enKotu;
 }
 
-function seraDurumSinifi(pct){
-  if(pct<=0) return 'fill-0';
-  if(pct<=50) return 'fill-low';
-  if(pct<=85) return 'fill-mid';
-  if(pct<=99) return 'fill-high';
-  if(pct<100) return 'fill-amber';
-  return 'fill-over';
-}
 function seraDurumSinifiExact(pct){
   if(pct<=0) return 'fill-0';
   if(pct<=50) return 'fill-low';
@@ -2257,6 +2247,7 @@ function dizimUygula(k, seraId, miktar, dizimTarihi){
   k.seraDagilimi = k.seraDagilimi || [];
   k.seraDagilimi.push({ id: dizimId, seraId, diziSayisi: miktar, dizimTarihi });
   donem.dolu = (Number(donem.dolu)||0) + miktar;
+  donem.kaynaklar = donem.kaynaklar || [];
   donem.kaynaklar.push({ dizimId, tarlaId: k.tarlaId, kirimId: k.id, dizi: miktar, diziKg, tarih: k.tarih, dizimTarihi, cesit: tarla?tarla.cesit:'' });
 }
 function dizimKaldir(kirimId, dizimId){
@@ -2633,8 +2624,9 @@ function csvDisaAktar(){
     const t = tarlaBul(k.tarlaId);
     const tr = kirimTurev(k);
     const maliyet = (k.isciSayisi||0)*(k.yevmiye||0);
+    const seradaDizilenKg = tr.atananDizi * (Number(k.ortDiziKg)||0);
     return [
-      k.tarih, t?t.ad:'', t?t.ciftci:'', k.kirimNo, fmt(tr.diziSayisi,0), k.ortDiziKg, fmt(tr.diziKg,0),
+      k.tarih, t?t.ad:'', t?t.ciftci:'', k.kirimNo, fmt(tr.diziSayisi,0), k.ortDiziKg, fmt(seradaDizilenKg,0),
       fmt(tr.toplamKg,0), k.isciSayisi, k.yevmiye,
       fmt(maliyet,0), seraDagilimiEtiket(k.seraDagilimi), fmt(tr.kalanDizi,0), k.kayipDizi||'', k.altYasYok?'Evet':'Hayır', k.calismaSaati||''
     ];
