@@ -23,3 +23,24 @@ if echo "$CHANGED" | grep -qE '^(scv-saha-v1\.html|manifest\.json|icon-192\.png|
   fi
   echo "PWA sürümü otomatik olarak v$NEXT / cache-$NEXT olarak güncellendi (sw.js + APP_SURUM)."
 fi
+
+# scv-saha-v1.html'deki SYNC_KOLEKSIYONLARI listesi ile firestore.rules'daki izinli
+# koleksiyon listesi birbirinden kopabiliyor (iklimKayitlari eklenip rules'a
+# yansıtılmayı unutulduğunda senkron sessizce bozuluyordu) — bu yüzden her
+# commit'te ikisi karşılaştırılıyor, eksik varsa commit engelleniyor.
+if echo "$CHANGED" | grep -qE '^(scv-saha-v1\.html|firestore\.rules)$' && [ -f scv-saha-v1.html ] && [ -f firestore.rules ]; then
+  KOD_LISTESI=$(grep -oE "SYNC_KOLEKSIYONLARI *= *\[[^]]*\]" scv-saha-v1.html | grep -oE "'[a-zA-Z0-9_]+'" | tr -d "'")
+  RULES_LISTESI=$(grep -oE "collection in *\[[^]]*\]" firestore.rules | grep -oE "'[a-zA-Z0-9_]+'" | tr -d "'")
+  EKSIK=""
+  for koleksiyon in $KOD_LISTESI; do
+    if ! echo "$RULES_LISTESI" | grep -qx "$koleksiyon"; then
+      EKSIK="$EKSIK $koleksiyon"
+    fi
+  done
+  if [ -n "$EKSIK" ]; then
+    echo "HATA: firestore.rules, scv-saha-v1.html'deki SYNC_KOLEKSIYONLARI ile uyuşmuyor."
+    echo "Şu koleksiyon(lar) kodda senkronize ediliyor ama firestore.rules'ta izinli değil:$EKSIK"
+    echo "firestore.rules'daki 'collection in [...]' listesine ekleyip Firebase Console > Firestore > Rules'tan Publish etmeyi unutma."
+    exit 1
+  fi
+fi
