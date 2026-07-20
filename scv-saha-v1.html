@@ -588,14 +588,19 @@ body.has-fullscreen-panel{overflow:hidden;}
 @media (prefers-reduced-motion:reduce){ .sync-status.saving .dot{animation:none;} }
 @keyframes syncPulse{0%,100%{opacity:1;}50%{opacity:.35;}}
 
+.bottom-nav, .kirim-fab{display:none;}
+
 /* ---------- MOBILE ---------- */
 @media (max-width:900px){
   body{overflow-x:hidden;overflow-y:auto;-webkit-overflow-scrolling:touch;}
   .app{height:auto;min-height:100vh;grid-template-rows:auto auto auto;}
   .middle{grid-template-columns:1fr;}
-  .panel{height:230px;min-height:0;max-height:none;}
+  /* Tek elle/sahada kullanım: panelleri sabit küçük kutular içinde ayrı ayrı
+     kaydırmak yerine, tüm sayfa tek parça olarak kayar (iç içe mini-scroll
+     kutuları yerine tek, doğal bir kaydırma). */
+  .panel{height:auto;min-height:0;max-height:none;}
   .panel-body{-webkit-overflow-scrolling:touch;}
-  .bottom-panel{height:190px;}
+  .bottom-panel{height:auto;}
   .tarla-plot{-webkit-overflow-scrolling:touch;}
   .icon-btn{width:42px;height:42px;font-size:19px;}
   .btn{padding:12px 16px;font-size:14px;}
@@ -605,9 +610,6 @@ body.has-fullscreen-panel{overflow:hidden;}
   .tarla-box .sub{font-size:8px;}
   .sera-box{height:64px;}
   .kdot{width:9px;height:9px;}
-  /* Haritalar sekmesi: toolbar butonları asla kırpılmasın diye bu sayfadaki
-     panel yüksekliği sabitlenmez, sayfa gerekirse kendi kaydırılır */
-  #pageHaritalar .panel{height:auto;max-height:none;}
   #haritaMap{min-height:260px;}
   .iklim-table-wrap{max-height:220px;}
   .harita-toolbar{gap:6px;}
@@ -616,6 +618,32 @@ body.has-fullscreen-panel{overflow:hidden;}
   .panel-head-left{width:100%;}
   .panel-fullscreen{inset:6px;}
   .panel-fullscreen .tarla-plot,.panel-fullscreen .sera-plot{max-height:none;}
+  /* Alt navigasyon: üstteki sekmeler yerine baş parmak bölgesinde sabit bir
+     çubuk; "Kırım Gir" de Saha sayfasında ayrıca sabit bir buton olarak duruyor. */
+  .page-tabs{display:none;}
+  body{padding-bottom:calc(60px + env(safe-area-inset-bottom,0px));}
+  .bottom-nav{
+    display:flex; position:fixed; left:0; right:0; bottom:0; z-index:90;
+    background:var(--panel); border-top:2px solid var(--border);
+    padding:5px 2px calc(5px + env(safe-area-inset-bottom,0px));
+  }
+  .bottom-nav-tab{
+    flex:1; display:flex; flex-direction:column; align-items:center; gap:2px;
+    background:transparent; border:none; color:var(--muted); padding:5px 2px; border-radius:10px; min-height:46px;
+  }
+  .bottom-nav-tab .ic{font-size:19px;}
+  .bottom-nav-tab span:last-child{font-size:9.5px; font-weight:700;}
+  .bottom-nav-tab.active{color:var(--green-700);}
+  .kirim-fab{
+    position:fixed; left:12px; right:12px; bottom:calc(58px + env(safe-area-inset-bottom,0px)); z-index:80;
+    display:flex; align-items:center; justify-content:center; gap:8px;
+    background:var(--tobacco); color:#3a2a05; border:none; border-radius:14px;
+    padding:13px; font-family:'Barlow Semi Condensed',sans-serif; font-weight:800; font-size:15px;
+    box-shadow:0 4px 0 var(--tobacco-deep), 0 6px 14px rgba(0,0,0,.18);
+  }
+  .kirim-fab .ic{font-size:18px;}
+  .kirim-fab:active{transform:translateY(2px);box-shadow:0 1px 0 var(--tobacco-deep);}
+  .kirim-fab.hidden{display:none;}
 }
 </style>
 </head>
@@ -889,6 +917,18 @@ body.has-fullscreen-panel{overflow:hidden;}
 
 </div>
 
+<button class="kirim-fab" id="kirimFab" onclick="openKirimModal()">
+  <span class="ic">🌿</span><span data-i18n="Kırım Gir">Kırım Gir</span>
+</button>
+<div class="bottom-nav" id="mobilAltNav">
+  <button class="bottom-nav-tab active" id="navtab_pageSaha" onclick="sayfaGecis('pageSaha')"><span class="ic">🌿</span><span data-i18n="Saha">Saha</span></button>
+  <button class="bottom-nav-tab" id="navtab_pageHaritalar" onclick="sayfaGecis('pageHaritalar')"><span class="ic">🗺️</span><span data-i18n="Harita">Harita</span></button>
+  <button class="bottom-nav-tab" id="navtab_pageDepo" onclick="sayfaGecis('pageDepo')"><span class="ic">📦</span><span data-i18n="Depo">Depo</span></button>
+  <button class="bottom-nav-tab" id="navtab_pageSulama" onclick="sayfaGecis('pageSulama')"><span class="ic">💧</span><span data-i18n="Sulama">Sulama</span></button>
+  <button class="bottom-nav-tab" id="navtab_pageIklim" onclick="sayfaGecis('pageIklim')"><span class="ic">🌡️</span><span data-i18n="İklim">İklim</span></button>
+  <button class="bottom-nav-tab" id="navtab_pageRapor" onclick="sayfaGecis('pageRapor')"><span class="ic">📊</span><span data-i18n="Özet">Özet</span></button>
+</div>
+
 <div class="overlay hidden" id="overlay">
   <div class="modal" id="modalContent"></div>
 </div>
@@ -915,7 +955,7 @@ const AYARLAR = {
   UNITE_PX: 40                // referans kapasitedeki sera-box genişliği (px) — kroki oranı
 };
 const STORAGE_KEY = 'scvSahaKrokiV1';
-const APP_SURUM = 'v35'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
+const APP_SURUM = 'v36'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
 
 /* =========================================================
    DİL (TR/EN) — ana ekran, menü ve buton/etiket metinleri
@@ -953,6 +993,7 @@ const I18N_EN = {
   '🔢 Koordinat ile Tarla Ekle':'🔢 Add Field by Coordinates', "Kalemli'ye Git":'Go to Kalemli', "Tekeliler'e Git":'Go to Tekeliler',
   '📥 Kroki Verilerini İçe Aktar':'📥 Import Layout Data',
   'Depo':'Storage', 'Kutular':'Boxes',
+  'Saha':'Field', 'Harita':'Map', 'Sulama':'Irrigation', 'İklim':'Climate', 'Özet':'Overview', 'Kırım Gir':'Enter Harvest',
   'Sulama Takip':'Irrigation Tracking', 'Sulama Kayıtları':'Irrigation Records',
   '🌡️ İklim Takip':'🌡️ Climate Tracking', 'İklim Takip':'Climate Tracking', 'Sıcaklık/Nem Kayıtları':'Temperature/Humidity Records',
   '📈 Grafik':'📈 Chart', 'Saat':'Time', 'Sıcaklık (°C)':'Temperature (°C)', 'Nem (%)':'Humidity (%)',
@@ -2909,7 +2950,11 @@ function sayfaGecis(sayfaId){
   ['pageSaha','pageHaritalar','pageDepo','pageSulama','pageIklim','pageRapor'].forEach(id=>{
     document.getElementById(id).classList.toggle('hidden', id!==sayfaId);
     document.getElementById('tab_'+id).classList.toggle('active', id===sayfaId);
+    const navtab = document.getElementById('navtab_'+id);
+    if(navtab) navtab.classList.toggle('active', id===sayfaId);
   });
+  const fab = document.getElementById('kirimFab');
+  if(fab) fab.classList.toggle('hidden', sayfaId!=='pageSaha');
   if(sayfaId==='pageHaritalar'){ haritaMapBaslat(); }
   if(sayfaId==='pageDepo'){ renderDepo(); }
   if(sayfaId==='pageSulama'){ renderSulama(); }
