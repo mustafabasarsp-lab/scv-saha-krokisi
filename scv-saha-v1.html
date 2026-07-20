@@ -841,7 +841,7 @@ const AYARLAR = {
   UNITE_PX: 40                // referans kapasitedeki sera-box genişliği (px) — kroki oranı
 };
 const STORAGE_KEY = 'scvSahaKrokiV1';
-const APP_SURUM = 'v19'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
+const APP_SURUM = 'v20'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
 
 /* =========================================================
    DİL (TR/EN) — ana ekran, menü ve buton/etiket metinleri
@@ -1940,8 +1940,9 @@ function openTarlaDetay(id){
     const durum = kalan>0 ? `<span class="warn-phi">${i18n('Hasada')} ${kalan} ${i18n('gün')}</span>` : `<span class="ok-phi">${i18n('PHI geçti (güvenli)')}</span>`;
     return `<div class="item">${escapeHtml(ilac.ad)} — ${escapeHtml(ilac.tarih)} (PHI ${ilac.phi}g) — ${durum}</div>`;
   }).join('') || `<div class="item">${i18n('İlaç kaydı yok')}</div>`;
-  const zararliHtml = [...(t.zararlilar||[])].sort((a,b)=>b.tarih.localeCompare(a.tarih)).map(z=>
-    `<div class="item">🐛 ${escapeHtml(z.ad)} — ${escapeHtml(z.tarih)} — %${Number(z.yuzde)||0}</div>`
+  const zararliHtml = (t.zararlilar||[]).map((z,i)=>({z,i})).sort((a,b)=>b.z.tarih.localeCompare(a.z.tarih)).map(({z,i})=>
+    `<div class="item">🐛 ${escapeHtml(z.ad)} — ${escapeHtml(z.tarih)} — %${Number(z.yuzde)||0}
+      <button class="btn btn-muted" style="padding:1px 6px;font-size:10.5px;float:right;" onclick="zararliSilTarla('${t.id}',${i});openTarlaDetay('${t.id}')">×</button></div>`
   ).join('') || `<div class="item">${i18n('Zararlı kaydı yok')}</div>`;
   const gubreHtml = [...(t.gubreler||[])].sort((a,b)=>b.tarih.localeCompare(a.tarih)).map(g=>
     `<div class="item">🌾 ${escapeHtml(g.ad)} — ${escapeHtml(g.tarih)} — ${fmt(g.miktar,1)} kg</div>`
@@ -2052,6 +2053,13 @@ function submitZararliHizliEkle(tarlaId){
   t.zararlilar.push({ ad, tarih, yuzde });
   Object.assign(t, sonIslemDamgasi());
   renderAll(); openTarlaDetay(tarlaId);
+}
+function zararliSilTarla(tarlaId, idx){
+  const t = tarlaBul(tarlaId);
+  if(!t || !t.zararlilar) return;
+  t.zararlilar.splice(idx,1);
+  Object.assign(t, sonIslemDamgasi());
+  renderAll();
 }
 function openGubreHizliEkleModal(tarlaId){
   openModal(`
