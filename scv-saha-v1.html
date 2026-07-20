@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
 <title>SCV Saha Krokisi</title>
 <link rel="manifest" href="manifest.json">
-<meta name="theme-color" content="#0a7a4f">
+<meta name="theme-color" content="#167a4d">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -20,21 +20,23 @@
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
 <style>
 :root{
-  --bg:#f6f9f7;
+  --bg:#efe9d8;
   --panel:#ffffff;
-  --panel-2:#f2f8f4;
-  --ink:#20281f;
-  --muted:#6b7a6c;
-  --green-900:#00543c;
-  --green-700:#0a7a4f;
-  --green-500:#4c8f52;
-  --green-300:#9fd3a0;
-  --green-100:#e4f3e3;
+  --panel-2:#f6efdc;
+  --ink:#0b2e1a;
+  --muted:#5b5340;
+  --green-900:#0c5c39;
+  --green-700:#167a4d;
+  --green-500:#3f9760;
+  --green-300:#a7d2b3;
+  --green-100:#e6f2e8;
   --plot-outline:#a13a2e;
-  --amber:#e0a02c;
-  --red:#c0392b;
+  --tobacco:#d99a1f;
+  --tobacco-deep:#a06e0f;
+  --amber:#c9840f;
+  --red:#a02318;
   --blue:#2f7cba;
-  --border:#c9ded0;
+  --border:#c9bd98;
   --shadow:0 2px 6px rgba(20,50,30,.14);
 }
 *{box-sizing:border-box;}
@@ -188,12 +190,12 @@ input,select,button,textarea{font-family:inherit;font-size:14px;}
   min-height:0;
 }
 .icon-btn{
-  width:26px;height:26px;
-  border-radius:50%;
+  width:36px;height:36px;
+  border-radius:11px;
   border:1px solid var(--green-700);
   background:var(--green-700);
   color:#fff;
-  font-size:16px;
+  font-size:17px;
   line-height:1;
   display:flex;align-items:center;justify-content:center;
 }
@@ -201,39 +203,51 @@ input,select,button,textarea{font-family:inherit;font-size:14px;}
 
 /* ---------- SOL: DIZIM ALANI ---------- */
 .dizim-plot{
-  border:2px dashed var(--green-500);
-  border-radius:10px;
-  background:
-    repeating-linear-gradient(45deg, rgba(10,122,79,.08) 0 8px, transparent 8px 16px),
-    var(--green-100);
-  height:110px;
+  border:none;
+  border-radius:14px;
+  background:var(--tobacco);
+  box-shadow:0 3px 0 var(--tobacco-deep);
+  width:100%;
+  min-height:64px;
   display:flex;
-  flex-direction:column;
   align-items:center;
-  justify-content:center;
-  text-align:center;
+  gap:12px;
+  text-align:left;
   cursor:pointer;
-  color:var(--green-900);
-  padding:6px;
+  color:#3a2a05;
+  padding:12px 16px;
 }
-.dizim-plot:hover{filter:brightness(1.03);}
-.dizim-plot b{font-family:'Barlow Semi Condensed',sans-serif;font-size:16px;color:var(--green-900);}
-.dizim-plot span{font-size:11px;}
-.son-kirimlar{margin-top:10px;}
-.son-kirimlar h3,.toplam-istatistik h3{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px;}
+.dizim-plot:active{transform:translateY(2px);box-shadow:0 1px 0 var(--tobacco-deep);}
+.dizim-plot-ic{
+  width:38px;height:38px;border-radius:10px;background:rgba(255,255,255,.42);flex-shrink:0;
+  display:flex;align-items:center;justify-content:center;font-size:19px;
+}
+.dizim-plot-txt{display:flex;flex-direction:column;}
+.dizim-plot b{font-family:'Barlow Semi Condensed',sans-serif;font-size:16px;font-weight:800;}
+.dizim-plot span{font-size:11.5px;opacity:.8;}
+.son-kirimlar{margin-top:12px;}
+.son-kirimlar h3,.toplam-istatistik h3{font-size:11px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:7px;}
 .toplam-istatistik{margin-top:14px;padding-top:12px;border-top:1px dashed var(--border);}
 .toplam-istatistik .detail-grid{margin-top:8px;}
 .toplam-istatistik .detail-grid div{background:var(--panel-2);border:1px solid var(--border);border-radius:6px;padding:5px 7px;}
 .mini-kirim{
+  display:flex;align-items:center;gap:10px;
   border:1px solid var(--border);
-  border-radius:6px;
-  padding:5px 7px;
-  margin-bottom:5px;
-  font-size:11.5px;
-  background:var(--panel-2);
+  border-radius:12px;
+  padding:10px 10px 10px 0;
+  margin-bottom:8px;
+  background:var(--panel);
 }
-.mini-kirim .r1{display:flex;justify-content:space-between;font-weight:600;color:var(--green-900);}
-.mini-kirim .r2{color:var(--muted);}
+.mini-kirim .sw{width:5px;align-self:stretch;border-radius:0 3px 3px 0;background:var(--tobacco);flex-shrink:0;}
+.mini-kirim.dolu .sw{background:var(--green-500);}
+.mini-kirim .main{flex:1;min-width:0;}
+.mini-kirim .r1{display:flex;justify-content:space-between;align-items:center;gap:6px;font-family:'Barlow Semi Condensed',sans-serif;font-weight:800;font-size:15px;color:var(--ink);}
+.mini-kirim .r1 .del{border:none;background:transparent;color:var(--muted);font-size:15px;padding:2px 5px;border-radius:5px;flex-shrink:0;}
+.mini-kirim .r1 .del:hover{background:#fbe4e1;color:var(--red);}
+.mini-kirim .r2{color:var(--muted);font-size:11.5px;margin-top:1px;}
+.mini-kirim .stat{text-align:right;flex-shrink:0;}
+.mini-kirim .stat b{display:block;font-family:'Barlow Semi Condensed',sans-serif;font-weight:800;font-size:18px;color:var(--green-900);font-variant-numeric:tabular-nums;line-height:1;}
+.mini-kirim .stat span{font-size:10px;color:var(--muted);}
 
 /* ---------- ORTA ---------- */
 .orta-body{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;text-align:center;gap:10px;}
@@ -400,8 +414,8 @@ body.has-fullscreen-panel{overflow:hidden;}
 .hidden{display:none;}
 .page-tabs{display:flex;gap:6px;flex-wrap:wrap;}
 .tab-btn{
-  background:transparent;border:1px solid var(--border);border-radius:8px;
-  padding:7px 14px;font-size:13px;font-weight:600;color:var(--muted);
+  background:transparent;border:2px solid var(--border);border-radius:10px;
+  padding:9px 15px;font-size:13.5px;font-weight:700;color:var(--muted);min-height:40px;
 }
 .tab-btn.active{background:var(--green-700);color:#fff;border-color:var(--green-700);}
 .harita-toolbar{display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap;flex:0 0 auto;}
@@ -463,7 +477,7 @@ body.has-fullscreen-panel{overflow:hidden;}
   padding:7px 9px;font-size:12px;color:var(--green-900);margin:8px 0;
 }
 .modal-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:14px;}
-.btn{padding:9px 16px;border-radius:7px;border:1px solid var(--border);background:#fff;font-size:13px;font-weight:600;}
+.btn{padding:11px 18px;border-radius:9px;border:2px solid var(--border);background:#fff;font-size:13.5px;font-weight:700;}
 .btn-primary{background:var(--green-700);color:#fff;border-color:var(--green-700);}
 .btn-danger{background:var(--red);color:#fff;border-color:var(--red);}
 .btn-muted{background:transparent;color:var(--muted);}
@@ -540,11 +554,16 @@ body.has-fullscreen-panel{overflow:hidden;}
 #loginOverlay .modal{max-width:340px;text-align:center;}
 #loginOverlay .field label{text-align:left;}
 .sync-status{
-  display:flex;align-items:center;gap:4px;
-  font-size:11px;color:var(--muted);white-space:nowrap;
+  display:flex;align-items:center;gap:8px;
+  font-size:13px;font-weight:800;letter-spacing:.02em;white-space:nowrap;
+  background:var(--green-700);color:#fff;border-radius:9px;padding:9px 14px;
 }
-.sync-status .dot{width:8px;height:8px;border-radius:50%;background:var(--green-500);}
-.sync-status.offline .dot{background:var(--amber);}
+.sync-status .dot{width:9px;height:9px;border-radius:50%;background:#fff;flex-shrink:0;}
+.sync-status.offline{background:var(--red);}
+.sync-status.saving{background:var(--tobacco);color:#3a2a05;}
+.sync-status.saving .dot{background:#3a2a05;animation:syncPulse 1.1s ease-in-out infinite;}
+@media (prefers-reduced-motion:reduce){ .sync-status.saving .dot{animation:none;} }
+@keyframes syncPulse{0%,100%{opacity:1;}50%{opacity:.35;}}
 
 /* ---------- MOBILE ---------- */
 @media (max-width:900px){
@@ -555,7 +574,9 @@ body.has-fullscreen-panel{overflow:hidden;}
   .panel-body{-webkit-overflow-scrolling:touch;}
   .bottom-panel{height:190px;}
   .tarla-plot{-webkit-overflow-scrolling:touch;}
-  .icon-btn{width:32px;height:32px;font-size:18px;}
+  .icon-btn{width:42px;height:42px;font-size:19px;}
+  .btn{padding:12px 16px;font-size:14px;}
+  .tab-btn{padding:10px 14px;font-size:14px;}
   .tarla-box{width:64px;height:64px;padding:4px 5px;}
   .tarla-box .name{font-size:9px;}
   .tarla-box .sub{font-size:8px;}
@@ -622,10 +643,10 @@ body.has-fullscreen-panel{overflow:hidden;}
         </div>
       </div>
       <div class="panel-body">
-        <div class="dizim-plot" onclick="openKirimModal()">
-          <b data-i18n="+ Kırım Kaydı Gir">+ Kırım Kaydı Gir</b>
-          <span data-i18n="Tarla · Kırım No · Dizi Sayısı">Tarla · Kırım No · Dizi Sayısı</span>
-        </div>
+        <button class="dizim-plot" onclick="openKirimModal()">
+          <span class="dizim-plot-ic">🌿</span>
+          <span class="dizim-plot-txt"><b data-i18n="+ Kırım Kaydı Gir">+ Kırım Kaydı Gir</b><span data-i18n="Tarla · Kırım No · Dizi Sayısı">Tarla · Kırım No · Dizi Sayısı</span></span>
+        </button>
         <div class="son-kirimlar">
           <h3 data-i18n="Son Kırımlar">Son Kırımlar</h3>
           <div id="sonKirimlarList"></div>
@@ -857,7 +878,7 @@ const AYARLAR = {
   UNITE_PX: 40                // referans kapasitedeki sera-box genişliği (px) — kroki oranı
 };
 const STORAGE_KEY = 'scvSahaKrokiV1';
-const APP_SURUM = 'v28'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
+const APP_SURUM = 'v29'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
 
 /* =========================================================
    DİL (TR/EN) — ana ekran, menü ve buton/etiket metinleri
@@ -873,6 +894,7 @@ const I18N_EN = {
   'Bekleyen Kırımlar (dizilmemiş)':'Pending Harvests (not yet strung)', 'Bekleyen kırım yok — tüm kırımlar seralara dizilmiş.':'No pending harvests — all harvests have been strung.',
   'Seraya Dağıt':'Distribute to Greenhouse', 'Tütün Dizimi Ekle':'Add Tobacco Stringing', '+ Tütün Dizimi Ekle':'+ Add Tobacco Stringing',
   'Bekleyen Kırım':'Pending Harvest', 'Dizim Tarihi':'Stringing Date', 'Kalan':'Remaining', 'bekliyor':'pending',
+  'Kaydediliyor…':'Saving…', 'Kaydedildi · Herkese senkron':'Saved · Synced for everyone', 'Çevrimdışı · Cihazda bekliyor':'Offline · Waiting on this device',
   'Dizi Sayısı':'String Count',
   'Bu tütün hangi seraya dizilecek, hemen seçmek zorunda değilsiniz — daha sonra sera ekranından "Tütün Dizimi Ekle" ile atayabilirsiniz.':'You don\'t have to pick which greenhouse this goes to right away — assign it later from the greenhouse screen with "Add Tobacco Stringing".',
   'Bekleyen Kırımdan Seç':'Choose From Pending Harvest', 'Yeni Giriş':'New Entry',
@@ -1051,6 +1073,7 @@ function pushStateToFirestore(){
 
 function syncOutgoingNow(){
   if(!fbAuth.currentUser) return;
+  const commits = [];
   SYNC_KOLEKSIYONLARI.forEach(collName=>{
     const arr = state[collName] || [];
     const currentMap = {};
@@ -1072,22 +1095,24 @@ function syncOutgoingNow(){
       }
     });
     if(hasOps){
-      batch.commit().then(()=>{
-        lastSyncedSnapshot[collName] = currentMap;
-        setSyncStatus(true);
-      }).catch(()=>{ setSyncStatus(false); });
+      commits.push(batch.commit().then(()=>{ lastSyncedSnapshot[collName] = currentMap; }));
     } else {
       lastSyncedSnapshot[collName] = currentMap;
     }
   });
+  if(commits.length){
+    setSyncStatus('saving');
+    Promise.all(commits).then(()=>setSyncStatus(true)).catch(()=>setSyncStatus(false));
+  }
 }
 
-function setSyncStatus(online){
+function setSyncStatus(durum){
   const el = document.getElementById('syncStatus');
   const txt = document.getElementById('syncStatusText');
   if(!el || !txt) return;
-  el.classList.toggle('offline', !online);
-  txt.textContent = online ? 'Senkron' : 'Çevrimdışı';
+  el.classList.toggle('offline', durum===false);
+  el.classList.toggle('saving', durum==='saving');
+  txt.textContent = durum==='saving' ? i18n('Kaydediliyor…') : (durum ? i18n('Kaydedildi · Herkese senkron') : i18n('Çevrimdışı · Cihazda bekliyor'));
 }
 
 function baglamFirestoreDinleyici(){
@@ -1374,10 +1399,14 @@ function renderDizim(){
   document.getElementById('sonKirimlarList').innerHTML = son.map(k=>{
     const t = tarlaBul(k.tarlaId);
     const tr = kirimTurev(k);
-    return `<div class="mini-kirim">
-      <div class="r1"><span>${escapeHtml(t?t.ad:'(silinmiş tarla)')}</span>
-        <span>${escapeHtml(k.tarih)} <button class="btn btn-muted" style="padding:0 5px;font-size:10px;" title="Sil" onclick="kirimSil('${k.id}')">×</button></span></div>
-      <div class="r2">${k.kirimNo}. kırım · ${fmt(tr.diziSayisi,0)} dizi · ${fmt(tr.toplamKg,0)} kg${k.sonDuzenleyen?' · '+escapeHtml(k.sonDuzenleyen):''}</div>
+    return `<div class="mini-kirim${tr.kalanDizi<=0?' dolu':''}">
+      <div class="sw"></div>
+      <div class="main">
+        <div class="r1"><span>${escapeHtml(t?t.ad:'(silinmiş tarla)')}</span>
+          <button class="del" title="Sil" onclick="kirimSil('${k.id}')">×</button></div>
+        <div class="r2">${escapeHtml(k.tarih)} · ${k.kirimNo}. kırım${k.sonDuzenleyen?' · '+escapeHtml(k.sonDuzenleyen):''}</div>
+      </div>
+      <div class="stat"><b>${fmt(tr.diziSayisi,0)}</b><span>${fmt(tr.toplamKg,0)} kg</span></div>
     </div>`;
   }).join('');
 }
@@ -1393,10 +1422,13 @@ function renderBekleyenKirimlar(){
   el.innerHTML = bekleyen.map(({k,tr})=>{
     const t = tarlaBul(k.tarlaId);
     return `<div class="mini-kirim">
-      <div class="r1"><span>${escapeHtml(t?t.ad:'(silinmiş tarla)')}</span>
-        <span>${escapeHtml(k.tarih)}</span></div>
-      <div class="r2">${k.kirimNo}. kırım · ${i18n('Kalan')}: ${fmt(tr.kalanDizi,0)} dizi (~${fmt(tr.kalanDizi*(Number(k.ortDiziKg)||0),0)} kg)
-        <button class="btn btn-muted" style="padding:1px 6px;font-size:10.5px;float:right;" onclick="openKirimDizimModal('${k.id}')">${i18n('Seraya Dağıt')}</button></div>
+      <div class="sw"></div>
+      <div class="main">
+        <div class="r1"><span>${escapeHtml(t?t.ad:'(silinmiş tarla)')}</span></div>
+        <div class="r2">${escapeHtml(k.tarih)} · ${k.kirimNo}. kırım</div>
+      </div>
+      <div class="stat"><b>${fmt(tr.kalanDizi,0)}</b><span>dizi</span></div>
+      <button class="icon-btn" style="width:36px;height:36px;font-size:16px;flex-shrink:0;" onclick="openKirimDizimModal('${k.id}')" title="${i18n('Seraya Dağıt')}">›</button>
     </div>`;
   }).join('');
 }
