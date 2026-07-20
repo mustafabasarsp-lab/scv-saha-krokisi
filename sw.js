@@ -1,4 +1,4 @@
-const CACHE_NAME = 'scv-saha-v1-cache-31';
+const CACHE_NAME = 'scv-saha-v1-cache-32';
 const CORE_ASSETS = [
   './scv-saha-v1.html',
   './manifest.json',
