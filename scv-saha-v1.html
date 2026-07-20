@@ -684,11 +684,18 @@ body.has-fullscreen-panel{overflow:hidden;}
             <div class="field"><label data-i18n="Başlangıç">Başlangıç</label><input id="statBaslangic" type="date" oninput="renderToplamIstatistik()"></div>
             <div class="field"><label data-i18n="Bitiş">Bitiş</label><input id="statBitis" type="date" oninput="renderToplamIstatistik()"></div>
           </div>
-          <div class="field">
-            <label data-i18n="Çeşit / Varyete">Çeşit / Varyete</label>
-            <select id="statCesit" onchange="renderToplamIstatistik()"><option value="" data-i18n="Tümü">Tümü</option></select>
+          <div class="row2">
+            <div class="field">
+              <label data-i18n="Çeşit / Varyete">Çeşit / Varyete</label>
+              <select id="statCesit" onchange="renderToplamIstatistik()"><option value="" data-i18n="Tümü">Tümü</option></select>
+            </div>
+            <div class="field">
+              <label data-i18n="Tarla Ara">Tarla Ara</label>
+              <input type="search" id="statTarlaAra" placeholder="Tarla ara…" data-i18n-placeholder="Tarla ara…" oninput="renderToplamIstatistik()">
+            </div>
           </div>
           <div class="detail-grid" id="toplamIstatistikSonuc"></div>
+          <div class="list-small" id="toplamIstatistikListe" style="margin-top:8px;max-height:220px;"></div>
         </div>
       </div>
     </div>
@@ -801,6 +808,7 @@ body.has-fullscreen-panel{overflow:hidden;}
         <button class="icon-btn" onclick="openKutuEkleModal()">+</button>
       </div>
       <div class="panel-body">
+        <input type="search" id="depoAramaInput" class="search-input" placeholder="Kutu no, tarih veya kalite ara…" data-i18n-placeholder="Kutu no, tarih veya kalite ara…" oninput="renderDepo()" style="margin-bottom:8px;">
         <div class="detail-grid" id="depoOzet"></div>
         <div class="field" style="margin-top:10px;">
           <label data-i18n="Kutular">Kutular</label>
@@ -822,6 +830,7 @@ body.has-fullscreen-panel{overflow:hidden;}
         <button class="icon-btn" onclick="openSulamaEkleModal()">+</button>
       </div>
       <div class="panel-body">
+        <input type="search" id="sulamaAramaInput" class="search-input" placeholder="Tarla veya tarih ara…" data-i18n-placeholder="Tarla veya tarih ara…" oninput="renderSulama()" style="margin-bottom:8px;">
         <div class="detail-grid" id="sulamaOzet"></div>
         <div class="field" style="margin-top:10px;">
           <label data-i18n="Sulama Kayıtları">Sulama Kayıtları</label>
@@ -905,7 +914,7 @@ const AYARLAR = {
   UNITE_PX: 40                // referans kapasitedeki sera-box genişliği (px) — kroki oranı
 };
 const STORAGE_KEY = 'scvSahaKrokiV1';
-const APP_SURUM = 'v33'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
+const APP_SURUM = 'v34'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
 
 /* =========================================================
    DİL (TR/EN) — ana ekran, menü ve buton/etiket metinleri
@@ -933,6 +942,8 @@ const I18N_EN = {
   'Boş':'Empty', 'Tarla':'Field', 'Sera':'Greenhouse', 'Sera Doluluk':'Greenhouse Occupancy',
   'Seralar':'Greenhouses', 'Sera ara…':'Search greenhouses…',
   'Tarlalar':'Fields', 'Tarla ara…':'Search fields…',
+  'Tarla Ara':'Search Field', 'Sonuç bulunamadı':'No results found',
+  'Kutu no, tarih veya kalite ara…':'Search by box no., date or quality…', 'Tarla veya tarih ara…':'Search by field or date…',
   'Haritalar':'Maps', '📍 Pin Ekleme Modu':'📍 Pin Add Mode', "🛰️ Buradayım (GPS ile Pin Ekle)":"🛰️ I'm Here (Add Pin via GPS)",
   '🔢 Koordinat ile Tarla Ekle':'🔢 Add Field by Coordinates', "Kalemli'ye Git":'Go to Kalemli', "Tekeliler'e Git":'Go to Tekeliler',
   '📥 Kroki Verilerini İçe Aktar':'📥 Import Layout Data',
@@ -1475,16 +1486,21 @@ function populateCesitFiltre(){
 
 function renderToplamIstatistik(){
   const sonucEl = document.getElementById('toplamIstatistikSonuc');
+  const listeEl = document.getElementById('toplamIstatistikListe');
   if(!sonucEl) return;
   const baslangic = document.getElementById('statBaslangic').value;
   const bitis = document.getElementById('statBitis').value;
   const cesit = document.getElementById('statCesit').value;
+  const tarlaArama = document.getElementById('statTarlaAra') ? document.getElementById('statTarlaAra').value.trim().toLocaleLowerCase('tr') : '';
   const kayitlar = state.kirimlar.filter(k=>{
     if(baslangic && k.tarih < baslangic) return false;
     if(bitis && k.tarih > bitis) return false;
+    const t = tarlaBul(k.tarlaId);
     if(cesit){
-      const t = tarlaBul(k.tarlaId);
       if(!t || t.cesit !== cesit) return false;
+    }
+    if(tarlaArama){
+      if(!t || !(t.ad||'').toLocaleLowerCase('tr').includes(tarlaArama)) return false;
     }
     return true;
   });
@@ -1499,6 +1515,21 @@ function renderToplamIstatistik(){
     <div>Dizi Ortalaması<b>${diziOrt==null?'-':fmt(diziOrt,2)+' kg'}</b></div>
     <div>Toplam Fire<b>${fmt(toplamFire,0)}</b></div>
   `;
+  if(listeEl){
+    const siraliKayitlar = [...kayitlar].sort((a,b)=>b.tarih.localeCompare(a.tarih));
+    listeEl.innerHTML = siraliKayitlar.map(k=>{
+      const t = tarlaBul(k.tarlaId);
+      const tr = kirimTurev(k);
+      return `<div class="mini-kirim">
+        <div class="sw"></div>
+        <div class="main">
+          <div class="r1"><span>${escapeHtml(t?t.ad:'(silinmiş tarla)')}</span></div>
+          <div class="r2">${escapeHtml(k.tarih)} · ${k.kirimNo}. kırım</div>
+        </div>
+        <div class="stat"><b>${fmt(tr.toplamKg,0)}</b><span>kg</span></div>
+      </div>`;
+    }).join('') || `<div class="item">${i18n('Sonuç bulunamadı')}</div>`;
+  }
 }
 
 let seraBolgeAktif = 'tumu';
@@ -3246,7 +3277,10 @@ function renderDepo(){
   const listeEl = document.getElementById('depoKutuListesi');
   const cikisEl = document.getElementById('depoCikisListesi');
   if(!ozetEl || !listeEl) return;
-  const bolgedekiler = state.depoKutulari.filter(k=>k.bolge===depoBolgeAktif);
+  const aramaInput = document.getElementById('depoAramaInput');
+  const arama = aramaInput ? aramaInput.value.trim().toLocaleLowerCase('tr') : '';
+  const kutuEslesiyor = k => !arama || String(k.kutuNo).includes(arama) || (k.tarih||'').includes(arama) || (k.kalite||'').toLocaleLowerCase('tr').includes(arama);
+  const bolgedekiler = state.depoKutulari.filter(k=>k.bolge===depoBolgeAktif && kutuEslesiyor(k));
   const depoda = bolgedekiler.filter(k=>!k.cikisTarihi).sort((a,b)=> b.tarih.localeCompare(a.tarih) || b.kutuNo-a.kutuNo);
   const cikmis = bolgedekiler.filter(k=>k.cikisTarihi).sort((a,b)=> b.cikisTarihi.localeCompare(a.cikisTarihi));
   const toplamKg = depoda.reduce((s,k)=>s+(Number(k.kg)||0),0);
@@ -3323,7 +3357,15 @@ function renderSulama(){
   const ozetEl = document.getElementById('sulamaOzet');
   const listeEl = document.getElementById('sulamaListesi');
   if(!ozetEl || !listeEl) return;
-  const liste = [...state.sulamaKayitlari].sort((a,b)=>b.tarih.localeCompare(a.tarih));
+  const aramaInput = document.getElementById('sulamaAramaInput');
+  const arama = aramaInput ? aramaInput.value.trim().toLocaleLowerCase('tr') : '';
+  let liste = [...state.sulamaKayitlari].sort((a,b)=>b.tarih.localeCompare(a.tarih));
+  if(arama){
+    liste = liste.filter(s=>{
+      const t = tarlaBul(s.tarlaId);
+      return (t && (t.ad||'').toLocaleLowerCase('tr').includes(arama)) || (s.tarih||'').includes(arama);
+    });
+  }
   const toplamSaat = liste.reduce((s,k)=>s+(Number(k.saat)||0),0);
   ozetEl.innerHTML = `
     <div>${i18n('Kayıt Sayısı')}<b>${liste.length}</b></div>
