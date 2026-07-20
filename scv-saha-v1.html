@@ -492,6 +492,21 @@ body.has-fullscreen-panel{overflow:hidden;}
 .modal.modal-wide{max-width:880px;}
 .list-small .item.clickable{cursor:pointer;}
 .list-small .item.clickable:hover{background:var(--green-100);}
+.dizim-row{display:flex;align-items:center;gap:8px;padding:3px 0;}
+.dizim-row-main{flex:1;min-width:0;}
+.dizim-row-top{display:flex;align-items:center;gap:7px;margin-bottom:3px;}
+.dizim-tarla{font-family:'Barlow Semi Condensed',sans-serif;font-weight:700;font-size:15px;color:var(--green-900);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.dizim-pill{font-size:10.5px;font-weight:600;padding:1.5px 7px;border-radius:20px;background:var(--green-100);color:var(--green-700);border:1px solid var(--green-300);white-space:nowrap;}
+.dizim-meta{font-size:11px;color:var(--muted);display:flex;align-items:center;gap:5px;flex-wrap:wrap;}
+.dizim-meta .arrow{color:var(--green-500);}
+.dizim-wait{font-size:10px;font-weight:700;padding:0 6px;border-radius:20px;line-height:16px;}
+.dizim-wait-ok{background:var(--green-100);color:var(--green-700);}
+.dizim-wait-warn{background:#fdf1da;color:#8a5a12;}
+.dizim-stat{text-align:right;flex-shrink:0;padding-left:4px;font-variant-numeric:tabular-nums;}
+.dizim-stat b{display:block;font-family:'Barlow Semi Condensed',sans-serif;font-size:19px;color:var(--green-900);line-height:1.1;}
+.dizim-stat span{font-size:11px;color:var(--muted);}
+.dizim-del{border:none;background:transparent;color:var(--muted);font-size:15px;line-height:1;cursor:pointer;padding:2px 4px;border-radius:5px;flex-shrink:0;}
+.dizim-del:hover{background:#fbe4e1;color:var(--red);}
 .iklim-chart-title{font-size:11.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.03em;margin:10px 0 2px;}
 .iklim-chart-svg{width:100%;display:block;}
 
@@ -844,7 +859,7 @@ const AYARLAR = {
   UNITE_PX: 40                // referans kapasitedeki sera-box genişliği (px) — kroki oranı
 };
 const STORAGE_KEY = 'scvSahaKrokiV1';
-const APP_SURUM = 'v26'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
+const APP_SURUM = 'v27'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
 
 /* =========================================================
    DİL (TR/EN) — ana ekran, menü ve buton/etiket metinleri
@@ -863,6 +878,7 @@ const I18N_EN = {
   'Dizi Sayısı':'String Count',
   'Bu tütün hangi seraya dizilecek, hemen seçmek zorunda değilsiniz — daha sonra sera ekranından "Tütün Dizimi Ekle" ile atayabilirsiniz.':'You don\'t have to pick which greenhouse this goes to right away — assign it later from the greenhouse screen with "Add Tobacco Stringing".',
   'Bekleyen Kırımdan Seç':'Choose From Pending Harvest', 'Yeni Giriş':'New Entry', 'Kırım Tarihi':'Harvest Date', 'Varyete':'Variety',
+  'aynı gün':'same day', 'gün bekledi':'day(s) waited',
   'Bu tarladan bu seraya doğrudan tütün girişi kaydedilecek; Kırım sekmesindeki toplam kırılan kg\'a da yansıyacak.':'This records tobacco going directly from this field into this greenhouse; it will also count toward total harvested kg in the Harvest tab.',
   'Son Kırımlar':'Recent Harvests', 'Toplam İstatistik':'Total Statistics',
   'Başlangıç':'Start', 'Bitiş':'End', 'Çeşit / Varyete':'Variety', 'Tümü':'All',
@@ -1714,16 +1730,23 @@ function openSeraDetay(id){
   const tahminGun = (d && d.dolu>0) ? Math.ceil(d.dolu/AYARLAR.GUNLUK_ISLEME_DIZI) : 0;
   const kaynakSatirlariHtml = d ? [...(d.kaynaklar||[])].sort((a,b)=>(b.dizimTarihi||b.tarih||'').localeCompare(a.dizimTarihi||a.tarih||'')).map(kn=>{
     const t = tarlaBul(kn.tarlaId);
+    const dizimT = kn.dizimTarihi || kn.tarih;
+    const bekleGun = (kn.tarih && dizimT) ? Math.round((new Date(dizimT) - new Date(kn.tarih))/86400000) : 0;
+    const bekleEtiket = bekleGun<=0 ? i18n('aynı gün') : (bekleGun+' '+i18n('gün bekledi'));
+    const tarihAkisi = dizimT && dizimT!==kn.tarih
+      ? `${escapeHtml(kn.tarih||'-')} <span class="arrow">→</span> ${escapeHtml(dizimT)}`
+      : escapeHtml(kn.tarih||dizimT||'-');
     return `<div class="item">
-      <div style="display:flex;justify-content:space-between;align-items:center;">
-        <b style="font-family:'Barlow Semi Condensed',sans-serif;font-size:15px;color:var(--green-900);">${escapeHtml(t?t.ad:'(silinmiş tarla)')}</b>
-        ${kn.dizimId?`<button class="btn btn-muted" style="padding:1px 6px;font-size:10.5px;" onclick="dizimKaldir('${kn.kirimId}','${kn.dizimId}');openSeraDetay('${s.id}')">×</button>`:''}
-      </div>
-      <div class="detail-grid" style="margin:4px 0 0;">
-        <div>${i18n('Kırım Tarihi')}<b>${escapeHtml(kn.tarih||'-')}</b></div>
-        <div>${i18n('Dizim Tarihi')}<b>${escapeHtml(kn.dizimTarihi||kn.tarih||'-')}</b></div>
-        <div>${i18n('Varyete')}<b>${escapeHtml(kn.cesit||(t?t.cesit:'')||'-')}</b></div>
-        <div>${i18n('Dizi Sayısı')}<b>${fmt(kn.dizi,0)} (${fmt(kn.diziKg,0)} kg)</b></div>
+      <div class="dizim-row">
+        <div class="dizim-row-main">
+          <div class="dizim-row-top">
+            <span class="dizim-tarla">${escapeHtml(t?t.ad:'(silinmiş tarla)')}</span>
+            <span class="dizim-pill">${escapeHtml(kn.cesit||(t?t.cesit:'')||'-')}</span>
+          </div>
+          <div class="dizim-meta">${tarihAkisi} <span class="dizim-wait ${bekleGun>3?'dizim-wait-warn':'dizim-wait-ok'}">${bekleEtiket}</span></div>
+        </div>
+        ${kn.dizimId?`<button class="dizim-del" onclick="dizimKaldir('${kn.kirimId}','${kn.dizimId}');openSeraDetay('${s.id}')">×</button>`:''}
+        <div class="dizim-stat"><b>${fmt(kn.dizi,0)}</b><span>${fmt(kn.diziKg,0)} kg</span></div>
       </div>
     </div>`;
   }).join('') : '';
@@ -1747,7 +1770,7 @@ function openSeraDetay(id){
     </div>
     <div class="field">
       <label>${i18n('Dizilen Tütünler (Güncel Dönem)')}</label>
-      <div class="list-small">${kaynakSatirlariHtml || `<div class="item">${i18n('Henüz kayıt yok')}</div>`}</div>
+      <div class="list-small" style="max-height:260px;">${kaynakSatirlariHtml || `<div class="item">${i18n('Henüz kayıt yok')}</div>`}</div>
     </div>
   ` : `
     <div class="hint-box">Aktif dönem yok. Kırım eklendiğinde otomatik başlar, ya da burada elle başlatabilirsiniz.</div>
