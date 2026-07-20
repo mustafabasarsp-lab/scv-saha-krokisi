@@ -844,7 +844,7 @@ const AYARLAR = {
   UNITE_PX: 40                // referans kapasitedeki sera-box genişliği (px) — kroki oranı
 };
 const STORAGE_KEY = 'scvSahaKrokiV1';
-const APP_SURUM = 'v24'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
+const APP_SURUM = 'v25'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
 
 /* =========================================================
    DİL (TR/EN) — ana ekran, menü ve buton/etiket metinleri
@@ -862,7 +862,7 @@ const I18N_EN = {
   'Bekleyen Kırım':'Pending Harvest', 'Dizim Tarihi':'Stringing Date', 'Kalan':'Remaining', 'Hasat':'Harvest', 'Dizim':'Stringing', 'bekliyor':'pending',
   'Dizi Sayısı':'String Count',
   'Bu tütün hangi seraya dizilecek, hemen seçmek zorunda değilsiniz — daha sonra sera ekranından "Tütün Dizimi Ekle" ile atayabilirsiniz.':'You don\'t have to pick which greenhouse this goes to right away — assign it later from the greenhouse screen with "Add Tobacco Stringing".',
-  'Bekleyen Kırımdan Seç':'Choose From Pending Harvest', 'Yeni Giriş':'New Entry',
+  'Bekleyen Kırımdan Seç':'Choose From Pending Harvest', 'Yeni Giriş':'New Entry', 'Kırım Tarihi':'Harvest Date', 'Varyete':'Variety',
   'Bu tarladan bu seraya doğrudan tütün girişi kaydedilecek; Kırım sekmesindeki toplam kırılan kg\'a da yansıyacak.':'This records tobacco going directly from this field into this greenhouse; it will also count toward total harvested kg in the Harvest tab.',
   'Son Kırımlar':'Recent Harvests', 'Toplam İstatistik':'Total Statistics',
   'Başlangıç':'Start', 'Bitiş':'End', 'Çeşit / Varyete':'Variety', 'Tümü':'All',
@@ -1713,8 +1713,18 @@ function openSeraDetay(id){
   const tahminGun = (d && d.dolu>0) ? Math.ceil(d.dolu/AYARLAR.GUNLUK_ISLEME_DIZI) : 0;
   const kaynakSatirlariHtml = d ? [...(d.kaynaklar||[])].sort((a,b)=>(b.dizimTarihi||b.tarih||'').localeCompare(a.dizimTarihi||a.tarih||'')).map(kn=>{
     const t = tarlaBul(kn.tarlaId);
-    return `<div class="item">${escapeHtml(t?t.ad:'(silinmiş tarla)')} — ${i18n('Hasat')}: ${escapeHtml(kn.tarih||'-')} · ${i18n('Dizim')}: ${escapeHtml(kn.dizimTarihi||kn.tarih||'-')} · ${escapeHtml(kn.cesit||(t?t.cesit:'')||'-')} · ${fmt(kn.dizi,0)} dizi (${fmt(kn.diziKg,0)} kg)
-      ${kn.dizimId?`<button class="btn btn-muted" style="padding:1px 6px;font-size:10.5px;float:right;" onclick="dizimKaldir('${kn.kirimId}','${kn.dizimId}');openSeraDetay('${s.id}')">×</button>`:''}</div>`;
+    return `<div class="item">
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <b style="font-family:'Barlow Semi Condensed',sans-serif;font-size:15px;color:var(--green-900);">${escapeHtml(t?t.ad:'(silinmiş tarla)')}</b>
+        ${kn.dizimId?`<button class="btn btn-muted" style="padding:1px 6px;font-size:10.5px;" onclick="dizimKaldir('${kn.kirimId}','${kn.dizimId}');openSeraDetay('${s.id}')">×</button>`:''}
+      </div>
+      <div class="detail-grid" style="margin:4px 0 0;">
+        <div>${i18n('Kırım Tarihi')}<b>${escapeHtml(kn.tarih||'-')}</b></div>
+        <div>${i18n('Dizim Tarihi')}<b>${escapeHtml(kn.dizimTarihi||kn.tarih||'-')}</b></div>
+        <div>${i18n('Varyete')}<b>${escapeHtml(kn.cesit||(t?t.cesit:'')||'-')}</b></div>
+        <div>${i18n('Dizi Sayısı')}<b>${fmt(kn.dizi,0)} (${fmt(kn.diziKg,0)} kg)</b></div>
+      </div>
+    </div>`;
   }).join('') : '';
   const gecmisDonemler = (s.donemler||[]).filter(x=>!x.aktif).sort((a,b)=>(b.bitis||0)-(a.bitis||0));
   const gecmisHtml = gecmisDonemler.map(g=>{
