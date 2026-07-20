@@ -844,7 +844,7 @@ const AYARLAR = {
   UNITE_PX: 40                // referans kapasitedeki sera-box genişliği (px) — kroki oranı
 };
 const STORAGE_KEY = 'scvSahaKrokiV1';
-const APP_SURUM = 'v25'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
+const APP_SURUM = 'v26'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
 
 /* =========================================================
    DİL (TR/EN) — ana ekran, menü ve buton/etiket metinleri
@@ -1449,6 +1449,7 @@ function renderSeralar(){
   const aramaInput = document.getElementById('seraAramaInput');
   const arama = aramaInput ? aramaInput.value.trim().toLocaleLowerCase('tr') : '';
   if(arama) liste = liste.filter(s=>(s.ad||'').toLocaleLowerCase('tr').includes(arama));
+  liste = [...liste].sort((a,b)=>(a.ad||'').localeCompare(b.ad||'','tr',{numeric:true}));
   if(!liste.length){
     let msg = 'Henüz sera yok. "+" ile ekleyin.';
     if(state.seralar.length && arama) msg = 'Arama sonucu bulunamadı.';
