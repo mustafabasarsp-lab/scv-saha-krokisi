@@ -878,7 +878,7 @@ const AYARLAR = {
   UNITE_PX: 40                // referans kapasitedeki sera-box genişliği (px) — kroki oranı
 };
 const STORAGE_KEY = 'scvSahaKrokiV1';
-const APP_SURUM = 'v29'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
+const APP_SURUM = 'v30'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
 
 /* =========================================================
    DİL (TR/EN) — ana ekran, menü ve buton/etiket metinleri
@@ -950,7 +950,7 @@ const I18N_EN = {
   'Veri yok':'No data', 'Toplam Tarla':'Total Fields', 'Toplam Dekar':'Total Decares', 'Gerçekleşen Hasat':'Harvested', 'Tahmini Hasat':'Estimated Harvest',
   'Toplam Sulama Saati':'Total Irrigation Hours', 'Toplam Depo Kg':'Total Storage Kg',
   '⚠️ Uyarılar':'⚠️ Warnings', 'hasada':'harvest in', 'Aktif uyarı yok':'No active warnings',
-  'Kırım Kaydı':'Harvest Record', 'Veri Yönetimi':'Data Management', 'Pin Ekle':'Add Pin', 'Koordinat ile Tarla Ekle':'Add Field by Coordinates',
+  'Kırım Kaydı':'Harvest Record', 'Kırım Kaydını Düzenle':'Edit Harvest Record', 'Veri Yönetimi':'Data Management', 'Pin Ekle':'Add Pin', 'Koordinat ile Tarla Ekle':'Add Field by Coordinates',
   'Kutu Ekle':'Add Box', 'Sulama Kaydı Ekle':'Add Irrigation Record',
   'Tarla Adı':'Field Name', 'Çiftçi':'Farmer', 'Dekar':'Decares', 'Varyete Kodu / Çeşit':'Variety Code / Type', 'Bölge':'Region',
   'Diğer / Belirtilmemiş':'Other / Unspecified',
@@ -1403,7 +1403,7 @@ function renderDizim(){
       <div class="sw"></div>
       <div class="main">
         <div class="r1"><span>${escapeHtml(t?t.ad:'(silinmiş tarla)')}</span>
-          <button class="del" title="Sil" onclick="kirimSil('${k.id}')">×</button></div>
+          <span><button class="del" title="${i18n('Düzenle')}" onclick="openKirimDuzenleModal('${k.id}')">✎</button><button class="del" title="Sil" onclick="kirimSil('${k.id}')">×</button></span></div>
         <div class="r2">${escapeHtml(k.tarih)} · ${k.kirimNo}. kırım${k.sonDuzenleyen?' · '+escapeHtml(k.sonDuzenleyen):''}</div>
       </div>
       <div class="stat"><b>${fmt(tr.diziSayisi,0)}</b><span>${fmt(tr.toplamKg,0)} kg</span></div>
@@ -2042,7 +2042,10 @@ function openTarlaDetay(id){
     const tr = kirimTurev(k);
     const bekleyenNot = tr.kalanDizi>0 ? ` <span style="color:var(--amber);">(${fmt(tr.kalanDizi,0)} dizi ${i18n('bekliyor')})</span>` : '';
     return `<div class="item">${escapeHtml(k.tarih)} — ${k.kirimNo}. ${i18n('kırım')} · ${fmt(tr.diziSayisi,0)} dizi · ${fmt(tr.toplamKg,0)} kg → ${escapeHtml(seraDagilimiEtiket(k.seraDagilimi))}${bekleyenNot}
-      <button class="btn btn-muted" style="padding:1px 6px;font-size:10.5px;float:right;" onclick="kirimSil('${k.id}');openTarlaDetay('${t.id}')">×</button></div>`;
+      <span style="float:right;">
+        <button class="btn btn-muted" style="padding:1px 6px;font-size:10.5px;" onclick="openKirimDuzenleModal('${k.id}','${t.id}')">✎</button>
+        <button class="btn btn-muted" style="padding:1px 6px;font-size:10.5px;" onclick="kirimSil('${k.id}');openTarlaDetay('${t.id}')">×</button>
+      </span></div>`;
   }).join('') || `<div class="item">${i18n('Henüz kırım kaydı yok')}</div>`;
   openModal(`
     <h2>${escapeHtml(t.ad)}</h2>
@@ -2261,6 +2264,85 @@ function submitKirimEkle(){
   if(k.ortDiziKg<=0){ alert('Ort. Dizi Ağırlığı girin (sera doluluğu bundan hesaplanır).'); return; }
   state.kirimlar.push(k);
   if(kirimModalPresetTarlaId){ renderAll(); openTarlaDetay(kirimModalPresetTarlaId); }
+  else { closeModal(); renderAll(); }
+}
+let kirimDuzenlePresetTarlaId = null;
+function openKirimDuzenleModal(kirimId, returnTarlaId){
+  const k = state.kirimlar.find(x=>x.id===kirimId);
+  if(!k) return;
+  kirimDuzenlePresetTarlaId = returnTarlaId || null;
+  const tarlaOptions = state.tarlalar.map(t=>`<option value="${t.id}" ${t.id===k.tarlaId?'selected':''}>${escapeHtml(t.ad)}</option>`).join('');
+  openModal(`
+    <h2>${i18n('Kırım Kaydını Düzenle')}</h2>
+    <div class="row2">
+      <div class="field"><label>${i18n('Tarih (Hasat Tarihi)')}</label><input id="kdTarih" type="date" value="${k.tarih}"></div>
+      <div class="field"><label>${i18n('Tarla')}</label><select id="kdTarla">${tarlaOptions}</select></div>
+    </div>
+    <div class="row2">
+      <div class="field"><label>${i18n('Kırım No (kaçıncı kırım)')}</label>
+        <select id="kdKirimNo">${[1,2,3,4,5,6].map(n=>`<option value="${n}" ${n===k.kirimNo?'selected':''}>${n}. ${i18n('kırım')}</option>`).join('')}</select>
+      </div>
+      <div class="field"><label>${i18n('Dizi Sayısı')}</label><input id="kdDiziSayisi" type="number" min="0" step="1" value="${k.diziSayisi}"></div>
+    </div>
+    <div class="field"><label>${i18n('Ort. Dizi Ağırlığı (kg)')}</label><input id="kdOrtDiziKg" type="number" min="0" step="0.01" value="${k.ortDiziKg}"></div>
+    <div class="row3">
+      <div class="field"><label>${i18n('İşçi Sayısı')}</label><input id="kdIsci" type="number" min="0" step="1" value="${k.isciSayisi||0}"></div>
+      <div class="field"><label>${i18n('Yevmiye (₺)')}</label><input id="kdYevmiye" type="number" min="0" step="1" value="${k.yevmiye||0}"></div>
+      <div class="field"><label>${i18n('Kayıp/Çürük Dizi (opsiyonel)')}</label><input id="kdKayip" type="number" min="0" step="1" value="${k.kayipDizi||0}"></div>
+    </div>
+    <div class="row2">
+      <div class="check-row"><input type="checkbox" id="kdAltYas" ${k.altYasYok?'checked':''}><label for="kdAltYas" style="text-transform:none;font-size:12.5px;">${i18n('18 yaş altı çalışan yok')}</label></div>
+      <div class="field"><label>${i18n('Çalışma Saati')}</label><input id="kdCalismaSaati" type="number" min="0" step="0.5" value="${k.calismaSaati||0}"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-muted" onclick="${returnTarlaId?`openTarlaDetay('${returnTarlaId}')`:'closeModal()'}">${i18n('Vazgeç')}</button>
+      <button class="btn btn-primary" onclick="submitKirimDuzenle('${kirimId}')">${i18n('Kaydet')}</button>
+    </div>
+  `);
+}
+function submitKirimDuzenle(kirimId){
+  const k = state.kirimlar.find(x=>x.id===kirimId);
+  if(!k) return;
+  const yeniTarlaId = document.getElementById('kdTarla').value;
+  const yeniTarih = document.getElementById('kdTarih').value || todayStr();
+  const yeniKirimNo = Number(document.getElementById('kdKirimNo').value);
+  const yeniDizi = Number(document.getElementById('kdDiziSayisi').value)||0;
+  const yeniOrtKg = Number(document.getElementById('kdOrtDiziKg').value)||0;
+  if(!yeniTarlaId){ alert('Tarla seçin.'); return; }
+  if(yeniDizi<=0){ alert('Dizi sayısı girin.'); return; }
+  if(yeniOrtKg<=0){ alert('Ort. Dizi Ağırlığı girin.'); return; }
+  const atananDizi = (k.seraDagilimi||[]).reduce((s,d)=>s+(Number(d.diziSayisi)||0),0);
+  if(yeniDizi < atananDizi){ alert('Dizi sayısı, seralara zaten dağıtılmış miktardan ('+fmt(atananDizi,0)+' dizi) az olamaz.'); return; }
+
+  const tarlaDegisti = yeniTarlaId !== k.tarlaId;
+  const tarihDegisti = yeniTarih !== k.tarih;
+  const yeniTarla = tarlaBul(yeniTarlaId);
+
+  k.tarlaId = yeniTarlaId;
+  k.tarih = yeniTarih;
+  k.kirimNo = yeniKirimNo;
+  k.diziSayisi = yeniDizi;
+  k.ortDiziKg = yeniOrtKg;
+  k.isciSayisi = Number(document.getElementById('kdIsci').value)||0;
+  k.yevmiye = Number(document.getElementById('kdYevmiye').value)||0;
+  k.kayipDizi = Number(document.getElementById('kdKayip').value)||0;
+  k.altYasYok = document.getElementById('kdAltYas').checked;
+  k.calismaSaati = Number(document.getElementById('kdCalismaSaati').value)||0;
+  Object.assign(k, sonIslemDamgasi());
+
+  // seraya zaten dizilmiş kayıtlardaki türetilmiş bilgileri (kg, tarla, çeşit, hasat tarihi) güncelle
+  state.seralar.forEach(sera=>{
+    (sera.donemler||[]).forEach(donem=>{
+      (donem.kaynaklar||[]).forEach(kn=>{
+        if(kn.kirimId !== kirimId) return;
+        kn.diziKg = (Number(kn.dizi)||0) * yeniOrtKg;
+        if(tarihDegisti) kn.tarih = yeniTarih;
+        if(tarlaDegisti){ kn.tarlaId = yeniTarlaId; kn.cesit = yeniTarla?yeniTarla.cesit:''; }
+      });
+    });
+  });
+
+  if(kirimDuzenlePresetTarlaId){ renderAll(); openTarlaDetay(kirimDuzenlePresetTarlaId); }
   else { closeModal(); renderAll(); }
 }
 /* ---- Kırım → Sera dizimi (kırılan tütünün hangi seraya, ne zaman, ne kadar dizildiği) ---- */
