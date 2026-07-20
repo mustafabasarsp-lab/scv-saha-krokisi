@@ -397,6 +397,7 @@ body.has-fullscreen-panel{overflow:hidden;}
 /* ---------- SAYFA GEÇİŞİ / HARİTALAR ---------- */
 .page{display:contents;}
 .page.hidden{display:none;}
+.hidden{display:none;}
 .page-tabs{display:flex;gap:6px;flex-wrap:wrap;}
 .tab-btn{
   background:transparent;border:1px solid var(--border);border-radius:8px;
@@ -843,7 +844,7 @@ const AYARLAR = {
   UNITE_PX: 40                // referans kapasitedeki sera-box genişliği (px) — kroki oranı
 };
 const STORAGE_KEY = 'scvSahaKrokiV1';
-const APP_SURUM = 'v22'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
+const APP_SURUM = 'v23'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
 
 /* =========================================================
    DİL (TR/EN) — ana ekran, menü ve buton/etiket metinleri
@@ -861,6 +862,8 @@ const I18N_EN = {
   'Bekleyen Kırım':'Pending Harvest', 'Dizim Tarihi':'Stringing Date', 'Kalan':'Remaining', 'Hasat':'Harvest', 'Dizim':'Stringing', 'bekliyor':'pending',
   'Dizi Sayısı':'String Count',
   'Bu tütün hangi seraya dizilecek, hemen seçmek zorunda değilsiniz — daha sonra sera ekranından "Tütün Dizimi Ekle" ile atayabilirsiniz.':'You don\'t have to pick which greenhouse this goes to right away — assign it later from the greenhouse screen with "Add Tobacco Stringing".',
+  'Bekleyen Kırımdan Seç':'Choose From Pending Harvest', 'Yeni Giriş':'New Entry',
+  'Bu tarladan bu seraya doğrudan tütün girişi kaydedilecek; Kırım sekmesindeki toplam kırılan kg\'a da yansıyacak.':'This records tobacco going directly from this field into this greenhouse; it will also count toward total harvested kg in the Harvest tab.',
   'Son Kırımlar':'Recent Harvests', 'Toplam İstatistik':'Total Statistics',
   'Başlangıç':'Start', 'Bitiş':'End', 'Çeşit / Varyete':'Variety', 'Tümü':'All',
   'Saha Genel':'Farm Overview', 'Üstten görünüm kroki paneli':'Top-down layout panel',
@@ -2244,28 +2247,65 @@ function dizimKaldir(kirimId, dizimId){
 function bekleyenKirimlar(){
   return state.kirimlar.map(k=>({ k, tr: kirimTurev(k) })).filter(x=>x.tr.kalanDizi>0).sort((a,b)=>a.k.tarih.localeCompare(b.k.tarih));
 }
+let seraDizimSekme = 'bekleyen';
+function seraDizimSekmeSec(sekme){
+  seraDizimSekme = sekme;
+  const bekleyenEl = document.getElementById('dizimSekmeBekleyen');
+  const yeniEl = document.getElementById('dizimSekmeYeni');
+  const btnBekleyen = document.getElementById('dizimTabBtnBekleyen');
+  const btnYeni = document.getElementById('dizimTabBtnYeni');
+  if(bekleyenEl) bekleyenEl.classList.toggle('hidden', sekme!=='bekleyen');
+  if(yeniEl) yeniEl.classList.toggle('hidden', sekme!=='yeni');
+  if(btnBekleyen) btnBekleyen.classList.toggle('btn-primary', sekme==='bekleyen');
+  if(btnYeni) btnYeni.classList.toggle('btn-primary', sekme==='yeni');
+}
 function openSeraDizimModal(seraId){
   const sera = seraBul(seraId);
   if(!sera) return;
   const bekleyen = bekleyenKirimlar();
-  if(!bekleyen.length){ alert('Bekleyen (henüz hiçbir seraya dizilmemiş) kırım yok.'); return; }
+  if(!bekleyen.length && !state.tarlalar.length){ alert('Önce en az bir tarla ekleyin.'); return; }
+  seraDizimSekme = bekleyen.length ? 'bekleyen' : 'yeni';
   const opts = bekleyen.map(({k,tr})=>{
     const t = tarlaBul(k.tarlaId);
     return `<option value="${k.id}">${escapeHtml(t?t.ad:'(silinmiş tarla)')} — ${escapeHtml(k.tarih)} · ${k.kirimNo}. ${i18n('kırım')} — ${i18n('Kalan')}: ${fmt(tr.kalanDizi,0)} dizi (~${fmt(tr.kalanDizi*(Number(k.ortDiziKg)||0),0)} kg)</option>`;
   }).join('');
+  const tarlaOpts = state.tarlalar.map(t=>`<option value="${t.id}">${escapeHtml(t.ad)}</option>`).join('');
+  const tabBarHtml = bekleyen.length ? `
+    <div class="row2" style="margin-bottom:8px;">
+      <button class="btn ${seraDizimSekme==='bekleyen'?'btn-primary':''}" type="button" id="dizimTabBtnBekleyen" onclick="seraDizimSekmeSec('bekleyen')">${i18n('Bekleyen Kırımdan Seç')}</button>
+      <button class="btn ${seraDizimSekme==='yeni'?'btn-primary':''}" type="button" id="dizimTabBtnYeni" onclick="seraDizimSekmeSec('yeni')">${i18n('Yeni Giriş')}</button>
+    </div>` : '';
   openModal(`
     <h2>${i18n('Tütün Dizimi Ekle')}</h2>
-    <div class="field"><label>${i18n('Bekleyen Kırım')}</label><select id="fDizimKirim" onchange="dizimModalMiktarGuncelle()">${opts}</select></div>
-    <div class="row2">
-      <div class="field"><label>${i18n('Dizi Sayısı')}</label><input id="fDizimMiktar" type="number" min="0" step="1"></div>
-      <div class="field"><label>${i18n('Dizim Tarihi')}</label><input id="fDizimTarih" type="date" value="${todayStr()}"></div>
+    ${tabBarHtml}
+    <div id="dizimSekmeBekleyen" class="${bekleyen.length && seraDizimSekme==='bekleyen' ? '' : 'hidden'}">
+      <div class="field"><label>${i18n('Bekleyen Kırım')}</label><select id="fDizimKirim" onchange="dizimModalMiktarGuncelle()">${opts}</select></div>
+      <div class="row2">
+        <div class="field"><label>${i18n('Dizi Sayısı')}</label><input id="fDizimMiktar" type="number" min="0" step="1"></div>
+        <div class="field"><label>${i18n('Dizim Tarihi')}</label><input id="fDizimTarih" type="date" value="${todayStr()}"></div>
+      </div>
+    </div>
+    <div id="dizimSekmeYeni" class="${!bekleyen.length || seraDizimSekme==='yeni' ? '' : 'hidden'}">
+      <div class="hint-box">${i18n('Bu tarladan bu seraya doğrudan tütün girişi kaydedilecek; Kırım sekmesindeki toplam kırılan kg\'a da yansıyacak.')}</div>
+      <div class="row2">
+        <div class="field"><label>${i18n('Tarla')}</label><select id="fDizimYeniTarla" onchange="dizimYeniKirimNoOner()">${tarlaOpts}</select></div>
+        <div class="field"><label>${i18n('Tarih')}</label><input id="fDizimYeniTarih" type="date" value="${todayStr()}"></div>
+      </div>
+      <div class="row2">
+        <div class="field"><label>${i18n('Kırım No (kaçıncı kırım)')}</label>
+          <select id="fDizimYeniKirimNo">${[1,2,3,4,5,6].map(n=>`<option value="${n}">${n}. ${i18n('kırım')}</option>`).join('')}</select>
+        </div>
+        <div class="field"><label>${i18n('Dizi Sayısı')}</label><input id="fDizimYeniDizi" type="number" min="0" step="1"></div>
+      </div>
+      <div class="field"><label>${i18n('Ort. Dizi Ağırlığı (kg)')}</label><input id="fDizimYeniOrtKg" type="number" min="0" step="0.01"></div>
     </div>
     <div class="modal-actions">
       <button class="btn btn-muted" onclick="openSeraDetay('${seraId}')">${i18n('Vazgeç')}</button>
       <button class="btn btn-primary" onclick="submitSeraDizimEkle('${seraId}')">${i18n('Kaydet')}</button>
     </div>
   `);
-  dizimModalMiktarGuncelle();
+  if(bekleyen.length) dizimModalMiktarGuncelle();
+  if(state.tarlalar.length) dizimYeniKirimNoOner();
 }
 function dizimModalMiktarGuncelle(){
   const kirimId = document.getElementById('fDizimKirim')?.value;
@@ -2275,7 +2315,32 @@ function dizimModalMiktarGuncelle(){
   miktarEl.max = kirimTurev(k).kalanDizi;
   miktarEl.value = kirimTurev(k).kalanDizi;
 }
+function dizimYeniKirimNoOner(){
+  const tarlaId = document.getElementById('fDizimYeniTarla')?.value;
+  const selectEl = document.getElementById('fDizimYeniKirimNo');
+  if(!tarlaId || !selectEl) return;
+  selectEl.value = Math.min(6, (tarlaStats(tarlaId).maxKirimNo||0)+1);
+}
 function submitSeraDizimEkle(seraId){
+  if(seraDizimSekme==='yeni'){
+    const tarlaId = document.getElementById('fDizimYeniTarla')?.value;
+    const tarih = document.getElementById('fDizimYeniTarih').value || todayStr();
+    const kirimNo = Number(document.getElementById('fDizimYeniKirimNo').value);
+    const diziSayisi = Number(document.getElementById('fDizimYeniDizi').value)||0;
+    const ortDiziKg = Number(document.getElementById('fDizimYeniOrtKg').value)||0;
+    if(!tarlaId){ alert('Tarla seçin.'); return; }
+    if(diziSayisi<=0){ alert('Dizi sayısı girin.'); return; }
+    if(ortDiziKg<=0){ alert('Ort. Dizi Ağırlığı girin.'); return; }
+    const k = {
+      id: uid(), tarih, tarlaId, kirimNo, diziSayisi, ortDiziKg, seraDagilimi: [],
+      isciSayisi: 0, yevmiye: 0, kayipDizi: 0, altYasYok: false, calismaSaati: 0,
+      olusturma: Date.now(), ...sonIslemDamgasi()
+    };
+    state.kirimlar.push(k);
+    dizimUygula(k, seraId, diziSayisi, tarih);
+    renderAll(); openSeraDetay(seraId);
+    return;
+  }
   const kirimId = document.getElementById('fDizimKirim').value;
   const miktar = Number(document.getElementById('fDizimMiktar').value)||0;
   const tarih = document.getElementById('fDizimTarih').value || todayStr();
