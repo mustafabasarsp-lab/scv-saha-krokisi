@@ -844,7 +844,7 @@ const AYARLAR = {
   UNITE_PX: 40                // referans kapasitedeki sera-box genişliği (px) — kroki oranı
 };
 const STORAGE_KEY = 'scvSahaKrokiV1';
-const APP_SURUM = 'v23'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
+const APP_SURUM = 'v24'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
 
 /* =========================================================
    DİL (TR/EN) — ana ekran, menü ve buton/etiket metinleri
@@ -2289,15 +2289,18 @@ function openSeraDizimModal(seraId){
       <div class="hint-box">${i18n('Bu tarladan bu seraya doğrudan tütün girişi kaydedilecek; Kırım sekmesindeki toplam kırılan kg\'a da yansıyacak.')}</div>
       <div class="row2">
         <div class="field"><label>${i18n('Tarla')}</label><select id="fDizimYeniTarla" onchange="dizimYeniKirimNoOner()">${tarlaOpts}</select></div>
-        <div class="field"><label>${i18n('Tarih')}</label><input id="fDizimYeniTarih" type="date" value="${todayStr()}"></div>
-      </div>
-      <div class="row2">
         <div class="field"><label>${i18n('Kırım No (kaçıncı kırım)')}</label>
           <select id="fDizimYeniKirimNo">${[1,2,3,4,5,6].map(n=>`<option value="${n}">${n}. ${i18n('kırım')}</option>`).join('')}</select>
         </div>
-        <div class="field"><label>${i18n('Dizi Sayısı')}</label><input id="fDizimYeniDizi" type="number" min="0" step="1"></div>
       </div>
-      <div class="field"><label>${i18n('Ort. Dizi Ağırlığı (kg)')}</label><input id="fDizimYeniOrtKg" type="number" min="0" step="0.01"></div>
+      <div class="row2">
+        <div class="field"><label>${i18n('Tarih (Hasat Tarihi)')}</label><input id="fDizimYeniHasatTarih" type="date" value="${todayStr()}"></div>
+        <div class="field"><label>${i18n('Dizim Tarihi')}</label><input id="fDizimYeniDizimTarih" type="date" value="${todayStr()}"></div>
+      </div>
+      <div class="row2">
+        <div class="field"><label>${i18n('Dizi Sayısı')}</label><input id="fDizimYeniDizi" type="number" min="0" step="1"></div>
+        <div class="field"><label>${i18n('Ort. Dizi Ağırlığı (kg)')}</label><input id="fDizimYeniOrtKg" type="number" min="0" step="0.01"></div>
+      </div>
     </div>
     <div class="modal-actions">
       <button class="btn btn-muted" onclick="openSeraDetay('${seraId}')">${i18n('Vazgeç')}</button>
@@ -2324,7 +2327,8 @@ function dizimYeniKirimNoOner(){
 function submitSeraDizimEkle(seraId){
   if(seraDizimSekme==='yeni'){
     const tarlaId = document.getElementById('fDizimYeniTarla')?.value;
-    const tarih = document.getElementById('fDizimYeniTarih').value || todayStr();
+    const hasatTarih = document.getElementById('fDizimYeniHasatTarih').value || todayStr();
+    const dizimTarih = document.getElementById('fDizimYeniDizimTarih').value || todayStr();
     const kirimNo = Number(document.getElementById('fDizimYeniKirimNo').value);
     const diziSayisi = Number(document.getElementById('fDizimYeniDizi').value)||0;
     const ortDiziKg = Number(document.getElementById('fDizimYeniOrtKg').value)||0;
@@ -2332,12 +2336,12 @@ function submitSeraDizimEkle(seraId){
     if(diziSayisi<=0){ alert('Dizi sayısı girin.'); return; }
     if(ortDiziKg<=0){ alert('Ort. Dizi Ağırlığı girin.'); return; }
     const k = {
-      id: uid(), tarih, tarlaId, kirimNo, diziSayisi, ortDiziKg, seraDagilimi: [],
+      id: uid(), tarih: hasatTarih, tarlaId, kirimNo, diziSayisi, ortDiziKg, seraDagilimi: [],
       isciSayisi: 0, yevmiye: 0, kayipDizi: 0, altYasYok: false, calismaSaati: 0,
       olusturma: Date.now(), ...sonIslemDamgasi()
     };
     state.kirimlar.push(k);
-    dizimUygula(k, seraId, diziSayisi, tarih);
+    dizimUygula(k, seraId, diziSayisi, dizimTarih);
     renderAll(); openSeraDetay(seraId);
     return;
   }
