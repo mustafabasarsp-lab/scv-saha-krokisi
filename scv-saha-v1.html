@@ -639,6 +639,7 @@ body.has-fullscreen-panel{overflow:hidden;}
     <div class="header-actions">
       <button class="btn-csv" onclick="dilDegistir()">🌐 <span id="dilBtnText">EN</span></button>
       <button class="btn-csv" id="installBtn" style="display:none;" onclick="pwaYukle()" data-i18n="⬇️ Uygulamayı Yükle">⬇️ Uygulamayı Yükle</button>
+      <button class="btn-csv" id="bildirimBtn" onclick="bildirimIzniIste()">🔔 <span id="bildirimBtnText">Bildirimleri Aç</span></button>
       <button class="btn-csv" onclick="openVeriYonetimiModal()" data-i18n="💾 Veri Yönetimi">💾 Veri Yönetimi</button>
       <div class="user-menu" id="userMenu">
         <button class="btn-csv" onclick="kullaniciMenusuAcKapa(event)">👤 <span id="userMenuBtnAd"></span></button>
@@ -914,7 +915,7 @@ const AYARLAR = {
   UNITE_PX: 40                // referans kapasitedeki sera-box genişliği (px) — kroki oranı
 };
 const STORAGE_KEY = 'scvSahaKrokiV1';
-const APP_SURUM = 'v34'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
+const APP_SURUM = 'v35'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
 
 /* =========================================================
    DİL (TR/EN) — ana ekran, menü ve buton/etiket metinleri
@@ -930,6 +931,10 @@ const I18N_EN = {
   'Bekleyen Kırımlar (dizilmemiş)':'Pending Harvests (not yet strung)', 'Bekleyen kırım yok — tüm kırımlar seralara dizilmiş.':'No pending harvests — all harvests have been strung.',
   'Seraya Dağıt':'Distribute to Greenhouse', 'Tütün Dizimi Ekle':'Add Tobacco Stringing', '+ Tütün Dizimi Ekle':'+ Add Tobacco Stringing',
   'Bekleyen Kırım':'Pending Harvest', 'Dizim Tarihi':'Stringing Date', 'Kalan':'Remaining', 'bekliyor':'pending',
+  'Desteklenmiyor':'Not supported', 'Bildirimler Açık':'Notifications On', 'Bildirimleri Aç':'Turn On Notifications',
+  'hasada hazır':'ready for harvest', 'zararlı uyarısı':'pest warning', 'Bekleyen kırım':'Pending harvest',
+  'gündür seraya dizilmedi':'days not yet strung into a greenhouse', 'dolu':'full',
+  'Kapasiteye ulaştı, boşaltmayı unutmayın.':'Reached capacity, don\'t forget to empty it.',
   'Kaydediliyor…':'Saving…', 'Kaydedildi · Herkese senkron':'Saved · Synced for everyone', 'Çevrimdışı · Cihazda bekliyor':'Offline · Waiting on this device',
   'Dizi Sayısı':'String Count',
   'Bu tütün hangi seraya dizilecek, hemen seçmek zorunda değilsiniz — daha sonra sera ekranından "Tütün Dizimi Ekle" ile atayabilirsiniz.':'You don\'t have to pick which greenhouse this goes to right away — assign it later from the greenhouse screen with "Add Tobacco Stringing".',
@@ -1015,6 +1020,7 @@ function dilDegistir(){
   localStorage.setItem('scvLang', currentLang);
   uygulaStatikDil();
   renderAll();
+  bildirimDurumGuncelle();
 }
 function uygulaStatikDil(){
   document.documentElement.lang = currentLang;
@@ -3754,10 +3760,76 @@ if('serviceWorker' in navigator){
 }
 
 /* =========================================================
+   ZAMANA DUYARLI BİLDİRİMLER (tarayıcı Notification API, ücretsiz
+   Firebase planında çalışır — uygulama açık/arka planda çalışırken
+   bildirim gösterir, tamamen kapalıyken göstermez; gerçek push için
+   Cloud Functions + Blaze plan gerekir)
+   ========================================================= */
+function bildirimDurumGuncelle(){
+  const txt = document.getElementById('bildirimBtnText');
+  if(!txt) return;
+  if(!('Notification' in window)){ txt.textContent = i18n('Desteklenmiyor'); return; }
+  txt.textContent = Notification.permission==='granted' ? i18n('Bildirimler Açık') : i18n('Bildirimleri Aç');
+}
+function bildirimIzniIste(){
+  if(!('Notification' in window)){ alert('Bu tarayıcı bildirimleri desteklemiyor.'); return; }
+  if(Notification.permission==='granted'){ bildirimKontrolEt(); return; }
+  Notification.requestPermission().then(()=>{
+    bildirimDurumGuncelle();
+    if(Notification.permission==='granted') bildirimKontrolEt();
+  });
+}
+function bildirimGoster(id, baslik, govde){
+  if(!('Notification' in window) || Notification.permission!=='granted') return;
+  const gunluk = JSON.parse(localStorage.getItem('scvBildirimGunlugu')||'{}');
+  const bugun = todayStr();
+  if(gunluk[id]===bugun) return; // bu uyarı bugün zaten bildirildi
+  gunluk[id] = bugun;
+  localStorage.setItem('scvBildirimGunlugu', JSON.stringify(gunluk));
+  const goster = reg => reg.showNotification(baslik, { body: govde, tag: id, icon:'icon-192.png' });
+  if(navigator.serviceWorker && navigator.serviceWorker.ready){
+    navigator.serviceWorker.ready.then(goster).catch(()=>{ new Notification(baslik, { body: govde, tag: id }); });
+  } else {
+    new Notification(baslik, { body: govde, tag: id });
+  }
+}
+function bildirimKontrolEt(){
+  if(!('Notification' in window) || Notification.permission!=='granted') return;
+  state.tarlalar.forEach(t=>{
+    const phi = tarlaPhiDurum(t);
+    if(phi && phi.kalanGun<=1){
+      bildirimGoster('phi:'+t.id, '⏳ '+t.ad+' — '+i18n('hasada hazır'), phi.ad+' — '+i18n('hasada')+' '+phi.kalanGun+' '+i18n('gün'));
+    }
+    const zararli = tarlaZararliDurum(t);
+    if(zararli && zararli.yuzde>=50){
+      bildirimGoster('zararli:'+t.id, '🐛 '+t.ad+' — '+i18n('zararlı uyarısı'), zararli.ad+' — %'+zararli.yuzde);
+    }
+  });
+  bekleyenKirimlar().forEach(({k,tr})=>{
+    const bekleGun = Math.round((new Date(todayStr()) - new Date(k.tarih))/86400000);
+    if(bekleGun>3){
+      const t = tarlaBul(k.tarlaId);
+      bildirimGoster('bekleyen:'+k.id, '📦 '+i18n('Bekleyen kırım'), (t?t.ad:'')+' — '+bekleGun+' '+i18n('gündür seraya dizilmedi')+' ('+fmt(tr.kalanDizi,0)+' dizi)');
+    }
+  });
+  state.seralar.forEach(s=>{
+    const d = seraAktifDonem(s);
+    if(d && Number(s.kapasite)>0 && (Number(d.dolu)||0)/Number(s.kapasite)>=1){
+      bildirimGoster('seradolu:'+s.id, '🏠 '+s.ad+' — '+i18n('dolu'), i18n('Kapasiteye ulaştı, boşaltmayı unutmayın.'));
+    }
+  });
+}
+
+/* =========================================================
    BAŞLAT
    ========================================================= */
 uygulaStatikDil();
 renderAll();
+bildirimDurumGuncelle();
+if('Notification' in window && Notification.permission==='granted'){
+  bildirimKontrolEt();
+  setInterval(bildirimKontrolEt, 30*60*1000);
+}
 </script>
 </body>
 </html>
