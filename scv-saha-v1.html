@@ -806,6 +806,10 @@ body.has-fullscreen-panel{overflow:hidden;}
           <label data-i18n="Kutular">Kutular</label>
           <div class="list-small" id="depoKutuListesi"></div>
         </div>
+        <div class="field" style="margin-top:10px;">
+          <label data-i18n="Çıkış Geçmişi">Çıkış Geçmişi</label>
+          <div class="list-small" id="depoCikisListesi"></div>
+        </div>
       </div>
     </div>
   </div>
@@ -901,7 +905,7 @@ const AYARLAR = {
   UNITE_PX: 40                // referans kapasitedeki sera-box genişliği (px) — kroki oranı
 };
 const STORAGE_KEY = 'scvSahaKrokiV1';
-const APP_SURUM = 'v32'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
+const APP_SURUM = 'v33'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
 
 /* =========================================================
    DİL (TR/EN) — ana ekran, menü ve buton/etiket metinleri
@@ -966,6 +970,9 @@ const I18N_EN = {
   'İşçi Sayısı':'Number of Workers', 'Yevmiye (₺)':'Daily Wage (₺)', 'Kayıp/Çürük Dizi (opsiyonel)':'Lost/Spoiled Strings (optional)',
   '18 yaş altı çalışan yok':'No workers under 18', 'Çalışma Saati':'Working Hours',
   'Kutu Sayısı':'Box Count', 'Toplam Kg':'Total Kg', 'Ort. Kutu Kg':'Avg. Box Kg',
+  'Çıkan Toplam Kg':'Total Shipped Kg', 'Çıkış Geçmişi':'Shipment History', 'Depodan Çıkart':'Ship Out',
+  'Depoya Geri Al':'Return to Storage', 'Çıkış Tarihi':'Shipment Date', 'Alıcı / Not (opsiyonel)':'Recipient / Note (optional)',
+  'Çıkart':'Ship Out', 'Henüz çıkış kaydı yok':'No shipments yet',
   'Kaç Saat Sulandı':'Hours Irrigated', 'Kayıt Sayısı':'Record Count', 'Toplam Saat':'Total Hours', 'Henüz sulama kaydı yok':'No irrigation records yet',
   '📊 Genel Özet':'📊 Overview', 'Genel Özet':'Overview',
   'Bölgeye Göre Gerçekleşen Hasat (kg)':'Harvested by Region (kg)', 'Kırım Bazında Toplam Hasat (kg)':'Harvest by Round (kg)', 'Depo Kalite Dağılımı (kg)':'Storage Quality Distribution (kg)',
@@ -2804,7 +2811,8 @@ function excelDisaAktar(){
   XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(kirimRows), 'Kırımlar');
 
   const depoRows = state.depoKutulari.map(k=>({
-    Bölge: k.bolge==='tekeliler'?'Tekeliler':'Kalemli', 'Kutu No':k.kutuNo, Tarih:k.tarih, Kg:k.kg, Kalite: k.kalite||''
+    Bölge: k.bolge==='tekeliler'?'Tekeliler':'Kalemli', 'Kutu No':k.kutuNo, Tarih:k.tarih, Kg:k.kg, Kalite: k.kalite||'',
+    Durum: k.cikisTarihi?'Çıkmış':'Depoda', 'Çıkış Tarihi':k.cikisTarihi||'', 'Alıcı / Not':k.cikisNot||''
   }));
   XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(depoRows), 'Depo');
 
@@ -3202,28 +3210,80 @@ function kutuSil(id){
   state.depoKutulari = state.depoKutulari.filter(k=>k.id!==id);
   renderAll();
 }
+function openKutuCikisModal(id){
+  const k = state.depoKutulari.find(x=>x.id===id);
+  if(!k) return;
+  openModal(`
+    <h2>${i18n('Depodan Çıkart')}</h2>
+    <div class="hint-box">Kutu #${k.kutuNo} — ${fmt(k.kg,1)} kg${k.kalite?' · '+escapeHtml(k.kalite):''}</div>
+    <div class="row2">
+      <div class="field"><label>${i18n('Çıkış Tarihi')}</label><input id="fKutuCikisTarih" type="date" value="${todayStr()}"></div>
+      <div class="field"><label>${i18n('Alıcı / Not (opsiyonel)')}</label><input id="fKutuCikisNot" type="text"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-muted" onclick="closeModal()">${i18n('Vazgeç')}</button>
+      <button class="btn btn-primary" onclick="submitKutuCikis('${id}')">${i18n('Çıkart')}</button>
+    </div>
+  `);
+}
+function submitKutuCikis(id){
+  const k = state.depoKutulari.find(x=>x.id===id);
+  if(!k) return;
+  k.cikisTarihi = document.getElementById('fKutuCikisTarih').value || todayStr();
+  k.cikisNot = document.getElementById('fKutuCikisNot').value.trim();
+  closeModal(); renderAll();
+}
+function kutuGeriAl(id){
+  const k = state.depoKutulari.find(x=>x.id===id);
+  if(!k) return;
+  if(!confirm('Bu kutu tekrar depoya alınsın mı? (çıkış kaydı silinecek)')) return;
+  delete k.cikisTarihi;
+  delete k.cikisNot;
+  renderAll();
+}
 function renderDepo(){
   const ozetEl = document.getElementById('depoOzet');
   const listeEl = document.getElementById('depoKutuListesi');
+  const cikisEl = document.getElementById('depoCikisListesi');
   if(!ozetEl || !listeEl) return;
-  const liste = state.depoKutulari.filter(k=>k.bolge===depoBolgeAktif).sort((a,b)=> b.tarih.localeCompare(a.tarih) || b.kutuNo-a.kutuNo);
-  const toplamKg = liste.reduce((s,k)=>s+(Number(k.kg)||0),0);
+  const bolgedekiler = state.depoKutulari.filter(k=>k.bolge===depoBolgeAktif);
+  const depoda = bolgedekiler.filter(k=>!k.cikisTarihi).sort((a,b)=> b.tarih.localeCompare(a.tarih) || b.kutuNo-a.kutuNo);
+  const cikmis = bolgedekiler.filter(k=>k.cikisTarihi).sort((a,b)=> b.cikisTarihi.localeCompare(a.cikisTarihi));
+  const toplamKg = depoda.reduce((s,k)=>s+(Number(k.kg)||0),0);
+  const cikanToplamKg = cikmis.reduce((s,k)=>s+(Number(k.kg)||0),0);
   ozetEl.innerHTML = `
-    <div>${i18n('Kutu Sayısı')}<b>${liste.length}</b></div>
+    <div>${i18n('Kutu Sayısı')}<b>${depoda.length}</b></div>
     <div>${i18n('Toplam Kg')}<b>${fmt(toplamKg,0)}</b></div>
-    <div>${i18n('Ort. Kutu Kg')}<b>${liste.length?fmt(toplamKg/liste.length,1):'-'}</b></div>
+    <div>${i18n('Ort. Kutu Kg')}<b>${depoda.length?fmt(toplamKg/depoda.length,1):'-'}</b></div>
+    <div>${i18n('Çıkan Toplam Kg')}<b>${fmt(cikanToplamKg,0)}</b></div>
   `;
-  listeEl.innerHTML = liste.map(k=>`
+  listeEl.innerHTML = depoda.map(k=>`
     <div class="mini-kirim">
       <div class="sw"></div>
       <div class="main">
         <div class="r1"><span>Kutu #${k.kutuNo}</span>
-          <button class="del" title="Sil" onclick="kutuSil('${k.id}')">×</button></div>
+          <span>
+            <button class="del" title="${i18n('Depodan Çıkart')}" onclick="openKutuCikisModal('${k.id}')">📤</button>
+            <button class="del" title="Sil" onclick="kutuSil('${k.id}')">×</button>
+          </span></div>
         <div class="r2">${escapeHtml(k.tarih)}${k.kalite?' · '+escapeHtml(k.kalite):''}</div>
       </div>
       <div class="stat"><b>${fmt(k.kg,1)}</b><span>kg</span></div>
     </div>
   `).join('') || '<div class="item">Henüz kutu kaydı yok</div>';
+  if(cikisEl){
+    cikisEl.innerHTML = cikmis.map(k=>`
+      <div class="mini-kirim dolu">
+        <div class="sw"></div>
+        <div class="main">
+          <div class="r1"><span>Kutu #${k.kutuNo}</span>
+            <button class="del" title="${i18n('Depoya Geri Al')}" onclick="kutuGeriAl('${k.id}')">↩</button></div>
+          <div class="r2">${escapeHtml(k.cikisTarihi)}${k.cikisNot?' · '+escapeHtml(k.cikisNot):''}</div>
+        </div>
+        <div class="stat"><b>${fmt(k.kg,1)}</b><span>kg</span></div>
+      </div>
+    `).join('') || `<div class="item">${i18n('Henüz çıkış kaydı yok')}</div>`;
+  }
 }
 
 /* =========================================================
@@ -3550,7 +3610,7 @@ function renderRapor(){
   const toplamGercek = state.tarlalar.reduce((s,t)=>s+tarlaStats(t.id).toplamKg,0);
   const kgDekar = toplamDekar>0 ? toplamGercek/toplamDekar : null;
   const toplamSulamaSaat = state.sulamaKayitlari.reduce((s,k)=>s+(Number(k.saat)||0),0);
-  const toplamDepoKg = state.depoKutulari.reduce((s,k)=>s+(Number(k.kg)||0),0);
+  const toplamDepoKg = state.depoKutulari.filter(k=>!k.cikisTarihi).reduce((s,k)=>s+(Number(k.kg)||0),0);
 
   ozetEl.innerHTML = `
     <div>${i18n('Toplam Tarla')}<b>${state.tarlalar.length}</b></div>
@@ -3584,7 +3644,7 @@ function renderRapor(){
 
   const kaliteKg = {};
   const kaliteRenk = { X1:'var(--green-700)', X2:'var(--green-500)', XX1:'var(--amber)' };
-  state.depoKutulari.forEach(k=>{
+  state.depoKutulari.filter(k=>!k.cikisTarihi).forEach(k=>{
     const key = k.kalite || i18n('Belirtilmemiş');
     kaliteKg[key] = (kaliteKg[key]||0) + (Number(k.kg)||0);
   });
