@@ -476,6 +476,31 @@ body.has-fullscreen-panel{overflow:hidden;}
   background:var(--green-100);border:1px solid var(--green-300);border-radius:6px;
   padding:7px 9px;font-size:12px;color:var(--green-900);margin:8px 0;
 }
+/* ---- Kırım Gir: 2 dokunuşluk akış (tarla kare seçimi + dizi sayacı) ---- */
+.step-eyebrow{font-size:11px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);margin-bottom:8px;}
+.tarla-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;max-height:340px;overflow-y:auto;padding:2px;}
+.tarla-tile{
+  background:var(--panel);border:2px solid var(--border);border-radius:14px;padding:16px 10px;text-align:center;min-height:64px;
+}
+.tarla-tile:active{background:var(--green-700);border-color:var(--green-700);color:#fff;}
+.tarla-tile b{font-family:'Barlow Semi Condensed',sans-serif;font-weight:800;font-size:19px;display:block;}
+.tarla-tile span{font-size:11px;opacity:.8;}
+.stepper-wrap{display:flex;flex-direction:column;align-items:center;gap:6px;padding:10px 0 16px;}
+.stepper-label{font-size:12px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.05em;}
+.stepper{display:flex;align-items:center;gap:16px;}
+.stepper button{
+  width:52px;height:52px;border-radius:50%;border:none;background:var(--panel-2);color:var(--ink);
+  font-size:26px;font-weight:800;flex-shrink:0;
+}
+.stepper button.plus{background:var(--green-700);color:#fff;}
+.stepper button:active{filter:brightness(.92);}
+.stepper-num{
+  font-family:'Barlow Semi Condensed',sans-serif;font-weight:800;font-size:44px;text-align:center;
+  min-width:110px;max-width:140px;border:none;background:transparent;color:var(--green-900);
+  -moz-appearance:textfield;
+}
+.stepper-num::-webkit-outer-spin-button,.stepper-num::-webkit-inner-spin-button{-webkit-appearance:none;margin:0;}
+.stepper-sub{font-size:11.5px;color:var(--muted);}
 .modal-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:14px;}
 .btn{padding:11px 18px;border-radius:9px;border:2px solid var(--border);background:#fff;font-size:13.5px;font-weight:700;}
 .btn-primary{background:var(--green-700);color:#fff;border-color:var(--green-700);}
@@ -878,7 +903,7 @@ const AYARLAR = {
   UNITE_PX: 40                // referans kapasitedeki sera-box genişliği (px) — kroki oranı
 };
 const STORAGE_KEY = 'scvSahaKrokiV1';
-const APP_SURUM = 'v30'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
+const APP_SURUM = 'v31'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
 
 /* =========================================================
    DİL (TR/EN) — ana ekran, menü ve buton/etiket metinleri
@@ -940,7 +965,6 @@ const I18N_EN = {
   'Zararlı Adı':'Pest Name', 'Tarih':'Date', 'Yüzde %':'Percent %',
   'Gübre Adı':'Fertilizer Name', 'Miktar (kg)':'Amount (kg)',
   'Tarih (Hasat Tarihi)':'Date (Harvest Date)', 'Kırım No (kaçıncı kırım)':'Harvest No.', 'Ort. Dizi Ağırlığı (kg)':'Avg. String Weight (kg)',
-  'Toplam Kırılan Tütün':'Total Harvested Tobacco', 'toplam dizi × ort. dizi kg':'total strings × avg. string kg',
   'İşçi Sayısı':'Number of Workers', 'Yevmiye (₺)':'Daily Wage (₺)', 'Kayıp/Çürük Dizi (opsiyonel)':'Lost/Spoiled Strings (optional)',
   '18 yaş altı çalışan yok':'No workers under 18', 'Çalışma Saati':'Working Hours',
   'Kutu Sayısı':'Box Count', 'Toplam Kg':'Total Kg', 'Ort. Kutu Kg':'Avg. Box Kg',
@@ -951,6 +975,8 @@ const I18N_EN = {
   'Toplam Sulama Saati':'Total Irrigation Hours', 'Toplam Depo Kg':'Total Storage Kg',
   '⚠️ Uyarılar':'⚠️ Warnings', 'hasada':'harvest in', 'Aktif uyarı yok':'No active warnings',
   'Kırım Kaydı':'Harvest Record', 'Kırım Kaydını Düzenle':'Edit Harvest Record', 'Veri Yönetimi':'Data Management', 'Pin Ekle':'Add Pin', 'Koordinat ile Tarla Ekle':'Add Field by Coordinates',
+  'Hangi tarla?':'Which field?', 'Kaç dizi kırıldı':'How many strings cut', "Basılı tut: 10'ar artır":'Hold to add 10 at a time',
+  '+ Detaylı bilgi ekle (işçi, yevmiye, kayıp)':'+ Add details (workers, wage, loss)', 'Geri':'Back',
   'Kutu Ekle':'Add Box', 'Sulama Kaydı Ekle':'Add Irrigation Record',
   'Tarla Adı':'Field Name', 'Çiftçi':'Farmer', 'Dekar':'Decares', 'Varyete Kodu / Çeşit':'Variety Code / Type', 'Bölge':'Region',
   'Diğer / Belirtilmemiş':'Other / Unspecified',
@@ -2200,62 +2226,115 @@ function submitGubreHizliEkle(tarlaId){
    KIRIM (DIZIM) MODALI
    ========================================================= */
 let kirimModalPresetTarlaId = null;
+let kirimAkisTarlaId = null;
 function openKirimModal(presetTarlaId){
   if(!state.tarlalar.length){ alert('Önce en az bir tarla ekleyin.'); return; }
   kirimModalPresetTarlaId = presetTarlaId || null;
-  const tarlaOptions = state.tarlalar.map(t=>`<option value="${t.id}" ${t.id===presetTarlaId?'selected':''}>${escapeHtml(t.ad)}</option>`).join('');
-  let kirimNoVarsayilan = 1;
-  if(presetTarlaId){ kirimNoVarsayilan = Math.min(6, (tarlaStats(presetTarlaId).maxKirimNo||0)+1); }
+  if(presetTarlaId){ kirimAkisTarlaId = presetTarlaId; kirimAdim2Ac(); }
+  else { kirimAdim1Ac(); }
+}
+function kirimAdim1Ac(){
+  kirimAkisTarlaId = null;
+  const tiles = state.tarlalar.map(t=>`
+    <button class="tarla-tile" type="button" onclick="kirimTarlaSecildi('${t.id}')">
+      <b>${escapeHtml(t.ad)}</b><span>${escapeHtml(t.cesit||'-')}</span>
+    </button>`).join('');
   openModal(`
     <h2>${i18n('Kırım Kaydı')}</h2>
-    <div class="row2">
-      <div class="field"><label>${i18n('Tarih (Hasat Tarihi)')}</label><input id="kTarih" type="date" value="${todayStr()}"></div>
-      <div class="field"><label>${i18n('Tarla')}</label><select id="kTarla" ${presetTarlaId?'disabled':''}>${tarlaOptions}</select></div>
+    <div class="step-eyebrow">${i18n('Hangi tarla?')}</div>
+    <div class="tarla-grid">${tiles}</div>
+    <div class="modal-actions">
+      <button class="btn btn-muted" onclick="closeModal()">${i18n('Vazgeç')}</button>
+    </div>
+  `);
+}
+function kirimTarlaSecildi(tarlaId){
+  kirimAkisTarlaId = tarlaId;
+  kirimAdim2Ac();
+}
+function kirimSonOrtDiziKg(tarlaId){
+  const buTarla = state.kirimlar.filter(k=>k.tarlaId===tarlaId).sort((a,b)=>b.olusturma-a.olusturma);
+  if(buTarla.length) return buTarla[0].ortDiziKg;
+  const tumu = [...state.kirimlar].sort((a,b)=>b.olusturma-a.olusturma);
+  return tumu.length ? tumu[0].ortDiziKg : '';
+}
+function kirimAdim2Ac(){
+  const tarlaId = kirimAkisTarlaId;
+  const t = tarlaBul(tarlaId);
+  const kirimNoVarsayilan = Math.min(6, (tarlaStats(tarlaId).maxKirimNo||0)+1);
+  const sonOrtKg = kirimSonOrtDiziKg(tarlaId);
+  const geriBtn = kirimModalPresetTarlaId
+    ? `<button class="btn btn-muted" onclick="openTarlaDetay('${kirimModalPresetTarlaId}')">${i18n('Vazgeç')}</button>`
+    : `<button class="btn btn-muted" onclick="kirimAdim1Ac()">${i18n('Geri')}</button>`;
+  openModal(`
+    <h2>${escapeHtml(t?t.ad:'')}</h2>
+    <div class="stepper-wrap">
+      <div class="stepper-label">${i18n('Kaç dizi kırıldı')}</div>
+      <div class="stepper">
+        <button type="button" onmousedown="kirimStepperBasiliTut(-10)" onmouseup="kirimStepperBirak()" onmouseleave="kirimStepperBirak()" ontouchstart="kirimStepperBasiliTut(-10)" ontouchend="kirimStepperBirak()">−</button>
+        <input id="k2Dizi" class="stepper-num" type="number" inputmode="numeric" min="0" step="1" value="0">
+        <button type="button" class="plus" onmousedown="kirimStepperBasiliTut(10)" onmouseup="kirimStepperBirak()" onmouseleave="kirimStepperBirak()" ontouchstart="kirimStepperBasiliTut(10)" ontouchend="kirimStepperBirak()">+</button>
+      </div>
+      <div class="stepper-sub">${i18n('Basılı tut: 10\'ar artır')}</div>
     </div>
     <div class="row2">
       <div class="field"><label>${i18n('Kırım No (kaçıncı kırım)')}</label>
-        <select id="kKirimNo">${[1,2,3,4,5,6].map(n=>`<option value="${n}" ${n===kirimNoVarsayilan?'selected':''}>${n}. ${i18n('kırım')}</option>`).join('')}</select>
+        <select id="k2KirimNo">${[1,2,3,4,5,6].map(n=>`<option value="${n}" ${n===kirimNoVarsayilan?'selected':''}>${n}. ${i18n('kırım')}</option>`).join('')}</select>
       </div>
-      <div class="field"><label>${i18n('Dizi Sayısı')}</label><input id="kDiziSayisi" type="number" min="0" step="1" oninput="kirimTahminGuncelle()"></div>
+      <div class="field"><label>${i18n('Ort. Dizi Ağırlığı (kg)')}</label><input id="k2OrtDiziKg" type="number" min="0" step="0.01" value="${sonOrtKg}"></div>
     </div>
-    <div class="field"><label>${i18n('Ort. Dizi Ağırlığı (kg)')}</label><input id="kOrtDiziKg" type="number" min="0" step="0.01" oninput="kirimTahminGuncelle()"></div>
-    <div class="hint-box" id="kirimTahminKutu">${i18n('Toplam Kırılan Tütün')}: 0 kg (${i18n('toplam dizi × ort. dizi kg')})</div>
+    <div class="field"><label>${i18n('Tarih (Hasat Tarihi)')}</label><input id="k2Tarih" type="date" value="${todayStr()}"></div>
     <div class="hint-box">${i18n('Bu tütün hangi seraya dizilecek, hemen seçmek zorunda değilsiniz — daha sonra sera ekranından "Tütün Dizimi Ekle" ile atayabilirsiniz.')}</div>
-    <div class="row3">
-      <div class="field"><label>${i18n('İşçi Sayısı')}</label><input id="kIsci" type="number" min="0" step="1"></div>
-      <div class="field"><label>${i18n('Yevmiye (₺)')}</label><input id="kYevmiye" type="number" min="0" step="1"></div>
-      <div class="field"><label>${i18n('Kayıp/Çürük Dizi (opsiyonel)')}</label><input id="kKayip" type="number" min="0" step="1"></div>
-    </div>
-    <div class="row2">
-      <div class="check-row"><input type="checkbox" id="kAltYas"><label for="kAltYas" style="text-transform:none;font-size:12.5px;">${i18n('18 yaş altı çalışan yok')}</label></div>
-      <div class="field"><label>${i18n('Çalışma Saati')}</label><input id="kCalismaSaati" type="number" min="0" step="0.5"></div>
+    <button class="btn btn-muted" type="button" style="width:100%;margin-top:2px;" onclick="kirimDetayAcKapa()">${i18n('+ Detaylı bilgi ekle (işçi, yevmiye, kayıp)')}</button>
+    <div id="kirimDetayAlan" class="hidden">
+      <div class="row3" style="margin-top:8px;">
+        <div class="field"><label>${i18n('İşçi Sayısı')}</label><input id="k2Isci" type="number" min="0" step="1"></div>
+        <div class="field"><label>${i18n('Yevmiye (₺)')}</label><input id="k2Yevmiye" type="number" min="0" step="1"></div>
+        <div class="field"><label>${i18n('Kayıp/Çürük Dizi (opsiyonel)')}</label><input id="k2Kayip" type="number" min="0" step="1"></div>
+      </div>
+      <div class="row2">
+        <div class="check-row"><input type="checkbox" id="k2AltYas"><label for="k2AltYas" style="text-transform:none;font-size:12.5px;">${i18n('18 yaş altı çalışan yok')}</label></div>
+        <div class="field"><label>${i18n('Çalışma Saati')}</label><input id="k2CalismaSaati" type="number" min="0" step="0.5"></div>
+      </div>
     </div>
     <div class="modal-actions">
-      <button class="btn btn-muted" onclick="${presetTarlaId?`openTarlaDetay('${presetTarlaId}')`:'closeModal()'}">${i18n('Vazgeç')}</button>
+      ${geriBtn}
       <button class="btn btn-primary" onclick="submitKirimEkle()">${i18n('Kaydet')}</button>
     </div>
   `);
 }
-function kirimTahminGuncelle(){
-  const ortDizi = Number(document.getElementById('kOrtDiziKg').value)||0;
-  const toplamDizi = Number(document.getElementById('kDiziSayisi').value)||0;
-  document.getElementById('kirimTahminKutu').innerHTML =
-    `${i18n('Toplam Kırılan Tütün')}: <b>${fmt(toplamDizi*ortDizi,0)} kg</b> (${fmt(toplamDizi,0)} dizi × ort. dizi kg)`;
+function kirimDetayAcKapa(){
+  document.getElementById('kirimDetayAlan').classList.toggle('hidden');
+}
+let kirimStepperInterval = null;
+function kirimStepperAdimAt(delta){
+  const el = document.getElementById('k2Dizi');
+  if(!el) return;
+  el.value = Math.max(0, (Number(el.value)||0) + delta);
+}
+function kirimStepperBasiliTut(delta){
+  kirimStepperAdimAt(delta);
+  clearInterval(kirimStepperInterval);
+  kirimStepperInterval = setInterval(()=>kirimStepperAdimAt(delta), 140);
+}
+function kirimStepperBirak(){
+  clearInterval(kirimStepperInterval);
+  kirimStepperInterval = null;
 }
 function submitKirimEkle(){
   const k = {
     id: uid(),
-    tarih: document.getElementById('kTarih').value || todayStr(),
-    tarlaId: document.getElementById('kTarla').value,
-    kirimNo: Number(document.getElementById('kKirimNo').value),
-    diziSayisi: Number(document.getElementById('kDiziSayisi').value)||0,
-    ortDiziKg: Number(document.getElementById('kOrtDiziKg').value)||0,
+    tarih: document.getElementById('k2Tarih').value || todayStr(),
+    tarlaId: kirimAkisTarlaId,
+    kirimNo: Number(document.getElementById('k2KirimNo').value),
+    diziSayisi: Number(document.getElementById('k2Dizi').value)||0,
+    ortDiziKg: Number(document.getElementById('k2OrtDiziKg').value)||0,
     seraDagilimi: [],
-    isciSayisi: Number(document.getElementById('kIsci').value)||0,
-    yevmiye: Number(document.getElementById('kYevmiye').value)||0,
-    kayipDizi: Number(document.getElementById('kKayip').value)||0,
-    altYasYok: document.getElementById('kAltYas').checked,
-    calismaSaati: Number(document.getElementById('kCalismaSaati').value)||0,
+    isciSayisi: Number(document.getElementById('k2Isci').value)||0,
+    yevmiye: Number(document.getElementById('k2Yevmiye').value)||0,
+    kayipDizi: Number(document.getElementById('k2Kayip').value)||0,
+    altYasYok: document.getElementById('k2AltYas').checked,
+    calismaSaati: Number(document.getElementById('k2CalismaSaati').value)||0,
     olusturma: Date.now(),
     ...sonIslemDamgasi()
   };
