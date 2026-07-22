@@ -544,6 +544,7 @@ body.has-fullscreen-panel{overflow:hidden;}
 .dizim-del:hover{background:#fbe4e1;color:var(--red);}
 .iklim-chart-title{font-size:11.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.03em;margin:10px 0 2px;}
 .iklim-chart-svg{width:100%;display:block;}
+.iklim-grafik-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:2px 24px;align-items:start;}
 
 /* ---------- İKLİM TAKİP: EXCEL-BENZERİ DÜZENLENEBİLİR TABLO ---------- */
 .iklim-table-wrap{max-height:360px;overflow:auto;border:1px solid var(--border);border-radius:8px;background:#fff;}
@@ -961,7 +962,7 @@ const AYARLAR = {
   UNITE_PX: 40                // referans kapasitedeki sera-box genişliği (px) — kroki oranı
 };
 const STORAGE_KEY = 'scvSahaKrokiV1';
-const APP_SURUM = 'v41'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
+const APP_SURUM = 'v42'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
 
 /* =========================================================
    DİL (TR/EN) — ana ekran, menü ve buton/etiket metinleri
@@ -3603,7 +3604,7 @@ function iklimYumusakYolD(pts){
   return d.trim();
 }
 function iklimCizgiGrafikSvg(values, labels, color, birim, gradId){
-  const W = 640, H = 300, padL = 38, padR = 14, padT = 20, padB = 30;
+  const W = 380, H = 260, padL = 24, padR = 10, padT = 14, padB = 22;
   const innerW = W - padL - padR, innerH = H - padT - padB;
   const min = Math.min(...values), max = Math.max(...values);
   const range = (max - min) || 1;
@@ -3617,14 +3618,14 @@ function iklimCizgiGrafikSvg(values, labels, color, birim, gradId){
 
   const gridLines = [yMax, (yMax+yMin)/2, yMin].map(v=>`
     <line x1="${padL}" y1="${y(v).toFixed(1)}" x2="${W-padR}" y2="${y(v).toFixed(1)}" stroke="var(--border)" stroke-width="1"/>
-    <text x="${padL-6}" y="${(y(v)+4).toFixed(1)}" font-size="11.5" fill="var(--muted)" text-anchor="end">${fmt(v,1)}</text>
+    <text x="${padL-4}" y="${(y(v)+3).toFixed(1)}" font-size="10" fill="var(--muted)" text-anchor="end">${fmt(v,1)}</text>
   `).join('');
 
   const labelStep = Math.max(1, Math.ceil(n/6));
   const xLabels = values.map((v,i)=>{
     if(i%labelStep!==0 && i!==n-1) return '';
     const anchor = i===0 ? 'start' : (i===n-1 ? 'end' : 'middle');
-    return `<text x="${x(i).toFixed(1)}" y="${H-10}" font-size="11" fill="var(--muted)" text-anchor="${anchor}">${escapeHtml(labels[i]||'')}</text>`;
+    return `<text x="${x(i).toFixed(1)}" y="${H-7}" font-size="10" fill="var(--muted)" text-anchor="${anchor}">${escapeHtml(labels[i]||'')}</text>`;
   }).join('');
 
   const lineD = iklimYumusakYolD(pts);
@@ -3632,21 +3633,21 @@ function iklimCizgiGrafikSvg(values, labels, color, birim, gradId){
   const avgY = y(avg);
   const avgLine = `
     <line x1="${padL}" y1="${avgY.toFixed(1)}" x2="${W-padR}" y2="${avgY.toFixed(1)}" stroke="${color}" stroke-width="1" stroke-dasharray="4 3" opacity=".55"/>
-    <text x="${W-padR}" y="${(avgY-5).toFixed(1)}" font-size="11" fill="${color}" text-anchor="end" opacity=".8">Ort ${fmt(avg,1)}</text>`;
+    <text x="${W-padR}" y="${(avgY-3).toFixed(1)}" font-size="10" fill="${color}" text-anchor="end" opacity=".8">Ort ${fmt(avg,1)}</text>`;
 
   let minI=0, maxI=0;
   values.forEach((v,i)=>{ if(v<values[minI]) minI=i; if(v>values[maxI]) maxI=i; });
 
   const points = values.map((v,i)=>{
     const isEdge = (i===minI || i===maxI) && n>1;
-    const r = isEdge ? 6 : 4.5;
-    return `<circle cx="${x(i).toFixed(1)}" cy="${y(v).toFixed(1)}" r="${r}" fill="${isEdge?'#fff':color}" stroke="${color}" stroke-width="${isEdge?3:0}"><title>${escapeHtml(labels[i]||'')}: ${fmt(v,1)}${birim}</title></circle>`;
+    const r = isEdge ? 5 : 3.5;
+    return `<circle cx="${x(i).toFixed(1)}" cy="${y(v).toFixed(1)}" r="${r}" fill="${isEdge?'#fff':color}" stroke="${color}" stroke-width="${isEdge?2.5:0}"><title>${escapeHtml(labels[i]||'')}: ${fmt(v,1)}${birim}</title></circle>`;
   }).join('');
 
   const directLabels = values.map((v,i)=>{
     const isEdge = (i===minI || i===maxI) && n>1;
     if(n>14 && !isEdge) return '';
-    return `<text x="${x(i).toFixed(1)}" y="${(y(v)-11).toFixed(1)}" font-size="12.5" font-weight="700" fill="${color}" text-anchor="middle">${fmt(v,1)}</text>`;
+    return `<text x="${x(i).toFixed(1)}" y="${(y(v)-7).toFixed(1)}" font-size="11" font-weight="700" fill="${color}" text-anchor="middle">${fmt(v,1)}</text>`;
   }).join('');
 
   return `<svg viewBox="0 0 ${W} ${H}" class="iklim-chart-svg">
@@ -3659,7 +3660,7 @@ function iklimCizgiGrafikSvg(values, labels, color, birim, gradId){
     ${gridLines}
     <path d="${areaD}" fill="url(#iklimGrad${gradId})" stroke="none"/>
     ${avgLine}
-    <path d="${lineD}" fill="none" stroke="${color}" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="${lineD}" fill="none" stroke="${color}" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"/>
     ${points}
     ${directLabels}
     ${xLabels}
@@ -3680,10 +3681,16 @@ function openIklimGrafikModal(){
         </select>
       </div>
     </div>
-    <div class="iklim-chart-title">${i18n('Sıcaklık (°C)')}</div>
-    <div id="iklimGrafikSicaklik"></div>
-    <div class="iklim-chart-title">${i18n('Nem (%)')}</div>
-    <div id="iklimGrafikNem"></div>
+    <div class="iklim-grafik-grid">
+      <div>
+        <div class="iklim-chart-title">${i18n('Sıcaklık (°C)')}</div>
+        <div id="iklimGrafikSicaklik"></div>
+      </div>
+      <div>
+        <div class="iklim-chart-title">${i18n('Nem (%)')}</div>
+        <div id="iklimGrafikNem"></div>
+      </div>
+    </div>
     <div class="modal-actions">
       <button class="btn btn-muted" onclick="closeModal()">${i18n('Kapat')}</button>
     </div>
