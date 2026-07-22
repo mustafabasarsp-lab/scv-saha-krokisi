@@ -573,6 +573,20 @@ body.has-fullscreen-panel{overflow:hidden;}
 .iklim-row-del{border:none;background:transparent;color:var(--muted);font-size:15px;line-height:1;cursor:pointer;padding:4px 7px;border-radius:5px;}
 .iklim-row-del:hover{background:#fbe4e1;color:var(--red);}
 
+/* ---------- SİLME SONRASI GERİ AL TOAST ---------- */
+.geri-al-toast{
+  position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:120;
+  display:flex;align-items:center;gap:12px;
+  background:var(--ink);color:#fff;border-radius:10px;
+  padding:11px 14px;box-shadow:0 6px 20px rgba(0,0,0,.3);
+  font-size:13.5px;max-width:calc(100vw - 32px);
+}
+.geri-al-toast.hidden{display:none;}
+.geri-al-toast .btn{padding:6px 12px;font-size:13px;white-space:nowrap;}
+@media (max-width:900px){
+  .geri-al-toast{bottom:calc(122px + env(safe-area-inset-bottom,0px));}
+}
+
 /* ---------- GİRİŞ / SENKRON DURUMU ---------- */
 #loginOverlay{z-index:200;}
 #loginOverlay .modal{max-width:340px;text-align:center;}
@@ -940,6 +954,11 @@ body.has-fullscreen-panel{overflow:hidden;}
   <div class="modal" id="modalContent"></div>
 </div>
 
+<div class="geri-al-toast hidden" id="geriAlToast">
+  <span id="geriAlToastMetin"></span>
+  <button class="btn btn-primary" id="geriAlToastBtn" onclick="sonSilineniGeriAl()" data-i18n="↩ Geri Al">↩ Geri Al</button>
+</div>
+
 <div class="overlay" id="loginOverlay">
   <div class="modal">
     <h2 data-i18n="SCV Saha Krokisi — Giriş">SCV Saha Krokisi — Giriş</h2>
@@ -962,7 +981,7 @@ const AYARLAR = {
   UNITE_PX: 40                // referans kapasitedeki sera-box genişliği (px) — kroki oranı
 };
 const STORAGE_KEY = 'scvSahaKrokiV1';
-const APP_SURUM = 'v44'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
+const APP_SURUM = 'v45'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
 
 /* =========================================================
    DİL (TR/EN) — ana ekran, menü ve buton/etiket metinleri
@@ -1010,6 +1029,7 @@ const I18N_EN = {
   '(silinmiş sera)':'(deleted greenhouse)', 'Sıcaklık / Nem Grafiği':'Temperature / Humidity Chart', 'Son Kaç Kayıt':'How Many Recent Records',
   'SCV Saha Krokisi — Giriş':'SCV Field Layout — Login', 'Kullanıcı Adı':'Username', 'Şifre':'Password', 'Giriş Yap':'Log In',
   'Vazgeç':'Cancel', 'Kaydet':'Save', 'Ekle':'Add', 'Kapat':'Close', 'Düzenle':'Edit', 'Sil':'Delete',
+  '↩ Geri Al':'↩ Undo', 'silindi.':'deleted.',
   'Yeni Sera':'New Greenhouse', 'Serayı Düzenle':'Edit Greenhouse', 'Yeni Tarla':'New Field', 'Tarlayı Düzenle':'Edit Field',
   'Sera Adı':'Greenhouse Name', 'Sera Dizi Kapasitesi':'Greenhouse String Capacity',
   'Tür':'Type', 'Çeşit':'Variety', 'Giriş Tarihi':'Entry Date', 'Branda Rengi':'Tarp Color', 'Beyaz':'White', 'Mavi':'Blue',
@@ -1304,6 +1324,37 @@ function uid(){ return 'id' + Date.now().toString(36) + Math.random().toString(3
 function adCakismaVarMi(liste, ad, haricId){
   const norm = (ad||'').trim().toLocaleLowerCase('tr');
   return liste.some(x=>x.id!==haricId && (x.ad||'').trim().toLocaleLowerCase('tr')===norm);
+}
+
+/* ---- Silme sonrası "Geri Al" — silinen koleksiyon(lar)ın anlık kopyasını
+   birkaç saniyeliğine bellekte tutar; kırım silme gibi işlemler seralardaki
+   doluluğu da değiştirdiği için birden fazla koleksiyon aynı anda yedeklenir. ---- */
+let sonSilinenYedek = null;
+let sonSilinenSuresi = null;
+function silmeYedekAl(koleksiyonAdlari, etiket){
+  const koleksiyonlar = {};
+  koleksiyonAdlari.forEach(c=>{ koleksiyonlar[c] = JSON.parse(JSON.stringify(state[c]||[])); });
+  sonSilinenYedek = { koleksiyonlar };
+  clearTimeout(sonSilinenSuresi);
+  const el = document.getElementById('geriAlToast');
+  const metinEl = document.getElementById('geriAlToastMetin');
+  if(el && metinEl){
+    metinEl.textContent = etiket + ' ' + i18n('silindi.');
+    el.classList.remove('hidden');
+  }
+  sonSilinenSuresi = setTimeout(geriAlToastGizle, 8000);
+}
+function geriAlToastGizle(){
+  clearTimeout(sonSilinenSuresi);
+  sonSilinenYedek = null;
+  const el = document.getElementById('geriAlToast');
+  if(el) el.classList.add('hidden');
+}
+function sonSilineniGeriAl(){
+  if(!sonSilinenYedek) return;
+  Object.keys(sonSilinenYedek.koleksiyonlar).forEach(c=>{ state[c] = sonSilinenYedek.koleksiyonlar[c]; });
+  geriAlToastGizle();
+  renderAll();
 }
 function todayStr(){ return new Date().toISOString().slice(0,10); }
 function mevcutKullaniciAdi(){
@@ -1881,7 +1932,9 @@ function seraBosalt(id){
   renderAll(); openSeraDetay(id);
 }
 function seraSil(id){
-  if(!confirm('Bu sera silinsin mi? Tüm dönem geçmişi de silinecek. Bu işlem geri alınamaz.')) return;
+  const s = seraBul(id);
+  if(!confirm('Bu sera silinsin mi? Tüm dönem geçmişi de silinecek.')) return;
+  silmeYedekAl(['seralar'], (s?s.ad:'Sera'));
   state.seralar = state.seralar.filter(s=>s.id!==id);
   closeModal(); renderAll();
 }
@@ -2258,7 +2311,9 @@ function openTarlaDetay(id){
   `);
 }
 function tarlaSil(id){
-  if(!confirm('Bu tarla silinsin mi? Bu işlem geri alınamaz.')) return;
+  const t = tarlaBul(id);
+  if(!confirm('Bu tarla silinsin mi?')) return;
+  silmeYedekAl(['tarlalar'], (t?t.ad:'Tarla'));
   state.tarlalar = state.tarlalar.filter(t=>t.id!==id);
   closeModal(); renderAll();
 }
@@ -2596,6 +2651,7 @@ function dizimKaldir(kirimId, dizimId){
   if(!k) return;
   const d = (k.seraDagilimi||[]).find(x=>x.id===dizimId);
   if(!d) return;
+  silmeYedekAl(['kirimlar','seralar'], 'Dizim');
   const sera = seraBul(d.seraId);
   if(sera){
     (sera.donemler||[]).forEach(donem=>{
@@ -2763,6 +2819,7 @@ function kirimSil(id){
   if(!confirm('Bu kırım kaydı silinsin mi? İlgili sera dönemlerinin doluluğu da buna göre geri alınacak.')) return;
   const k = state.kirimlar.find(x=>x.id===id);
   if(!k) return;
+  silmeYedekAl(['kirimlar','seralar'], 'Kırım kaydı');
   (k.seraDagilimi||[]).forEach(d=>{
     const sera = seraBul(d.seraId);
     if(!sera) return;
@@ -3185,6 +3242,7 @@ function haritaPinGpsIleGuncelle(pinId){
 }
 function haritaPinSilOnay(pinId){
   if(!confirm('Bu pin silinsin mi?')) return;
+  silmeYedekAl(['haritaPinleri'], 'Harita pini');
   state.haritaPinleri = state.haritaPinleri.filter(p=>p.id!==pinId);
   closeModal(); renderAll();
 }
@@ -3354,7 +3412,9 @@ function submitKutuEkle(){
   closeModal(); renderAll();
 }
 function kutuSil(id){
+  const k = state.depoKutulari.find(x=>x.id===id);
   if(!confirm('Bu kutu kaydı silinsin mi?')) return;
+  silmeYedekAl(['depoKutulari'], 'Kutu #'+(k?k.kutuNo:''));
   state.depoKutulari = state.depoKutulari.filter(k=>k.id!==id);
   renderAll();
 }
@@ -3468,6 +3528,7 @@ function submitSulamaEkle(){
 }
 function sulamaSil(id){
   if(!confirm('Bu sulama kaydı silinsin mi?')) return;
+  silmeYedekAl(['sulamaKayitlari'], 'Sulama kaydı');
   state.sulamaKayitlari = state.sulamaKayitlari.filter(s=>s.id!==id);
   renderAll();
 }
@@ -3551,6 +3612,7 @@ function submitIklimEkle(){
 }
 function iklimSil(id){
   if(!confirm('Bu sıcaklık/nem kaydı silinsin mi?')) return;
+  silmeYedekAl(['iklimKayitlari'], 'Sıcaklık/nem kaydı');
   state.iklimKayitlari = state.iklimKayitlari.filter(k=>k.id!==id);
   renderAll();
 }
