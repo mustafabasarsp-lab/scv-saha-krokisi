@@ -981,7 +981,48 @@ const AYARLAR = {
   UNITE_PX: 40                // referans kapasitedeki sera-box genişliği (px) — kroki oranı
 };
 const STORAGE_KEY = 'scvSahaKrokiV1';
-const APP_SURUM = 'v46'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
+const APP_SURUM = 'v47'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
+
+/* =========================================================
+   HATA / DONMA GÜNLÜĞÜ — "bazen donuyor" şikayetini araştırmak için.
+   JS hatalarını, yakalanmamış promise red'lerini ve ana iş parçacığının
+   uzun süre tepkisiz kaldığı anları (requestAnimationFrame aralığı
+   anormal büyüdüğünde) cihazda localStorage'a kaydeder. Sekme arka
+   plandayken/rAF durduğunda yanlış "donma" kaydı oluşmasın diye
+   visibilitychange'de referans sıfırlanır.
+   ========================================================= */
+const HATA_GUNLUGU_ANAHTAR = 'scvHataGunlugu';
+const HATA_GUNLUGU_MAX = 40;
+function hataKaydet(tip, mesaj, detay){
+  try{
+    const liste = JSON.parse(localStorage.getItem(HATA_GUNLUGU_ANAHTAR) || '[]');
+    liste.push({ zaman: Date.now(), tip, mesaj: String(mesaj||'').slice(0,500), detay: String(detay||'').slice(0,2000) });
+    while(liste.length > HATA_GUNLUGU_MAX) liste.shift();
+    localStorage.setItem(HATA_GUNLUGU_ANAHTAR, JSON.stringify(liste));
+  }catch(e){ /* localStorage dolu/erişilemez olabilir, sessizce yut */ }
+}
+window.addEventListener('error', e=>{
+  hataKaydet('hata', e.message, (e.error && e.error.stack) || (e.filename+':'+e.lineno+':'+e.colno));
+});
+window.addEventListener('unhandledrejection', e=>{
+  const r = e.reason;
+  hataKaydet('red', (r && r.message) || String(r), r && r.stack);
+});
+(function(){
+  let sonKareZamani = performance.now();
+  document.addEventListener('visibilitychange', ()=>{ sonKareZamani = performance.now(); });
+  function donmaGozlemcisi(zaman){
+    const fark = zaman - sonKareZamani;
+    // 60sn üstü fark muhtemelen bilgisayar/telefon uyku moduna geçti demektir,
+    // gerçek bir arayüz donması değil — günlüğü kirletmesin diye atlanıyor.
+    if(document.visibilityState==='visible' && fark > 2500 && fark < 60000){
+      hataKaydet('donma', `Ana iş parçacığı ~${Math.round(fark)}ms tepkisiz kaldı.`, 'sayfa: '+(document.querySelector('.page:not(.hidden)')?.id||'?'));
+    }
+    sonKareZamani = zaman;
+    requestAnimationFrame(donmaGozlemcisi);
+  }
+  requestAnimationFrame(donmaGozlemcisi);
+})();
 
 /* =========================================================
    DİL (TR/EN) — ana ekran, menü ve buton/etiket metinleri
@@ -2884,10 +2925,56 @@ function openVeriYonetimiModal(){
       </div>
       <div class="hint-box">Kalemli bölgesine B1-B41, C1-C37, D1-D35, E1-E35 seralarını 400 dizi kapasiteli olarak ekler. Aynı isimde sera zaten varsa dokunmaz, sadece eksik olanları tamamlar.</div>
     </div>
+    <div class="field">
+      <label>🪲 Hata / Donma Günlüğü</label>
+      <div class="modal-actions" style="justify-content:flex-start;flex-wrap:wrap;">
+        <button class="btn" onclick="openHataGunluguModal()">Günlüğü Göster (${hataGunluguOku().length})</button>
+      </div>
+      <div class="hint-box">Uygulama donduğunda/hata verdiğinde cihazda otomatik kaydediliyor. Bir donma yaşarsan buradan açıp "Kopyala" ile bana gönderebilirsin.</div>
+    </div>
     <div class="modal-actions">
       <button class="btn btn-muted" onclick="closeModal()">${i18n('Kapat')}</button>
     </div>
   `);
+}
+function hataGunluguOku(){
+  try{ return JSON.parse(localStorage.getItem(HATA_GUNLUGU_ANAHTAR) || '[]'); }
+  catch(e){ return []; }
+}
+function hataGunluguMetne(){
+  const liste = hataGunluguOku();
+  if(!liste.length) return 'Kayıt yok.';
+  return liste.slice().reverse().map(k=>{
+    const t = new Date(k.zaman).toLocaleString('tr-TR');
+    return `[${t}] (${k.tip}) ${k.mesaj}${k.detay?'\n  '+k.detay:''}`;
+  }).join('\n\n');
+}
+function openHataGunluguModal(){
+  const metin = hataGunluguMetne();
+  openModal(`
+    <h2>🪲 Hata / Donma Günlüğü</h2>
+    <div class="hint-box">En yeni en üstte. "Kopyala" ile tamamını panoya alıp gönderebilirsin.</div>
+    <textarea id="hataGunluguMetin" readonly style="width:100%;height:260px;font-family:monospace;font-size:11.5px;padding:8px;border:1px solid var(--border);border-radius:6px;background:#fff;color:var(--ink);">${escapeHtml(metin)}</textarea>
+    <div class="modal-actions">
+      <button class="btn btn-muted" onclick="closeModal()">${i18n('Kapat')}</button>
+      <button class="btn btn-danger" onclick="hataGunluguTemizle()">Günlüğü Temizle</button>
+      <button class="btn btn-primary" onclick="hataGunluguKopyala()">📋 Kopyala</button>
+    </div>
+  `);
+}
+function hataGunluguKopyala(){
+  const el = document.getElementById('hataGunluguMetin');
+  el.select();
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(el.value).then(()=>alert('Panoya kopyalandı.')).catch(()=>document.execCommand('copy'));
+  } else {
+    document.execCommand('copy');
+  }
+}
+function hataGunluguTemizle(){
+  if(!confirm('Hata günlüğü temizlensin mi?')) return;
+  localStorage.removeItem(HATA_GUNLUGU_ANAHTAR);
+  closeModal();
 }
 function kalemliSeralariTopluKur(){
   const GRUPLAR = [ {harf:'B', adet:41}, {harf:'C', adet:37}, {harf:'D', adet:35}, {harf:'E', adet:35} ];
