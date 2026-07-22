@@ -962,7 +962,7 @@ const AYARLAR = {
   UNITE_PX: 40                // referans kapasitedeki sera-box genişliği (px) — kroki oranı
 };
 const STORAGE_KEY = 'scvSahaKrokiV1';
-const APP_SURUM = 'v42'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
+const APP_SURUM = 'v43'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
 
 /* =========================================================
    DİL (TR/EN) — ana ekran, menü ve buton/etiket metinleri
@@ -1284,6 +1284,10 @@ function hesaptanCik(){
 }
 
 function uid(){ return 'id' + Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
+function adCakismaVarMi(liste, ad, haricId){
+  const norm = (ad||'').trim().toLocaleLowerCase('tr');
+  return liste.some(x=>x.id!==haricId && (x.ad||'').trim().toLocaleLowerCase('tr')===norm);
+}
 function todayStr(){ return new Date().toISOString().slice(0,10); }
 function mevcutKullaniciAdi(){
   const email = fbAuth.currentUser && fbAuth.currentUser.email;
@@ -1768,6 +1772,7 @@ function openSeraEkleModal(bolgeVarsayilan){
 function submitSeraEkle(){
   const f = seraFormOku();
   if(!f.ad){ alert('Sera adı girin.'); return; }
+  if(adCakismaVarMi(state.seralar, f.ad) && !confirm(`"${f.ad}" adında bir sera zaten var. Yine de eklensin mi?`)) return;
   state.seralar.push({
     id: uid(), ad: f.ad, kapasite: f.kapasite, bolge: f.bolge,
     donemler: [], olusturma: Date.now(), ...sonIslemDamgasi()
@@ -1791,6 +1796,7 @@ function submitSeraDuzenle(id){
   if(!s) return;
   const f = seraFormOku();
   if(!f.ad){ alert('Sera adı girin.'); return; }
+  if(adCakismaVarMi(state.seralar, f.ad, id) && !confirm(`"${f.ad}" adında başka bir sera zaten var. Yine de kaydedilsin mi?`)) return;
   s.ad = f.ad; s.kapasite = f.kapasite; s.bolge = f.bolge;
   Object.assign(s, sonIslemDamgasi());
   renderAll(); openSeraDetay(s.id);
@@ -2106,6 +2112,7 @@ function openTarlaEkleModal(bolgeVarsayilan){
 function submitTarlaEkle(){
   const f = tarlaFormOku();
   if(!f.ad){ alert('Tarla adı girin.'); return; }
+  if(adCakismaVarMi(state.tarlalar, f.ad) && !confirm(`"${f.ad}" adında bir tarla zaten var. Yine de eklensin mi?`)) return;
   state.tarlalar.push({ id: uid(), ...f, olusturma: Date.now(), ...sonIslemDamgasi() });
   closeModal(); renderAll();
 }
@@ -2132,6 +2139,7 @@ function submitTarlaDuzenle(id){
   if(!t) return;
   const f = tarlaFormOku();
   if(!f.ad){ alert('Tarla adı girin.'); return; }
+  if(adCakismaVarMi(state.tarlalar, f.ad, id) && !confirm(`"${f.ad}" adında başka bir tarla zaten var. Yine de kaydedilsin mi?`)) return;
   Object.assign(t, f, sonIslemDamgasi());
   renderAll(); openTarlaDetay(t.id);
 }
@@ -2540,6 +2548,14 @@ function submitKirimDuzenle(kirimId){
   else { closeModal(); renderAll(); }
 }
 /* ---- Kırım → Sera dizimi (kırılan tütünün hangi seraya, ne zaman, ne kadar dizildiği) ---- */
+function seraKapasiteAsimOnayi(seraId, miktar){
+  const sera = seraBul(seraId);
+  if(!sera || !(sera.kapasite>0)) return true;
+  const mevcutDolu = seraGuncelDolu(sera);
+  const yeniDolu = mevcutDolu + miktar;
+  if(yeniDolu<=sera.kapasite) return true;
+  return confirm(`${sera.ad} kapasitesi ${fmt(sera.kapasite,0)} dizi. Bu ekleme ile ${fmt(yeniDolu,0)} diziye çıkacak (${fmt(yeniDolu-sera.kapasite,0)} dizi fazla). Yine de devam edilsin mi?`);
+}
 function dizimUygula(k, seraId, miktar, dizimTarihi){
   const sera = seraBul(seraId);
   if(!sera) return;
@@ -2668,6 +2684,7 @@ function submitSeraDizimEkle(seraId){
     if(!tarlaId){ alert('Tarla seçin.'); return; }
     if(diziSayisi<=0){ alert('Dizi sayısı girin.'); return; }
     if(ortDiziKg<=0){ alert('Ort. Dizi Ağırlığı girin.'); return; }
+    if(!seraKapasiteAsimOnayi(seraId, diziSayisi)) return;
     const k = {
       id: uid(), tarih: hasatTarih, tarlaId, kirimNo, diziSayisi, ortDiziKg, seraDagilimi: [],
       isciSayisi: 0, yevmiye: 0, kayipDizi: 0, altYasYok: false, calismaSaati: 0,
@@ -2686,6 +2703,7 @@ function submitSeraDizimEkle(seraId){
   const kalan = kirimTurev(k).kalanDizi;
   if(miktar<=0){ alert('Dizi sayısı girin.'); return; }
   if(miktar>kalan){ alert('Girilen dizi sayısı, kalan miktardan fazla olamaz (kalan: '+fmt(kalan,0)+' dizi).'); return; }
+  if(!seraKapasiteAsimOnayi(seraId, miktar)) return;
   dizimUygula(k, seraId, miktar, tarih);
   renderAll(); openSeraDetay(seraId);
 }
@@ -2720,6 +2738,7 @@ function submitKirimDizimEkle(kirimId){
   const kalan = kirimTurev(k).kalanDizi;
   if(miktar<=0){ alert('Dizi sayısı girin.'); return; }
   if(miktar>kalan){ alert('Girilen dizi sayısı, kalan miktardan fazla olamaz (kalan: '+fmt(kalan,0)+' dizi).'); return; }
+  if(!seraKapasiteAsimOnayi(seraId, miktar)) return;
   dizimUygula(k, seraId, miktar, tarih);
   renderAll(); closeModal();
 }
