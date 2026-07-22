@@ -955,7 +955,7 @@ const AYARLAR = {
   UNITE_PX: 40                // referans kapasitedeki sera-box genişliği (px) — kroki oranı
 };
 const STORAGE_KEY = 'scvSahaKrokiV1';
-const APP_SURUM = 'v38'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
+const APP_SURUM = 'v39'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
 
 /* =========================================================
    DİL (TR/EN) — ana ekran, menü ve buton/etiket metinleri
@@ -1322,6 +1322,7 @@ function fideYontemiEtiket(t){
   return '-';
 }
 function seraBul(id){ return state.seralar.find(s=>s.id===id); }
+function seralarSirali(liste){ return [...(liste||state.seralar)].sort((a,b)=>(a.ad||'').localeCompare(b.ad||'','tr',{numeric:true})); }
 function seraAktifDonem(sera){ return (sera && sera.donemler || []).find(d=>d.aktif) || null; }
 function seraGuncelDolu(sera){ const d = seraAktifDonem(sera); return d ? (Number(d.dolu)||0) : 0; }
 function seraGuncelDizilmisKg(sera){ const d = seraAktifDonem(sera); return d ? (d.kaynaklar||[]).reduce((s,k)=>s+(Number(k.diziKg)||0),0) : 0; }
@@ -2684,7 +2685,7 @@ function openKirimDizimModal(kirimId){
   if(!state.seralar.length){ alert('Önce en az bir sera ekleyin.'); return; }
   const t = tarlaBul(k.tarlaId);
   const kalan = kirimTurev(k).kalanDizi;
-  const seraOpts = state.seralar.map(s=>`<option value="${s.id}">${escapeHtml(s.ad)}</option>`).join('');
+  const seraOpts = seralarSirali().map(s=>`<option value="${s.id}">${escapeHtml(s.ad)}</option>`).join('');
   openModal(`
     <h2>${i18n('Tütün Dizimi Ekle')}</h2>
     <div class="hint-box">${escapeHtml(t?t.ad:'(silinmiş tarla)')} — ${escapeHtml(k.tarih)} · ${k.kirimNo}. ${i18n('kırım')} — ${i18n('Kalan')}: ${fmt(kalan,0)} dizi (~${fmt(kalan*(Number(k.ortDiziKg)||0),0)} kg)</div>
@@ -2885,7 +2886,7 @@ function excelDisaAktar(){
   });
   XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(tarlaRows), 'Tarlalar');
 
-  const seraRows = state.seralar.map(s=>{
+  const seraRows = seralarSirali().map(s=>{
     const d = seraAktifDonem(s);
     return {
       Ad:s.ad, 'Kapasite (dizi)':s.kapasite,
@@ -3459,7 +3460,7 @@ function renderSulama(){
    İKLİM TAKİP (SERA SICAKLIK/NEM)
    ========================================================= */
 function iklimFormFieldsHtml(k){
-  const opts = state.seralar.map(s=>`<option value="${s.id}" ${s.id===k.seraId?'selected':''}>${escapeHtml(s.ad)}</option>`).join('');
+  const opts = seralarSirali().map(s=>`<option value="${s.id}" ${s.id===k.seraId?'selected':''}>${escapeHtml(s.ad)}</option>`).join('');
   return `
     <div class="row2">
       <div class="field"><label>${i18n('Sera')}</label><select id="fIklimSera">${opts}</select></div>
@@ -3528,7 +3529,7 @@ function iklimHucreGuncelle(id, alan, deger, sayisalMi){
   renderAll();
 }
 function iklimTablosuSatirHtml(k){
-  const seraOpts = state.seralar.map(s=>`<option value="${s.id}" ${s.id===k.seraId?'selected':''}>${escapeHtml(s.ad)}</option>`).join('');
+  const seraOpts = seralarSirali().map(s=>`<option value="${s.id}" ${s.id===k.seraId?'selected':''}>${escapeHtml(s.ad)}</option>`).join('');
   return `
     <tr data-id="${k.id}">
       <td><input type="date" value="${escapeHtml(k.tarih||'')}" onchange="iklimHucreGuncelle('${k.id}','tarih',this.value)"></td>
@@ -3657,7 +3658,8 @@ function iklimCizgiGrafikSvg(values, labels, color, birim, gradId){
 }
 function openIklimGrafikModal(){
   if(!state.iklimKayitlari.length){ alert('Henüz sıcaklık/nem kaydı yok.'); return; }
-  const seraIdleri = [...new Set(state.iklimKayitlari.map(k=>k.seraId))];
+  const seraIdleri = [...new Set(state.iklimKayitlari.map(k=>k.seraId))]
+    .sort((a,b)=>{ const sa=seraBul(a), sb=seraBul(b); return (sa?sa.ad:'').localeCompare(sb?sb.ad:'','tr',{numeric:true}); });
   const opts = seraIdleri.map(id=>{ const s=seraBul(id); return `<option value="${id}">${escapeHtml(s?s.ad:i18n('(silinmiş sera)'))}</option>`; }).join('');
   openModal(`
     <h2>${i18n('Sıcaklık / Nem Grafiği')}</h2>
