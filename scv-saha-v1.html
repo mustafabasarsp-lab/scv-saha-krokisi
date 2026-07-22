@@ -421,7 +421,7 @@ body.has-fullscreen-panel{overflow:hidden;}
 .harita-toolbar{display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap;flex:0 0 auto;}
 .harita-toolbar .hint-text{font-size:11.5px;color:var(--muted);flex:1;min-width:220px;}
 #haritaPinModBtn.active{background:var(--green-700);color:#fff;border-color:var(--green-700);}
-#haritaMap{flex:1;min-height:320px;border-radius:8px;border:1px solid var(--border);}
+#haritaMap{flex:1;min-height:320px;border-radius:8px;border:1px solid var(--border);position:relative;z-index:0;}
 .harita-pin-icon{display:flex;flex-direction:column;align-items:center;pointer-events:none;}
 .harita-pin-icon .pin-dot{
   width:16px;height:16px;border-radius:50% 50% 50% 0;
@@ -955,7 +955,7 @@ const AYARLAR = {
   UNITE_PX: 40                // referans kapasitedeki sera-box genişliği (px) — kroki oranı
 };
 const STORAGE_KEY = 'scvSahaKrokiV1';
-const APP_SURUM = 'v39'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
+const APP_SURUM = 'v40'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
 
 /* =========================================================
    DİL (TR/EN) — ana ekran, menü ve buton/etiket metinleri
