@@ -955,7 +955,7 @@ const AYARLAR = {
   UNITE_PX: 40                // referans kapasitedeki sera-box genişliği (px) — kroki oranı
 };
 const STORAGE_KEY = 'scvSahaKrokiV1';
-const APP_SURUM = 'v36'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
+const APP_SURUM = 'v38'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
 
 /* =========================================================
    DİL (TR/EN) — ana ekran, menü ve buton/etiket metinleri
@@ -2760,11 +2760,30 @@ function openVeriYonetimiModal(){
         <button class="btn" onclick="kalemliFideBilgileriniGuncelle()">🌱 Kalemli Fide Defteri Verilerini Uygula (2026-07)</button>
       </div>
       <div class="hint-box">Kalemli bölgesindeki K1-K26 tarlalarının dekar, çeşit ve Viyol/Yer Ocağı fide bilgilerini el yazısı defterden okunan güncel verilerle günceller. Sadece adı K1-K26 olan ve zaten var olan tarlaları günceller, yeni tarla eklemez.</div>
+      <div class="modal-actions" style="justify-content:flex-start;flex-wrap:wrap;margin-top:8px;">
+        <button class="btn" onclick="kalemliSeralariTopluKur()">🏠 Kalemli B/C/D/E Seralarını Toplu Kur</button>
+      </div>
+      <div class="hint-box">Kalemli bölgesine B1-B41, C1-C37, D1-D35, E1-E35 seralarını 400 dizi kapasiteli olarak ekler. Aynı isimde sera zaten varsa dokunmaz, sadece eksik olanları tamamlar.</div>
     </div>
     <div class="modal-actions">
       <button class="btn btn-muted" onclick="closeModal()">${i18n('Kapat')}</button>
     </div>
   `);
+}
+function kalemliSeralariTopluKur(){
+  const GRUPLAR = [ {harf:'B', adet:41}, {harf:'C', adet:37}, {harf:'D', adet:35}, {harf:'E', adet:35} ];
+  if(!confirm('Kalemli bölgesine B1-B41, C1-C37, D1-D35, E1-E35 seraları (400 dizi kapasiteli) eklenecek. Aynı isimde sera zaten varsa atlanacak, eksikler tamamlanacak. Devam edilsin mi?')) return;
+  let eklenen = 0, atlanan = 0;
+  GRUPLAR.forEach(g=>{
+    for(let i=1;i<=g.adet;i++){
+      const ad = g.harf + i;
+      if(state.seralar.some(s=>s.ad===ad)){ atlanan++; continue; }
+      state.seralar.push({ id: uid(), ad, kapasite: 400, bolge: 'kalemli', donemler: [], olusturma: Date.now(), ...sonIslemDamgasi() });
+      eklenen++;
+    }
+  });
+  renderAll();
+  alert(`Tamamlandı.\nEklenen sera: ${eklenen}\nZaten mevcut olup atlanan: ${atlanan}`);
 }
 function kalemliFideBilgileriniGuncelle(){
   const veriler = [
