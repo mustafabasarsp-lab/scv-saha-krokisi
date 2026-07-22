@@ -962,7 +962,7 @@ const AYARLAR = {
   UNITE_PX: 40                // referans kapasitedeki sera-box genişliği (px) — kroki oranı
 };
 const STORAGE_KEY = 'scvSahaKrokiV1';
-const APP_SURUM = 'v43'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
+const APP_SURUM = 'v44'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
 
 /* =========================================================
    DİL (TR/EN) — ana ekran, menü ve buton/etiket metinleri
@@ -1137,8 +1137,11 @@ function saveState(){
    FIREBASE: GİRİŞ + GERÇEK ZAMANLI SENKRONİZASYON
    (her kayıt türü — tarla, sera, kırım, vb. — kendi koleksiyonunda
    AYRI bir belge olarak tutulur; böylece aynı anda farklı kişilerin
-   eklediği FARKLI kayıtlar asla birbirinin üzerine yazmaz. Sadece
-   aynı kaydı aynı anda iki kişi düzenlerse en son yazan kazanır.)
+   eklediği FARKLI kayıtlar asla birbirinin üzerine yazmaz. Aynı kaydı
+   aynı anda iki kişi düzenlerse de, sadece DEĞİŞEN alanlar patch
+   olarak gönderilir (syncOutgoingNow), böylece biri tarlanın dekarını
+   diğeri çeşidini değiştirirse ikisi de kalıcı olur. Yalnızca AYNI
+   alanı aynı anda değiştirirlerse son yazan kazanır — bu kaçınılmaz.)
    ========================================================= */
 const FIREBASE_CONFIG = {
   projectId: "tarla-app",
@@ -1180,7 +1183,21 @@ function syncOutgoingNow(){
     Object.keys(currentMap).forEach(id=>{
       if(lastMap[id] !== currentMap[id]){
         const item = arr.find(x=>x.id===id);
-        batch.set(fbDb.collection(collName).doc(id), JSON.parse(JSON.stringify(item)));
+        const doc = fbDb.collection(collName).doc(id);
+        if(id in lastMap){
+          let onceki; try{ onceki = JSON.parse(lastMap[id]); }catch(e){ onceki = null; }
+          if(onceki){
+            const itemSafe = JSON.parse(JSON.stringify(item));
+            const patch = {};
+            Object.keys(itemSafe).forEach(k=>{ if(JSON.stringify(itemSafe[k]) !== JSON.stringify(onceki[k])) patch[k] = itemSafe[k]; });
+            Object.keys(onceki).forEach(k=>{ if(!(k in itemSafe)) patch[k] = firebase.firestore.FieldValue.delete(); });
+            batch.set(doc, patch, { merge:true });
+          } else {
+            batch.set(doc, JSON.parse(JSON.stringify(item)));
+          }
+        } else {
+          batch.set(doc, JSON.parse(JSON.stringify(item)));
+        }
         hasOps = true;
       }
     });
@@ -3333,7 +3350,7 @@ function submitKutuEkle(){
   if(kg<=0){ alert('Kutu ağırlığı girin.'); return; }
   const bolgedekiler = state.depoKutulari.filter(k=>k.bolge===bolge);
   const kutuNo = bolgedekiler.length ? Math.max(...bolgedekiler.map(k=>k.kutuNo)) + 1 : 1;
-  state.depoKutulari.push({ id: uid(), bolge, kutuNo, kg, tarih, kalite, olusturma: Date.now() });
+  state.depoKutulari.push({ id: uid(), bolge, kutuNo, kg, tarih, kalite, olusturma: Date.now(), ...sonIslemDamgasi() });
   closeModal(); renderAll();
 }
 function kutuSil(id){
@@ -3362,6 +3379,7 @@ function submitKutuCikis(id){
   if(!k) return;
   k.cikisTarihi = document.getElementById('fKutuCikisTarih').value || todayStr();
   k.cikisNot = document.getElementById('fKutuCikisNot').value.trim();
+  Object.assign(k, sonIslemDamgasi());
   closeModal(); renderAll();
 }
 function kutuGeriAl(id){
@@ -3392,7 +3410,7 @@ function renderDepo(){
     <div>${i18n('Çıkan Toplam Kg')}<b>${fmt(cikanToplamKg,0)}</b></div>
   `;
   listeEl.innerHTML = depoda.map(k=>`
-    <div class="mini-kirim">
+    <div class="mini-kirim" title="${i18n('Son İşlem')}: ${sonIslemEtiket(k)}">
       <div class="sw"></div>
       <div class="main">
         <div class="r1"><span>Kutu #${k.kutuNo}</span>
@@ -3407,7 +3425,7 @@ function renderDepo(){
   `).join('') || '<div class="item">Henüz kutu kaydı yok</div>';
   if(cikisEl){
     cikisEl.innerHTML = cikmis.map(k=>`
-      <div class="mini-kirim dolu">
+      <div class="mini-kirim dolu" title="${i18n('Son İşlem')}: ${sonIslemEtiket(k)}">
         <div class="sw"></div>
         <div class="main">
           <div class="r1"><span>Kutu #${k.kutuNo}</span>
@@ -3445,7 +3463,7 @@ function submitSulamaEkle(){
   const saat = Number(document.getElementById('fSulamaSaat').value)||0;
   if(!tarlaId){ alert('Tarla seçin.'); return; }
   if(saat<=0){ alert('Sulama saatini girin.'); return; }
-  state.sulamaKayitlari.push({ id: uid(), tarlaId, tarih, saat, olusturma: Date.now() });
+  state.sulamaKayitlari.push({ id: uid(), tarlaId, tarih, saat, olusturma: Date.now(), ...sonIslemDamgasi() });
   closeModal(); renderAll();
 }
 function sulamaSil(id){
@@ -3473,7 +3491,7 @@ function renderSulama(){
   `;
   listeEl.innerHTML = liste.map(s=>{
     const t = tarlaBul(s.tarlaId);
-    return `<div class="mini-kirim">
+    return `<div class="mini-kirim" title="${i18n('Son İşlem')}: ${sonIslemEtiket(s)}">
       <div class="sw"></div>
       <div class="main">
         <div class="r1"><span>${escapeHtml(t?t.ad:'(silinmiş tarla)')}</span>
@@ -3528,7 +3546,7 @@ function submitIklimEkle(){
   if(!f.saat){ alert('Saat girin.'); return; }
   if(document.getElementById('fIklimSicaklik').value===''){ alert('Sıcaklık girin.'); return; }
   if(document.getElementById('fIklimNem').value===''){ alert('Nem girin.'); return; }
-  state.iklimKayitlari.push({ id: uid(), ...f, olusturma: Date.now() });
+  state.iklimKayitlari.push({ id: uid(), ...f, olusturma: Date.now(), ...sonIslemDamgasi() });
   closeModal(); renderAll();
 }
 function iklimSil(id){
@@ -3555,12 +3573,13 @@ function iklimHucreGuncelle(id, alan, deger, sayisalMi){
   if(!k) return;
   if(sayisalMi && deger===''){ renderAll(); return; }
   k[alan] = sayisalMi ? Number(deger) : deger;
+  Object.assign(k, sonIslemDamgasi());
   renderAll();
 }
 function iklimTablosuSatirHtml(k){
   const seraOpts = seralarSirali().map(s=>`<option value="${s.id}" ${s.id===k.seraId?'selected':''}>${escapeHtml(s.ad)}</option>`).join('');
   return `
-    <tr data-id="${k.id}">
+    <tr data-id="${k.id}" title="${i18n('Son İşlem')}: ${sonIslemEtiket(k)}">
       <td><input type="date" value="${escapeHtml(k.tarih||'')}" onchange="iklimHucreGuncelle('${k.id}','tarih',this.value)"></td>
       <td><input type="time" value="${escapeHtml(k.saat||'')}" onchange="iklimHucreGuncelle('${k.id}','saat',this.value)"></td>
       <td><select onchange="iklimHucreGuncelle('${k.id}','seraId',this.value)">${seraOpts}</select></td>
