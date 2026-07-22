@@ -981,7 +981,7 @@ const AYARLAR = {
   UNITE_PX: 40                // referans kapasitedeki sera-box genişliği (px) — kroki oranı
 };
 const STORAGE_KEY = 'scvSahaKrokiV1';
-const APP_SURUM = 'v45'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
+const APP_SURUM = 'v46'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
 
 /* =========================================================
    DİL (TR/EN) — ana ekran, menü ve buton/etiket metinleri
@@ -1494,10 +1494,11 @@ function hesaplaRozetler(){
 /* =========================================================
    RENDER
    ========================================================= */
-function renderAll(){
-  document.getElementById('bugunTarih').textContent = new Date().toLocaleDateString('tr-TR');
-  document.getElementById('appSurum').textContent = APP_SURUM;
-  renderBadges();
+function sayfaGizliMi(pageId){
+  const el = document.getElementById(pageId);
+  return !!el && el.classList.contains('hidden');
+}
+function renderSahaSayfasi(){
   renderDizim();
   renderBekleyenKirimlar();
   renderSeralar();
@@ -1506,6 +1507,12 @@ function renderAll(){
   renderSahaUyarilar();
   populateCesitFiltre();
   renderToplamIstatistik();
+}
+function renderAll(){
+  document.getElementById('bugunTarih').textContent = new Date().toLocaleDateString('tr-TR');
+  document.getElementById('appSurum').textContent = APP_SURUM;
+  renderBadges();
+  renderSahaSayfasi();
   renderHaritalar();
   renderDepo();
   renderSulama();
@@ -1515,6 +1522,7 @@ function renderAll(){
 }
 
 function renderQuickStats(){
+  if(sayfaGizliMi('pageSaha')) return;
   document.getElementById('qsTarla').textContent = state.tarlalar.length;
   document.getElementById('qsSera').textContent = state.seralar.length;
   document.getElementById('qsKirim').textContent = state.kirimlar.length;
@@ -1523,6 +1531,7 @@ function renderQuickStats(){
 }
 
 function renderSahaUyarilar(){
+  if(sayfaGizliMi('pageSaha')) return;
   const el = document.getElementById('sahaUyarilar');
   if(!el) return;
   const uyarilar = [];
@@ -1560,6 +1569,7 @@ function renderBadges(){
 }
 
 function renderDizim(){
+  if(sayfaGizliMi('pageSaha')) return;
   const son = [...state.kirimlar].sort((a,b)=> b.tarih.localeCompare(a.tarih) || b.olusturma-a.olusturma).slice(0,6);
   if(!son.length){
     document.getElementById('sonKirimlarList').innerHTML = '<div class="empty-hint">Henüz kırım kaydı yok.</div>';
@@ -1581,6 +1591,7 @@ function renderDizim(){
 }
 
 function renderBekleyenKirimlar(){
+  if(sayfaGizliMi('pageSaha')) return;
   const el = document.getElementById('bekleyenKirimlarList');
   if(!el) return;
   const bekleyen = bekleyenKirimlar();
@@ -1603,6 +1614,7 @@ function renderBekleyenKirimlar(){
 }
 
 function populateCesitFiltre(){
+  if(sayfaGizliMi('pageSaha')) return;
   const sel = document.getElementById('statCesit');
   if(!sel) return;
   const onceki = sel.value;
@@ -1612,6 +1624,7 @@ function populateCesitFiltre(){
 }
 
 function renderToplamIstatistik(){
+  if(sayfaGizliMi('pageSaha')) return;
   const sonucEl = document.getElementById('toplamIstatistikSonuc');
   const listeEl = document.getElementById('toplamIstatistikListe');
   if(!sonucEl) return;
@@ -1671,6 +1684,7 @@ function openSeraEkleModalAktifBolgeIle(){
   openSeraEkleModal(seraBolgeAktif==='tumu' ? '' : seraBolgeAktif);
 }
 function renderSeralar(){
+  if(sayfaGizliMi('pageSaha')) return;
   const el = document.getElementById('seraPlot');
   let liste = seraBolgeAktif==='tumu' ? state.seralar : state.seralar.filter(s=>s.bolge===seraBolgeAktif);
   const aramaInput = document.getElementById('seraAramaInput');
@@ -1710,6 +1724,7 @@ function openTarlaEkleModalAktifBolgeIle(){
   openTarlaEkleModal(tarlaBolgeAktif==='tumu' ? '' : tarlaBolgeAktif);
 }
 function renderTarlalar(){
+  if(sayfaGizliMi('pageSaha')) return;
   const el = document.getElementById('tarlaPlot');
   let liste = tarlaBolgeAktif==='tumu' ? state.tarlalar : state.tarlalar.filter(t=>t.bolge===tarlaBolgeAktif);
   const aramaInput = document.getElementById('tarlaAramaInput');
@@ -3078,7 +3093,8 @@ function sayfaGecis(sayfaId){
   });
   const fab = document.getElementById('kirimFab');
   if(fab) fab.classList.toggle('hidden', sayfaId!=='pageSaha');
-  if(sayfaId==='pageHaritalar'){ haritaMapBaslat(); }
+  if(sayfaId==='pageSaha'){ renderSahaSayfasi(); }
+  if(sayfaId==='pageHaritalar'){ haritaMapBaslat(); renderHaritalar(); }
   if(sayfaId==='pageDepo'){ renderDepo(); }
   if(sayfaId==='pageSulama'){ renderSulama(); }
   if(sayfaId==='pageIklim'){ renderIklim(); }
@@ -3255,7 +3271,7 @@ function tesisPinTiklandi(pinId){
   renderAll();
 }
 function renderHaritalar(){
-  if(!haritaMap) return;
+  if(!haritaMap || sayfaGizliMi('pageHaritalar')) return;
   haritaMarkerlar.forEach(m=>haritaMap.removeLayer(m));
   haritaMarkerlar = [];
   (state.haritaPinleri||[]).forEach(p=>{
@@ -3451,6 +3467,7 @@ function kutuGeriAl(id){
   renderAll();
 }
 function renderDepo(){
+  if(sayfaGizliMi('pageDepo')) return;
   const ozetEl = document.getElementById('depoOzet');
   const listeEl = document.getElementById('depoKutuListesi');
   const cikisEl = document.getElementById('depoCikisListesi');
@@ -3533,6 +3550,7 @@ function sulamaSil(id){
   renderAll();
 }
 function renderSulama(){
+  if(sayfaGizliMi('pageSulama')) return;
   const ozetEl = document.getElementById('sulamaOzet');
   const listeEl = document.getElementById('sulamaListesi');
   if(!ozetEl || !listeEl) return;
@@ -3651,6 +3669,7 @@ function iklimTablosuSatirHtml(k){
     </tr>`;
 }
 function renderIklim(){
+  if(sayfaGizliMi('pageIklim')) return;
   const ozetEl = document.getElementById('iklimOzet');
   const listeEl = document.getElementById('iklimListesi');
   if(!ozetEl || !listeEl) return;
@@ -3833,6 +3852,7 @@ function barChartHtml(items){
   }).join('');
 }
 function renderRapor(){
+  if(sayfaGizliMi('pageRapor')) return;
   const ozetEl = document.getElementById('raporOzet');
   if(!ozetEl) return;
   const toplamDekar = state.tarlalar.reduce((s,t)=>s+(Number(t.dekar)||0),0);
