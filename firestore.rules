@@ -2,8 +2,15 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     match /{collection}/{docId} {
-      allow read, write: if request.auth != null
+      allow read, delete: if request.auth != null
         && collection in ['tarlalar','seralar','kirimlar','haritaPinleri','tesisPinleri','depoKutulari','sulamaKayitlari','iklimKayitlari'];
+      // create/update: uygulama her zaman belge id'sini kaydın kendi 'id'
+      // alanıyla aynı tutar (bkz. scv-saha-v1.html syncOutgoingNow) — bu
+      // eşleşmeyi zorunlu kılmak, bozuk/kötü niyetli bir yazmanın id'siz
+      // veya başka bir kayda ait id ile belge oluşturmasını engeller.
+      allow create, update: if request.auth != null
+        && collection in ['tarlalar','seralar','kirimlar','haritaPinleri','tesisPinleri','depoKutulari','sulamaKayitlari','iklimKayitlari']
+        && request.resource.data.id == docId;
     }
   }
 }
