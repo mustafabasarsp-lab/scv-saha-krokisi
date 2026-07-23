@@ -981,7 +981,7 @@ const AYARLAR = {
   UNITE_PX: 40                // referans kapasitedeki sera-box genişliği (px) — kroki oranı
 };
 const STORAGE_KEY = 'scvSahaKrokiV1';
-const APP_SURUM = 'v47'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
+const APP_SURUM = 'v48'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
 
 /* =========================================================
    HATA / DONMA GÜNLÜĞÜ — "bazen donuyor" şikayetini araştırmak için.
@@ -1105,6 +1105,11 @@ const I18N_EN = {
   'Toplam Sulama Saati':'Total Irrigation Hours', 'Toplam Depo Kg':'Total Storage Kg',
   '⚠️ Uyarılar':'⚠️ Warnings', 'hasada':'harvest in', 'Aktif uyarı yok':'No active warnings',
   'Kırım Kaydı':'Harvest Record', 'Kırım Kaydını Düzenle':'Edit Harvest Record', 'Veri Yönetimi':'Data Management', 'Pin Ekle':'Add Pin', 'Koordinat ile Tarla Ekle':'Add Field by Coordinates',
+  '(tarla belirtilmedi)':'(field not specified)', '(silinmiş)':'(deleted)',
+  'Bu tütün doğrudan bu seraya kaydedilecek; Kırım sekmesindeki toplam kırılan kg\'a da yansıyacak. Hangi tarla(lar)dan geldiği biliniyorsa işaretleyin — bilinmiyorsa boş bırakabilirsiniz, kg tarlalara bölüştürülmez.':'This tobacco will be recorded directly to this greenhouse; it will also count toward total harvested kg in the Harvest tab. Check the field(s) it came from if known — leave blank if unknown, kg will not be split across fields.',
+  'O gün kırılan tarla(lar) (opsiyonel)':'Field(s) harvested that day (optional)', 'Henüz tarla eklenmedi':'No fields added yet',
+  'Tarla(lar) (opsiyonel)':'Field(s) (optional)',
+  'Çeşit girin.':'Enter a variety.',
   'Hangi tarla?':'Which field?', 'Kaç dizi kırıldı':'How many strings cut', "Basılı tut: 10'ar artır":'Hold to add 10 at a time',
   '+ Detaylı bilgi ekle (işçi, yevmiye, kayıp)':'+ Add details (workers, wage, loss)', 'Geri':'Back',
   'Kutu Ekle':'Add Box', 'Sulama Kaydı Ekle':'Add Irrigation Record',
@@ -1434,6 +1439,18 @@ function kirimTurev(k){
 }
 
 function tarlaBul(id){ return state.tarlalar.find(t=>t.id===id); }
+/* Bir kırım/kaynak kaydının tarlaIds (çoklu, opsiyonel) ya da eski tarlaId (tekli) alanından
+   okunabilir bir tarla etiketi üretir. Tarla belirtilmemişse (kg tarlalara bölüştürülemeyen
+   karışık kırım/dizim girişleri için) ayrı bir metin gösterir. */
+function kirimTarlaIdListesi(k){ return (k.tarlaIds && k.tarlaIds.length) ? k.tarlaIds : (k.tarlaId ? [k.tarlaId] : []); }
+function kirimTarlaEtiket(k){
+  const idler = kirimTarlaIdListesi(k);
+  if(!idler.length) return i18n('(tarla belirtilmedi)');
+  const adlar = idler.map(id=>{ const t = tarlaBul(id); return t ? t.ad : null; });
+  if(adlar.every(a=>a===null)) return i18n('(silinmiş tarla)');
+  return adlar.map(a=>a||i18n('(silinmiş)')).join(', ');
+}
+function kirimNoEtiket(k){ return k.kirimNo ? (k.kirimNo+'. '+i18n('kırım')) : i18n('kırım'); }
 function fideYontemiEtiket(t){
   const v = Number(t.viyolDekar)||0, y = Number(t.yerOcagiDekar)||0;
   if(v>0 && y>0) return `Viyol (${fmt(v,1)} da) + Yer Ocağı (${fmt(y,1)} da)`;
@@ -1617,14 +1634,13 @@ function renderDizim(){
     return;
   }
   document.getElementById('sonKirimlarList').innerHTML = son.map(k=>{
-    const t = tarlaBul(k.tarlaId);
     const tr = kirimTurev(k);
     return `<div class="mini-kirim${tr.kalanDizi<=0?' dolu':''}">
       <div class="sw"></div>
       <div class="main">
-        <div class="r1"><span>${escapeHtml(t?t.ad:'(silinmiş tarla)')}</span>
+        <div class="r1"><span>${escapeHtml(kirimTarlaEtiket(k))}</span>
           <span><button class="del" title="${i18n('Düzenle')}" onclick="openKirimDuzenleModal('${k.id}')">✎</button><button class="del" title="Sil" onclick="kirimSil('${k.id}')">×</button></span></div>
-        <div class="r2">${escapeHtml(k.tarih)} · ${k.kirimNo}. kırım${k.sonDuzenleyen?' · '+escapeHtml(k.sonDuzenleyen):''}</div>
+        <div class="r2">${escapeHtml(k.tarih)} · ${kirimNoEtiket(k)}${k.sonDuzenleyen?' · '+escapeHtml(k.sonDuzenleyen):''}</div>
       </div>
       <div class="stat"><b>${fmt(tr.diziSayisi,0)}</b><span>${fmt(tr.toplamKg,0)} kg</span></div>
     </div>`;
@@ -1641,12 +1657,11 @@ function renderBekleyenKirimlar(){
     return;
   }
   el.innerHTML = bekleyen.map(({k,tr})=>{
-    const t = tarlaBul(k.tarlaId);
     return `<div class="mini-kirim">
       <div class="sw"></div>
       <div class="main">
-        <div class="r1"><span>${escapeHtml(t?t.ad:'(silinmiş tarla)')}</span></div>
-        <div class="r2">${escapeHtml(k.tarih)} · ${k.kirimNo}. kırım</div>
+        <div class="r1"><span>${escapeHtml(kirimTarlaEtiket(k))}</span></div>
+        <div class="r2">${escapeHtml(k.tarih)} · ${kirimNoEtiket(k)}</div>
       </div>
       <div class="stat"><b>${fmt(tr.kalanDizi,0)}</b><span>dizi</span></div>
       <button class="icon-btn" style="width:36px;height:36px;font-size:16px;flex-shrink:0;" onclick="openKirimDizimModal('${k.id}')" title="${i18n('Seraya Dağıt')}">›</button>
@@ -1678,7 +1693,8 @@ function renderToplamIstatistik(){
     if(bitis && k.tarih > bitis) return false;
     const t = tarlaBul(k.tarlaId);
     if(cesit){
-      if(!t || t.cesit !== cesit) return false;
+      const kayitCesit = k.cesit || (t?t.cesit:'') || '';
+      if(kayitCesit !== cesit) return false;
     }
     if(tarlaArama){
       if(!t || !(t.ad||'').toLocaleLowerCase('tr').includes(tarlaArama)) return false;
@@ -1699,13 +1715,12 @@ function renderToplamIstatistik(){
   if(listeEl){
     const siraliKayitlar = [...kayitlar].sort((a,b)=>b.tarih.localeCompare(a.tarih));
     listeEl.innerHTML = siraliKayitlar.map(k=>{
-      const t = tarlaBul(k.tarlaId);
       const tr = kirimTurev(k);
       return `<div class="mini-kirim">
         <div class="sw"></div>
         <div class="main">
-          <div class="r1"><span>${escapeHtml(t?t.ad:'(silinmiş tarla)')}</span></div>
-          <div class="r2">${escapeHtml(k.tarih)} · ${k.kirimNo}. kırım</div>
+          <div class="r1"><span>${escapeHtml(kirimTarlaEtiket(k))}</span></div>
+          <div class="r2">${escapeHtml(k.tarih)} · ${kirimNoEtiket(k)}</div>
         </div>
         <div class="stat"><b>${fmt(tr.toplamKg,0)}</b><span>kg</span></div>
       </div>`;
@@ -2003,7 +2018,6 @@ function openSeraDetay(id){
   const dizilmisKg = seraGuncelDizilmisKg(s);
   const tahminGun = (d && d.dolu>0) ? Math.ceil(d.dolu/AYARLAR.GUNLUK_ISLEME_DIZI) : 0;
   const kaynakSatirlariHtml = d ? [...(d.kaynaklar||[])].sort((a,b)=>(b.dizimTarihi||b.tarih||'').localeCompare(a.dizimTarihi||a.tarih||'')).map(kn=>{
-    const t = tarlaBul(kn.tarlaId);
     const dizimT = kn.dizimTarihi || kn.tarih;
     const bekleGun = (kn.tarih && dizimT) ? Math.round((new Date(dizimT) - new Date(kn.tarih))/86400000) : 0;
     const bekleEtiket = bekleGun<=0 ? i18n('aynı gün') : (bekleGun+' '+i18n('gün bekledi'));
@@ -2014,8 +2028,8 @@ function openSeraDetay(id){
       <div class="dizim-row">
         <div class="dizim-row-main">
           <div class="dizim-row-top">
-            <span class="dizim-tarla">${escapeHtml(t?t.ad:'(silinmiş tarla)')}</span>
-            <span class="dizim-pill">${escapeHtml(kn.cesit||(t?t.cesit:'')||'-')}</span>
+            <span class="dizim-tarla">${escapeHtml(kirimTarlaEtiket(kn))}</span>
+            <span class="dizim-pill">${escapeHtml(kn.cesit||'-')}</span>
           </div>
           <div class="dizim-meta">${tarihAkisi} <span class="dizim-wait ${bekleGun>3?'dizim-wait-warn':'dizim-wait-ok'}">${bekleEtiket}</span></div>
         </div>
@@ -2316,7 +2330,7 @@ function openTarlaDetay(id){
   const kirimListHtml = tarlaKirimlari.map(k=>{
     const tr = kirimTurev(k);
     const bekleyenNot = tr.kalanDizi>0 ? ` <span style="color:var(--amber);">(${fmt(tr.kalanDizi,0)} dizi ${i18n('bekliyor')})</span>` : '';
-    return `<div class="item">${escapeHtml(k.tarih)} — ${k.kirimNo}. ${i18n('kırım')} · ${fmt(tr.diziSayisi,0)} dizi · ${fmt(tr.toplamKg,0)} kg → ${escapeHtml(seraDagilimiEtiket(k.seraDagilimi))}${bekleyenNot}
+    return `<div class="item">${escapeHtml(k.tarih)} — ${kirimNoEtiket(k)} · ${fmt(tr.diziSayisi,0)} dizi · ${fmt(tr.toplamKg,0)} kg → ${escapeHtml(seraDagilimiEtiket(k.seraDagilimi))}${bekleyenNot}
       <span style="float:right;">
         <button class="btn btn-muted" style="padding:1px 6px;font-size:10.5px;" onclick="openKirimDuzenleModal('${k.id}','${t.id}')">✎</button>
         <button class="btn btn-muted" style="padding:1px 6px;font-size:10.5px;" onclick="kirimSil('${k.id}');openTarlaDetay('${t.id}')">×</button>
@@ -2601,20 +2615,27 @@ function openKirimDuzenleModal(kirimId, returnTarlaId){
   const k = state.kirimlar.find(x=>x.id===kirimId);
   if(!k) return;
   kirimDuzenlePresetTarlaId = returnTarlaId || null;
-  const tarlaOptions = state.tarlalar.map(t=>`<option value="${t.id}" ${t.id===k.tarlaId?'selected':''}>${escapeHtml(t.ad)}</option>`).join('');
+  const seciliTarlaIds = kirimTarlaIdListesi(k);
+  const cesitler = [...new Set(state.tarlalar.map(t=>t.cesit).filter(Boolean))].sort();
+  const cesitDatalistHtml = cesitler.map(c=>`<option value="${escapeHtml(c)}">`).join('');
+  const tarlaChkHtml = [...state.tarlalar].sort((a,b)=>(a.ad||'').localeCompare(b.ad||'','tr',{numeric:true})).map(t=>`<div class="check-row"><input type="checkbox" class="kdTarlaChk" value="${t.id}" id="kdTarla_${t.id}" ${seciliTarlaIds.includes(t.id)?'checked':''}><label for="kdTarla_${t.id}" style="text-transform:none;">${escapeHtml(t.ad)}</label></div>`).join('') || `<div class="item">${i18n('Henüz tarla eklenmedi')}</div>`;
   openModal(`
     <h2>${i18n('Kırım Kaydını Düzenle')}</h2>
     <div class="row2">
       <div class="field"><label>${i18n('Tarih (Hasat Tarihi)')}</label><input id="kdTarih" type="date" value="${k.tarih}"></div>
-      <div class="field"><label>${i18n('Tarla')}</label><select id="kdTarla">${tarlaOptions}</select></div>
+      <div class="field"><label>${i18n('Çeşit')}</label><input id="kdCesit" type="text" list="kdCesitListesi" value="${escapeHtml(k.cesit||'')}"><datalist id="kdCesitListesi">${cesitDatalistHtml}</datalist></div>
     </div>
     <div class="row2">
       <div class="field"><label>${i18n('Kırım No (kaçıncı kırım)')}</label>
-        <select id="kdKirimNo">${[1,2,3,4,5,6].map(n=>`<option value="${n}" ${n===k.kirimNo?'selected':''}>${n}. ${i18n('kırım')}</option>`).join('')}</select>
+        <select id="kdKirimNo"><option value="">-</option>${[1,2,3,4,5,6].map(n=>`<option value="${n}" ${n===k.kirimNo?'selected':''}>${n}. ${i18n('kırım')}</option>`).join('')}</select>
       </div>
       <div class="field"><label>${i18n('Dizi Sayısı')}</label><input id="kdDiziSayisi" type="number" min="0" step="1" value="${k.diziSayisi}"></div>
     </div>
     <div class="field"><label>${i18n('Ort. Dizi Ağırlığı (kg)')}</label><input id="kdOrtDiziKg" type="number" min="0" step="0.01" value="${k.ortDiziKg}"></div>
+    <div class="field">
+      <label>${i18n('Tarla(lar) (opsiyonel)')}</label>
+      <div class="list-small">${tarlaChkHtml}</div>
+    </div>
     <div class="row3">
       <div class="field"><label>${i18n('İşçi Sayısı')}</label><input id="kdIsci" type="number" min="0" step="1" value="${k.isciSayisi||0}"></div>
       <div class="field"><label>${i18n('Yevmiye (₺)')}</label><input id="kdYevmiye" type="number" min="0" step="1" value="${k.yevmiye||0}"></div>
@@ -2633,22 +2654,28 @@ function openKirimDuzenleModal(kirimId, returnTarlaId){
 function submitKirimDuzenle(kirimId){
   const k = state.kirimlar.find(x=>x.id===kirimId);
   if(!k) return;
-  const yeniTarlaId = document.getElementById('kdTarla').value;
+  const yeniTarlaIds = Array.from(document.querySelectorAll('.kdTarlaChk:checked')).map(el=>el.value);
+  const yeniTarlaId = yeniTarlaIds.length===1 ? yeniTarlaIds[0] : null;
+  const cesitGirisi = document.getElementById('kdCesit').value.trim();
   const yeniTarih = document.getElementById('kdTarih').value || todayStr();
-  const yeniKirimNo = Number(document.getElementById('kdKirimNo').value);
+  const kirimNoRaw = document.getElementById('kdKirimNo').value;
+  const yeniKirimNo = kirimNoRaw ? Number(kirimNoRaw) : null;
   const yeniDizi = Number(document.getElementById('kdDiziSayisi').value)||0;
   const yeniOrtKg = Number(document.getElementById('kdOrtDiziKg').value)||0;
-  if(!yeniTarlaId){ alert('Tarla seçin.'); return; }
+  if(!cesitGirisi && !yeniTarlaIds.length){ alert(i18n('Çeşit girin.')); return; }
   if(yeniDizi<=0){ alert('Dizi sayısı girin.'); return; }
   if(yeniOrtKg<=0){ alert('Ort. Dizi Ağırlığı girin.'); return; }
   const atananDizi = (k.seraDagilimi||[]).reduce((s,d)=>s+(Number(d.diziSayisi)||0),0);
   if(yeniDizi < atananDizi){ alert('Dizi sayısı, seralara zaten dağıtılmış miktardan ('+fmt(atananDizi,0)+' dizi) az olamaz.'); return; }
 
-  const tarlaDegisti = yeniTarlaId !== k.tarlaId;
+  const eskiTarlaIds = kirimTarlaIdListesi(k);
+  const tarlaDegisti = JSON.stringify([...eskiTarlaIds].sort()) !== JSON.stringify([...yeniTarlaIds].sort());
   const tarihDegisti = yeniTarih !== k.tarih;
-  const yeniTarla = tarlaBul(yeniTarlaId);
+  const yeniCesit = cesitGirisi || (tarlaBul(yeniTarlaIds[0])?.cesit) || '';
 
   k.tarlaId = yeniTarlaId;
+  k.tarlaIds = yeniTarlaIds;
+  k.cesit = yeniCesit;
   k.tarih = yeniTarih;
   k.kirimNo = yeniKirimNo;
   k.diziSayisi = yeniDizi;
@@ -2667,7 +2694,8 @@ function submitKirimDuzenle(kirimId){
         if(kn.kirimId !== kirimId) return;
         kn.diziKg = (Number(kn.dizi)||0) * yeniOrtKg;
         if(tarihDegisti) kn.tarih = yeniTarih;
-        if(tarlaDegisti){ kn.tarlaId = yeniTarlaId; kn.cesit = yeniTarla?yeniTarla.cesit:''; }
+        kn.cesit = yeniCesit;
+        if(tarlaDegisti){ kn.tarlaId = yeniTarlaId; kn.tarlaIds = yeniTarlaIds; }
       });
     });
   });
@@ -2688,9 +2716,10 @@ function dizimUygula(k, seraId, miktar, dizimTarihi){
   const sera = seraBul(seraId);
   if(!sera) return;
   const tarla = tarlaBul(k.tarlaId);
+  const cesit = k.cesit || (tarla?tarla.cesit:'') || '';
   let donem = seraAktifDonem(sera);
   if(!donem){
-    donem = { id: uid(), tur:'', cesit: tarla?tarla.cesit:'', girisTarihi: dizimTarihi, brandaRengi:'beyaz', acilmaGunu:0, kapaliGunSayisi:0, sulananGunSayisi:0, dolu:0, kaynaklar:[], aktif:true, baslangic:Date.now(), bitis:null };
+    donem = { id: uid(), tur:'', cesit, girisTarihi: dizimTarihi, brandaRengi:'beyaz', acilmaGunu:0, kapaliGunSayisi:0, sulananGunSayisi:0, dolu:0, kaynaklar:[], aktif:true, baslangic:Date.now(), bitis:null };
     sera.donemler = sera.donemler || [];
     sera.donemler.push(donem);
   }
@@ -2700,7 +2729,7 @@ function dizimUygula(k, seraId, miktar, dizimTarihi){
   k.seraDagilimi.push({ id: dizimId, seraId, diziSayisi: miktar, dizimTarihi });
   donem.dolu = (Number(donem.dolu)||0) + miktar;
   donem.kaynaklar = donem.kaynaklar || [];
-  donem.kaynaklar.push({ dizimId, tarlaId: k.tarlaId, kirimId: k.id, dizi: miktar, diziKg, tarih: k.tarih, dizimTarihi, cesit: tarla?tarla.cesit:'' });
+  donem.kaynaklar.push({ dizimId, tarlaId: k.tarlaId||null, tarlaIds: kirimTarlaIdListesi(k), kirimId: k.id, dizi: miktar, diziKg, tarih: k.tarih, dizimTarihi, cesit });
 }
 function dizimKaldir(kirimId, dizimId){
   const k = state.kirimlar.find(x=>x.id===kirimId);
@@ -2744,10 +2773,11 @@ function openSeraDizimModal(seraId){
   if(!bekleyen.length && !state.tarlalar.length){ alert('Önce en az bir tarla ekleyin.'); return; }
   seraDizimSekme = bekleyen.length ? 'bekleyen' : 'yeni';
   const opts = bekleyen.map(({k,tr})=>{
-    const t = tarlaBul(k.tarlaId);
-    return `<option value="${k.id}">${escapeHtml(t?t.ad:'(silinmiş tarla)')} — ${escapeHtml(k.tarih)} · ${k.kirimNo}. ${i18n('kırım')} — ${i18n('Kalan')}: ${fmt(tr.kalanDizi,0)} dizi (~${fmt(tr.kalanDizi*(Number(k.ortDiziKg)||0),0)} kg)</option>`;
+    return `<option value="${k.id}">${escapeHtml(kirimTarlaEtiket(k))} — ${escapeHtml(k.tarih)} · ${kirimNoEtiket(k)} — ${i18n('Kalan')}: ${fmt(tr.kalanDizi,0)} dizi (~${fmt(tr.kalanDizi*(Number(k.ortDiziKg)||0),0)} kg)</option>`;
   }).join('');
-  const tarlaOpts = state.tarlalar.map(t=>`<option value="${t.id}">${escapeHtml(t.ad)}</option>`).join('');
+  const cesitler = [...new Set(state.tarlalar.map(t=>t.cesit).filter(Boolean))].sort();
+  const cesitDatalistHtml = cesitler.map(c=>`<option value="${escapeHtml(c)}">`).join('');
+  const tarlaChkHtml = [...state.tarlalar].sort((a,b)=>(a.ad||'').localeCompare(b.ad||'','tr',{numeric:true})).map(t=>`<div class="check-row"><input type="checkbox" class="dizimYeniTarlaChk" value="${t.id}" id="dizimYeniTarla_${t.id}"><label for="dizimYeniTarla_${t.id}" style="text-transform:none;">${escapeHtml(t.ad)}</label></div>`).join('') || `<div class="item">${i18n('Henüz tarla eklenmedi')}</div>`;
   const tabBarHtml = bekleyen.length ? `
     <div class="row2" style="margin-bottom:8px;">
       <button class="btn ${seraDizimSekme==='bekleyen'?'btn-primary':''}" type="button" id="dizimTabBtnBekleyen" onclick="seraDizimSekmeSec('bekleyen')">${i18n('Bekleyen Kırımdan Seç')}</button>
@@ -2764,20 +2794,19 @@ function openSeraDizimModal(seraId){
       </div>
     </div>
     <div id="dizimSekmeYeni" class="${!bekleyen.length || seraDizimSekme==='yeni' ? '' : 'hidden'}">
-      <div class="hint-box">${i18n('Bu tarladan bu seraya doğrudan tütün girişi kaydedilecek; Kırım sekmesindeki toplam kırılan kg\'a da yansıyacak.')}</div>
+      <div class="hint-box">${i18n('Bu tütün doğrudan bu seraya kaydedilecek; Kırım sekmesindeki toplam kırılan kg\'a da yansıyacak. Hangi tarla(lar)dan geldiği biliniyorsa işaretleyin — bilinmiyorsa boş bırakabilirsiniz, kg tarlalara bölüştürülmez.')}</div>
       <div class="row2">
-        <div class="field"><label>${i18n('Tarla')}</label><select id="fDizimYeniTarla" onchange="dizimYeniKirimNoOner()">${tarlaOpts}</select></div>
-        <div class="field"><label>${i18n('Kırım No (kaçıncı kırım)')}</label>
-          <select id="fDizimYeniKirimNo">${[1,2,3,4,5,6].map(n=>`<option value="${n}">${n}. ${i18n('kırım')}</option>`).join('')}</select>
-        </div>
+        <div class="field"><label>${i18n('Çeşit')}</label><input id="fDizimYeniCesit" type="text" list="dizimCesitListesi"><datalist id="dizimCesitListesi">${cesitDatalistHtml}</datalist></div>
+        <div class="field"><label>${i18n('Ort. Dizi Ağırlığı (kg)')}</label><input id="fDizimYeniOrtKg" type="number" min="0" step="0.01"></div>
       </div>
       <div class="row2">
         <div class="field"><label>${i18n('Tarih (Hasat Tarihi)')}</label><input id="fDizimYeniHasatTarih" type="date" value="${todayStr()}"></div>
         <div class="field"><label>${i18n('Dizim Tarihi')}</label><input id="fDizimYeniDizimTarih" type="date" value="${todayStr()}"></div>
       </div>
-      <div class="row2">
-        <div class="field"><label>${i18n('Dizi Sayısı')}</label><input id="fDizimYeniDizi" type="number" min="0" step="1"></div>
-        <div class="field"><label>${i18n('Ort. Dizi Ağırlığı (kg)')}</label><input id="fDizimYeniOrtKg" type="number" min="0" step="0.01"></div>
+      <div class="field"><label>${i18n('Dizi Sayısı')}</label><input id="fDizimYeniDizi" type="number" min="0" step="1"></div>
+      <div class="field">
+        <label>${i18n('O gün kırılan tarla(lar) (opsiyonel)')}</label>
+        <div class="list-small">${tarlaChkHtml}</div>
       </div>
     </div>
     <div class="modal-actions">
@@ -2786,7 +2815,6 @@ function openSeraDizimModal(seraId){
     </div>
   `);
   if(bekleyen.length) dizimModalMiktarGuncelle();
-  if(state.tarlalar.length) dizimYeniKirimNoOner();
 }
 function dizimModalMiktarGuncelle(){
   const kirimId = document.getElementById('fDizimKirim')?.value;
@@ -2796,26 +2824,23 @@ function dizimModalMiktarGuncelle(){
   miktarEl.max = kirimTurev(k).kalanDizi;
   miktarEl.value = kirimTurev(k).kalanDizi;
 }
-function dizimYeniKirimNoOner(){
-  const tarlaId = document.getElementById('fDizimYeniTarla')?.value;
-  const selectEl = document.getElementById('fDizimYeniKirimNo');
-  if(!tarlaId || !selectEl) return;
-  selectEl.value = Math.min(6, (tarlaStats(tarlaId).maxKirimNo||0)+1);
-}
 function submitSeraDizimEkle(seraId){
   if(seraDizimSekme==='yeni'){
-    const tarlaId = document.getElementById('fDizimYeniTarla')?.value;
+    const cesit = document.getElementById('fDizimYeniCesit').value.trim();
     const hasatTarih = document.getElementById('fDizimYeniHasatTarih').value || todayStr();
     const dizimTarih = document.getElementById('fDizimYeniDizimTarih').value || todayStr();
-    const kirimNo = Number(document.getElementById('fDizimYeniKirimNo').value);
     const diziSayisi = Number(document.getElementById('fDizimYeniDizi').value)||0;
     const ortDiziKg = Number(document.getElementById('fDizimYeniOrtKg').value)||0;
-    if(!tarlaId){ alert('Tarla seçin.'); return; }
+    const tarlaIds = Array.from(document.querySelectorAll('.dizimYeniTarlaChk:checked')).map(el=>el.value);
+    if(!cesit){ alert(i18n('Çeşit girin.')); return; }
+    if(!hasatTarih){ alert('Hasat tarihi girin.'); return; }
+    if(!dizimTarih){ alert('Dizim tarihi girin.'); return; }
     if(diziSayisi<=0){ alert('Dizi sayısı girin.'); return; }
     if(ortDiziKg<=0){ alert('Ort. Dizi Ağırlığı girin.'); return; }
     if(!seraKapasiteAsimOnayi(seraId, diziSayisi)) return;
     const k = {
-      id: uid(), tarih: hasatTarih, tarlaId, kirimNo, diziSayisi, ortDiziKg, seraDagilimi: [],
+      id: uid(), tarih: hasatTarih, tarlaId: tarlaIds.length===1?tarlaIds[0]:null, tarlaIds, cesit, kirimNo: null,
+      diziSayisi, ortDiziKg, seraDagilimi: [],
       isciSayisi: 0, yevmiye: 0, kayipDizi: 0, altYasYok: false, calismaSaati: 0,
       olusturma: Date.now(), ...sonIslemDamgasi()
     };
@@ -2840,12 +2865,11 @@ function openKirimDizimModal(kirimId){
   const k = state.kirimlar.find(x=>x.id===kirimId);
   if(!k) return;
   if(!state.seralar.length){ alert('Önce en az bir sera ekleyin.'); return; }
-  const t = tarlaBul(k.tarlaId);
   const kalan = kirimTurev(k).kalanDizi;
   const seraOpts = seralarSirali().map(s=>`<option value="${s.id}">${escapeHtml(s.ad)}</option>`).join('');
   openModal(`
     <h2>${i18n('Tütün Dizimi Ekle')}</h2>
-    <div class="hint-box">${escapeHtml(t?t.ad:'(silinmiş tarla)')} — ${escapeHtml(k.tarih)} · ${k.kirimNo}. ${i18n('kırım')} — ${i18n('Kalan')}: ${fmt(kalan,0)} dizi (~${fmt(kalan*(Number(k.ortDiziKg)||0),0)} kg)</div>
+    <div class="hint-box">${escapeHtml(kirimTarlaEtiket(k))} — ${escapeHtml(k.tarih)} · ${kirimNoEtiket(k)} — ${i18n('Kalan')}: ${fmt(kalan,0)} dizi (~${fmt(kalan*(Number(k.ortDiziKg)||0),0)} kg)</div>
     <div class="field"><label>${i18n('Sera')}</label><select id="fDizimSera2">${seraOpts}</select></div>
     <div class="row2">
       <div class="field"><label>${i18n('Dizi Sayısı')}</label><input id="fDizimMiktar2" type="number" min="0" step="1" value="${kalan}"></div>
@@ -3102,10 +3126,9 @@ function excelDisaAktar(){
   XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(seraRows), 'Seralar');
 
   const kirimRows = state.kirimlar.map(k=>{
-    const t = tarlaBul(k.tarlaId);
     const tr = kirimTurev(k);
     return {
-      Tarih:k.tarih, Tarla:t?t.ad:'', 'Kırım No':k.kirimNo, 'Dizi Sayısı':tr.diziSayisi,
+      Tarih:k.tarih, Tarla:kirimTarlaEtiket(k), Çeşit:k.cesit||'', 'Kırım No':k.kirimNo, 'Dizi Sayısı':tr.diziSayisi,
       'Ort. Dizi Kg':k.ortDiziKg,
       'Toplam Kg':Math.round(tr.toplamKg), 'Sera Dağılımı':seraDagilimiEtiket(k.seraDagilimi), 'Bekleyen Dizi':tr.kalanDizi,
       'İşçi Sayısı':k.isciSayisi, Yevmiye:k.yevmiye
@@ -3149,7 +3172,7 @@ function csvDisaAktar(){
     const maliyet = (k.isciSayisi||0)*(k.yevmiye||0);
     const seradaDizilenKg = tr.atananDizi * (Number(k.ortDiziKg)||0);
     return [
-      k.tarih, t?t.ad:'', t?t.ciftci:'', k.kirimNo, fmt(tr.diziSayisi,0), k.ortDiziKg, fmt(seradaDizilenKg,0),
+      k.tarih, kirimTarlaEtiket(k), t?t.ciftci:'', k.kirimNo, fmt(tr.diziSayisi,0), k.ortDiziKg, fmt(seradaDizilenKg,0),
       fmt(tr.toplamKg,0), k.isciSayisi, k.yevmiye,
       fmt(maliyet,0), seraDagilimiEtiket(k.seraDagilimi), fmt(tr.kalanDizi,0), k.kayipDizi||'', k.altYasYok?'Evet':'Hayır', k.calismaSaati||''
     ];
@@ -3944,7 +3967,11 @@ function renderRapor(){
   if(!ozetEl) return;
   const toplamDekar = state.tarlalar.reduce((s,t)=>s+(Number(t.dekar)||0),0);
   const toplamTahmini = state.tarlalar.reduce((s,t)=>s+(Number(t.tahminiHasatKg)||0),0);
-  const toplamGercek = state.tarlalar.reduce((s,t)=>s+tarlaStats(t.id).toplamKg,0);
+  // tarla belirtilmeyen/çoklu tarlalı kırım kayıtlarının kg'ı belirli bir tarlaya yazılamaz,
+  // ama gerçekleşen toplam hasada dahil edilmezse üretim eksik görünür.
+  const tarlaBazliKg = state.tarlalar.reduce((s,t)=>s+tarlaStats(t.id).toplamKg,0);
+  const tarlasizKg = state.kirimlar.filter(k=>!k.tarlaId).reduce((s,k)=>s+kirimTurev(k).toplamKg,0);
+  const toplamGercek = tarlaBazliKg + tarlasizKg;
   const kgDekar = toplamDekar>0 ? toplamGercek/toplamDekar : null;
   const toplamSulamaSaat = state.sulamaKayitlari.reduce((s,k)=>s+(Number(k.saat)||0),0);
   const toplamDepoKg = state.depoKutulari.filter(k=>!k.cikisTarihi).reduce((s,k)=>s+(Number(k.kg)||0),0);
@@ -3969,6 +3996,7 @@ function renderRapor(){
 
   const kirimKg = {};
   state.kirimlar.forEach(k=>{
+    if(!k.kirimNo) return; // tarla belirtilmeyen partilerde kırım no anlamsız, bu grafikten hariç tutulur
     const tr = kirimTurev(k);
     kirimKg[k.kirimNo] = (kirimKg[k.kirimNo]||0) + tr.toplamKg;
   });
