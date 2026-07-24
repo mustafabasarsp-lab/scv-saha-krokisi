@@ -592,6 +592,53 @@ body.has-fullscreen-panel{overflow:hidden;}
 .iklim-row-del{border:none;background:transparent;color:var(--muted);font-size:15px;line-height:1;cursor:pointer;padding:4px 7px;border-radius:5px;}
 .iklim-row-del:hover{background:#fbe4e1;color:var(--red);}
 
+/* ---------- ÖDEMELER ---------- */
+.odeme-tarih-input{border:1px solid var(--border);border-radius:8px;padding:7px 10px;font-size:13px;background:#fff;color:var(--ink);}
+.odeme-gunluk-toolbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px;}
+.odeme-oran-ipucu{display:block;font-size:9px;font-weight:400;text-transform:none;opacity:.85;}
+.odeme-gunluk-table thead th{text-align:right;}
+.odeme-gunluk-table thead th:first-child{text-align:left;}
+.odeme-genel-toplam-row td{background:var(--green-100);border-top:2px solid var(--green-700);}
+.odeme-table-wrap{display:block;overflow-x:auto;border:1px solid var(--border);border-radius:8px;background:#fff;}
+.odeme-card-list{display:none;}
+.odeme-kart{border:1px solid var(--border);border-radius:12px;padding:10px 12px;margin-bottom:8px;background:var(--panel);}
+.odeme-kart-ad{font-family:'Barlow Semi Condensed',sans-serif;font-weight:800;font-size:16px;color:var(--ink);margin-bottom:6px;}
+.odeme-mini-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:5px;}
+.odeme-mini-grid .field{margin-bottom:0;min-width:0;}
+.odeme-mini-grid .field label{font-size:8.5px;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.odeme-mini-grid .field input{width:100%;min-width:0;padding:6px 2px;text-align:center;font-weight:700;}
+.odeme-kart-toplam{margin-top:8px;text-align:right;font-size:13px;font-weight:700;color:var(--green-900);}
+.odeme-genel-toplam-sticky{
+  position:sticky;bottom:0;margin-top:4px;
+  background:var(--green-700);color:#fff;border-radius:10px;
+  padding:10px 14px;font-weight:800;text-align:center;font-size:14px;
+  box-shadow:var(--shadow);
+}
+.odeme-bakiye-table-wrap{max-height:320px;overflow:auto;border:1px solid var(--border);border-radius:8px;background:#fff;}
+.odeme-bakiye-row{cursor:pointer;}
+.odeme-bakiye-row:hover{background:var(--green-100);}
+.odeme-kalan-uyari{color:var(--red);font-weight:800;}
+.odeme-kalan-ok{color:var(--green-700);font-weight:800;}
+
+/* ---------- ÖDEMELER: YAZDIRILABİLİR EVRAK ---------- */
+#odemePrintSayfa{display:none;}
+@media print{
+  body *{visibility:hidden;}
+  #odemePrintSayfa, #odemePrintSayfa *{visibility:visible;}
+  #odemePrintSayfa{display:block;position:absolute;left:0;top:0;width:100%;padding:20px;}
+}
+.odeme-print{font-family:Arial,Helvetica,sans-serif;color:#000;}
+.odeme-print-baslik{font-size:22px;font-weight:800;text-align:center;margin-bottom:4px;letter-spacing:.04em;}
+.odeme-print-tarih{font-size:14px;font-weight:700;text-align:center;margin-bottom:16px;}
+.odeme-print-table{width:100%;border-collapse:collapse;}
+.odeme-print-table th,.odeme-print-table td{border:1px solid #000;padding:6px 8px;font-size:12px;text-align:center;}
+.odeme-print-table th{font-weight:800;}
+.odeme-print-table td:first-child,.odeme-print-table th:first-child{text-align:left;}
+.odeme-print-alt{display:flex;justify-content:flex-end;margin-top:14px;}
+.odeme-print-genel-toplam{border:1px solid #000;padding:8px 18px;font-weight:800;font-size:13px;display:flex;flex-direction:column;align-items:center;gap:4px;}
+.odeme-print-genel-toplam span{font-size:19px;}
+.odeme-print-sayim{margin-top:28px;font-size:13px;font-weight:700;}
+
 /* ---------- SİLME SONRASI GERİ AL TOAST ---------- */
 .geri-al-toast{
   position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:120;
@@ -684,6 +731,9 @@ body.has-fullscreen-panel{overflow:hidden;}
   .kirim-fab .ic{font-size:18px;}
   .kirim-fab:active{transform:translateY(2px);box-shadow:0 1px 0 var(--tobacco-deep);}
   .kirim-fab.hidden{display:none;}
+  .odeme-table-wrap{display:none;}
+  .odeme-card-list{display:block;}
+  .odeme-genel-toplam-sticky{bottom:calc(60px + env(safe-area-inset-bottom,0px));}
   /* İklim grafiği: telefonda okunaklı olması için modalı tam ekran aç */
   .modal-iklim-grafik{
     width:calc(100% + 32px);max-width:calc(100% + 32px);
@@ -706,6 +756,7 @@ body.has-fullscreen-panel{overflow:hidden;}
       <button class="tab-btn" id="tab_pageDepo" onclick="sayfaGecis('pageDepo')" data-i18n="📦 Depo">📦 Depo</button>
       <button class="tab-btn" id="tab_pageSulama" onclick="sayfaGecis('pageSulama')" data-i18n="💧 Sulama Takip">💧 Sulama Takip</button>
       <button class="tab-btn" id="tab_pageIklim" onclick="sayfaGecis('pageIklim')" data-i18n="🌡️ İklim Takip">🌡️ İklim Takip</button>
+      <button class="tab-btn" id="tab_pageOdemeler" onclick="sayfaGecis('pageOdemeler')" data-i18n="💰 Ödemeler">💰 Ödemeler</button>
       <button class="tab-btn" id="tab_pageRapor" onclick="sayfaGecis('pageRapor')" data-i18n="📊 Genel Özet">📊 Genel Özet</button>
     </div>
     <div class="badges" id="badgesRow"></div>
@@ -939,6 +990,71 @@ body.has-fullscreen-panel{overflow:hidden;}
     </div>
   </div>
 
+  <!-- SAYFA: ÖDEMELER -->
+  <div class="page hidden" id="pageOdemeler">
+    <div class="panel" style="min-height:0;">
+      <div class="panel-head" style="flex-wrap:wrap;gap:8px;">
+        <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
+          <h2 data-i18n="💰 Ödemeler">💰 Ödemeler</h2>
+          <div class="page-tabs" id="odemeIcSekmeTabs">
+            <button class="tab-btn active" id="odemeTab_gunluk" onclick="odemeSekmeGecis('gunluk')" data-i18n="Günlük Giriş">Günlük Giriş</button>
+            <button class="tab-btn" id="odemeTab_bakiye" onclick="odemeSekmeGecis('bakiye')" data-i18n="Bakiye / Özet">Bakiye / Özet</button>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+          <button class="btn" onclick="openDayibasiYonetModal()">⚙ <span data-i18n="Dayıbaşıları Yönet">Dayıbaşıları Yönet</span></button>
+          <button class="btn" onclick="openYevmiyeAyarlariModal()">⚙ <span data-i18n="Yövmiye Ayarları">Yövmiye Ayarları</span></button>
+        </div>
+      </div>
+      <div class="panel-body">
+
+        <!-- İÇ SEKME: GÜNLÜK GİRİŞ -->
+        <div id="odemeIcerikGunluk">
+          <div class="odeme-gunluk-toolbar">
+            <input type="date" id="odemeGunlukTarihInput" class="odeme-tarih-input" onchange="odemeGunlukTarihDegisti(this.value)">
+            <div class="page-tabs bolge-tabs" id="odemeBolgeTabs">
+              <button class="tab-btn active" id="odemeBolgeTab_tekeliler" onclick="odemeBolgeSekmeGecis('tekeliler')">Tekeliler</button>
+              <button class="tab-btn" id="odemeBolgeTab_kalemli" onclick="odemeBolgeSekmeGecis('kalemli')">Kalemli</button>
+            </div>
+            <button class="btn" onclick="odemeYazdir()">🖨 <span data-i18n="Yazdır">Yazdır</span></button>
+          </div>
+          <div id="odemeGunlukListe"></div>
+        </div>
+
+        <!-- İÇ SEKME: BAKİYE / ÖZET -->
+        <div id="odemeIcerikBakiye" class="hidden">
+          <div class="row3">
+            <div class="field"><label data-i18n="Başlangıç">Başlangıç</label><input type="date" id="odemeBakiyeBaslangic" onchange="odemeBakiyeFiltreDegisti()"></div>
+            <div class="field"><label data-i18n="Bitiş">Bitiş</label><input type="date" id="odemeBakiyeBitis" onchange="odemeBakiyeFiltreDegisti()"></div>
+            <div class="field"><label data-i18n="Bölge">Bölge</label>
+              <select id="odemeBakiyeBolgeSelect" onchange="odemeBakiyeFiltreDegisti()">
+                <option value="" data-i18n="Tümü">Tümü</option>
+                <option value="tekeliler">Tekeliler</option>
+                <option value="kalemli">Kalemli</option>
+              </select>
+            </div>
+          </div>
+          <div class="odeme-bakiye-table-wrap">
+            <table class="iklim-table odeme-bakiye-table">
+              <thead><tr>
+                <th data-i18n="Dayıbaşı">Dayıbaşı</th>
+                <th class="num" data-i18n="Hakediş">Hakediş</th>
+                <th class="num" data-i18n="Ödenen">Ödenen</th>
+                <th class="num" data-i18n="Kalan (genel)">Kalan (genel)</th>
+              </tr></thead>
+              <tbody id="odemeBakiyeTbody"></tbody>
+            </table>
+          </div>
+          <div class="field" style="margin-top:12px;">
+            <label data-i18n="Ödeme Geçmişi">Ödeme Geçmişi</label>
+            <div class="list-small" id="odemeGecmisListesi"></div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
   <!-- SAYFA: GENEL ÖZET / RAPOR -->
   <div class="page hidden" id="pageRapor">
     <div class="panel" style="min-height:0;">
@@ -974,6 +1090,7 @@ body.has-fullscreen-panel{overflow:hidden;}
   <button class="bottom-nav-tab" id="navtab_pageDepo" onclick="sayfaGecis('pageDepo')"><span class="ic">📦</span><span data-i18n="Depo">Depo</span></button>
   <button class="bottom-nav-tab" id="navtab_pageSulama" onclick="sayfaGecis('pageSulama')"><span class="ic">💧</span><span data-i18n="Sulama">Sulama</span></button>
   <button class="bottom-nav-tab" id="navtab_pageIklim" onclick="sayfaGecis('pageIklim')"><span class="ic">🌡️</span><span data-i18n="İklim">İklim</span></button>
+  <button class="bottom-nav-tab" id="navtab_pageOdemeler" onclick="sayfaGecis('pageOdemeler')"><span class="ic">💰</span><span data-i18n="Ödeme">Ödeme</span></button>
   <button class="bottom-nav-tab" id="navtab_pageRapor" onclick="sayfaGecis('pageRapor')"><span class="ic">📊</span><span data-i18n="Özet">Özet</span></button>
 </div>
 
@@ -985,6 +1102,8 @@ body.has-fullscreen-panel{overflow:hidden;}
   <span id="geriAlToastMetin"></span>
   <button class="btn btn-primary" id="geriAlToastBtn" onclick="sonSilineniGeriAl()" data-i18n="↩ Geri Al">↩ Geri Al</button>
 </div>
+
+<div id="odemePrintSayfa"></div>
 
 <div class="overlay" id="loginOverlay">
   <div class="modal">
@@ -1008,7 +1127,7 @@ const AYARLAR = {
   UNITE_PX: 40                // referans kapasitedeki sera-box genişliği (px) — kroki oranı
 };
 const STORAGE_KEY = 'scvSahaKrokiV1';
-const APP_SURUM = 'v55'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
+const APP_SURUM = 'v56'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
 
 /* =========================================================
    HATA / DONMA GÜNLÜĞÜ — "bazen donuyor" şikayetini araştırmak için.
@@ -1172,6 +1291,16 @@ const I18N_EN = {
   'Soldurma Süresi (gün)':'Wilting Duration (days)',
   'Termometre':'Thermometer', 'Var':'Yes', 'Yok':'No',
   '🌡️ Termometre Ekle':'🌡️ Add Thermometer', '🌡️ Termometre Çıkar':'🌡️ Remove Thermometer', '🌡️ Sadece Termometreli':'🌡️ Thermometer Only',
+  '💰 Ödemeler':'💰 Payments', 'Ödeme':'Pay', 'Günlük Giriş':'Daily Entry', 'Bakiye / Özet':'Balance / Summary',
+  'Dayıbaşı':'Crew Leader', 'Dayıbaşıları Yönet':'Manage Crew Leaders', 'Dayıbaşı Ekle':'Add Crew Leader',
+  'Yövmiye Ayarları':'Daily Wage Settings', 'Dizim-Asım':'Stringing-Hanging', 'Sera K.':'Greenhouse', 'Çapa':'Hoeing',
+  'Genel Toplam':'Grand Total', 'Hakediş':'Earned', 'Ödenen':'Paid', 'Kalan (genel)':'Remaining (overall)',
+  'Ödeme Gir':'Enter Payment', 'Ödeme Geçmişi':'Payment History', 'Tutar (₺)':'Amount (₺)', 'Not (opsiyonel)':'Note (optional)',
+  'Yazdır':'Print',
+  'Yeni oranlar sadece bundan sonraki günlük kayıtlara uygulanır. Geçmiş kayıtlar etkilenmez.':'New rates apply only to future daily entries. Past records are not affected.',
+  'Kırım':'Harvest', 'İmza':'Signature', 'Aktif':'Active', 'Pasif':'Inactive',
+  'Henüz dayıbaşı eklenmedi':'No crew leaders added yet', 'Aktif dayıbaşı yok':'No active crew leaders',
+  'Henüz ödeme kaydı yok':'No payment records yet',
 };
 function i18n(tr){ return currentLang==='en' ? (I18N_EN[tr] || tr) : tr; }
 function dilDegistir(){
@@ -1199,13 +1328,17 @@ function uygulaStatikDil(){
 /* =========================================================
    STORE
    ========================================================= */
-function bosState(){ return { tarlalar: [], seralar: [], kirimlar: [], haritaPinleri: [], tesisPinleri: [], depoKutulari: [], sulamaKayitlari: [], iklimKayitlari: [] }; }
+function bosState(){ return { tarlalar: [], seralar: [], kirimlar: [], haritaPinleri: [], tesisPinleri: [], depoKutulari: [], sulamaKayitlari: [], iklimKayitlari: [], dayibasilar: [], yevmiyeKayitlari: [], odemeKayitlari: [], odemeAyarlari: [] }; }
 function stateNormalizeEt(){
   state.haritaPinleri = state.haritaPinleri || [];
   state.tesisPinleri = state.tesisPinleri || [];
   state.depoKutulari = state.depoKutulari || [];
   state.sulamaKayitlari = state.sulamaKayitlari || [];
   state.iklimKayitlari = state.iklimKayitlari || [];
+  state.dayibasilar = state.dayibasilar || [];
+  state.yevmiyeKayitlari = state.yevmiyeKayitlari || [];
+  state.odemeKayitlari = state.odemeKayitlari || [];
+  state.odemeAyarlari = state.odemeAyarlari || [];
   state.tarlalar.forEach(t=>{
     if(!t.bolge){
       if(/^T\d/i.test(t.ad)) t.bolge = 'tekeliler';
@@ -1269,7 +1402,7 @@ const fbDb = firebase.firestore();
 fbAuth.setPersistence(firebase.auth.Auth.Persistence.LOCAL).catch(()=>{});
 fbDb.enablePersistence({ synchronizeTabs:true }).catch(()=>{ /* birden fazla sekme/deste desteklenmiyorsa sessizce yut */ });
 
-const SYNC_KOLEKSIYONLARI = ['tarlalar','seralar','kirimlar','haritaPinleri','tesisPinleri','depoKutulari','sulamaKayitlari','iklimKayitlari'];
+const SYNC_KOLEKSIYONLARI = ['tarlalar','seralar','kirimlar','haritaPinleri','tesisPinleri','depoKutulari','sulamaKayitlari','iklimKayitlari','dayibasilar','yevmiyeKayitlari','odemeKayitlari','odemeAyarlari'];
 let lastSyncedSnapshot = {};
 SYNC_KOLEKSIYONLARI.forEach(c=>{ lastSyncedSnapshot[c] = {}; });
 let firestoreUnsubscribes = [];
@@ -1630,6 +1763,7 @@ function renderAll(){
   renderDepo();
   renderSulama();
   renderIklim();
+  renderOdemeler();
   renderRapor();
   saveState();
 }
@@ -3741,7 +3875,7 @@ function csvDisaAktar(){
    SAYFA GEÇİŞİ
    ========================================================= */
 function sayfaGecis(sayfaId){
-  ['pageSaha','pageHaritalar','pageDepo','pageSulama','pageIklim','pageRapor'].forEach(id=>{
+  ['pageSaha','pageHaritalar','pageDepo','pageSulama','pageIklim','pageOdemeler','pageRapor'].forEach(id=>{
     document.getElementById(id).classList.toggle('hidden', id!==sayfaId);
     document.getElementById('tab_'+id).classList.toggle('active', id===sayfaId);
     const navtab = document.getElementById('navtab_'+id);
@@ -3754,6 +3888,7 @@ function sayfaGecis(sayfaId){
   if(sayfaId==='pageDepo'){ renderDepo(); }
   if(sayfaId==='pageSulama'){ renderSulama(); }
   if(sayfaId==='pageIklim'){ renderIklim(); }
+  if(sayfaId==='pageOdemeler'){ renderOdemeler(); }
   if(sayfaId==='pageRapor'){ renderRapor(); }
 }
 
@@ -4530,6 +4665,412 @@ function renderIklimGrafik(){
   const etiketler = liste.map(k=>iklimKisaTarihSaat(k.tarih, k.saat));
   sicaklikEl.innerHTML = iklimCizgiGrafikSvg(liste.map(k=>Number(k.sicaklik)||0), etiketler, 'var(--amber)', '°C', 'sic');
   nemEl.innerHTML = iklimCizgiGrafikSvg(liste.map(k=>Number(k.nem)||0), etiketler, 'var(--blue)', '%', 'nem');
+}
+
+/* =========================================================
+   ÖDEMELER (dayıbaşı yövmiye takibi + hakediş/ödeme bakiyesi)
+   ========================================================= */
+const YEVMIYE_ALANLARI = ['kirim','sulama','dizimAsim','sera','capa'];
+const YEVMIYE_ETIKETLER = { kirim:'Kırım', sulama:'Sulama', dizimAsim:'Dizim-Asım', sera:'Sera K.', capa:'Çapa' };
+const YEVMIYE_BOS_SAYILAR = { kirim:0, sulama:0, dizimAsim:0, sera:0, capa:0 };
+
+let odemeIcSekmeAktif = 'gunluk';
+let odemeBolgeAktif = 'tekeliler';
+let odemeGunlukTarih = todayStr();
+let odemeBakiyeBaslangic = null; // null => ilk render'da "içinde bulunulan ayın 1'i" olarak doldurulur
+let odemeBakiyeBitis = null;     // null => ilk render'da bugün olarak doldurulur
+let odemeBakiyeBolge = '';
+
+function odemeAyarlariGetir(){
+  return state.odemeAyarlari[0] || { kirim:0, sulama:0, dizimAsim:0, sera:0, capa:0 };
+}
+function odemeAktifDayibasilar(){
+  return state.dayibasilar.filter(d=>d.aktif!==false).sort((a,b)=>(a.ad||'').localeCompare(b.ad||'','tr'));
+}
+function odemeGunSnapshotOranlari(tarih, bolge){
+  // Gün içindeki kayıtlar farklı oran snapshot'ları taşıyabilir (kayıtlar arasında
+  // oran ayarı değiştiyse). Tek bir başlık ipucu ancak tüm kayıtlar aynı oranı
+  // taşıyorsa doğrudur; karışıksa null dön (ipucu gizlenir), kayıt yoksa güncel ayar.
+  const kayitlar = state.yevmiyeKayitlari.filter(y=>y.tarih===tarih && y.bolge===bolge);
+  if(!kayitlar.length) return odemeAyarlariGetir();
+  const ilk = kayitlar[0].yevmiyeler || {};
+  const hepsiAyni = kayitlar.every(y=> YEVMIYE_ALANLARI.every(f=> (Number((y.yevmiyeler||{})[f])||0) === (Number(ilk[f])||0)));
+  return hepsiAyni ? ilk : null;
+}
+// Bir yevmiye kaydının hakediş (₺) tutarı — saklanmaz, her zaman snapshot orandan türetilir.
+function yevmiyeKaydiTutar(y){
+  return YEVMIYE_ALANLARI.reduce((s,f)=> s + (Number(y.sayilar[f])||0) * (Number(y.yevmiyeler[f])||0), 0);
+}
+function odemeHakedisToplam(dayibasiId, baslangic, bitis, bolge){
+  return state.yevmiyeKayitlari
+    .filter(y=> y.dayibasiId===dayibasiId
+      && (!baslangic || y.tarih>=baslangic)
+      && (!bitis || y.tarih<=bitis)
+      && (!bolge || y.bolge===bolge))
+    .reduce((s,y)=>s+yevmiyeKaydiTutar(y), 0);
+}
+function odemeOdenenToplam(dayibasiId, baslangic, bitis){
+  return state.odemeKayitlari
+    .filter(o=> o.dayibasiId===dayibasiId
+      && (!baslangic || o.tarih>=baslangic)
+      && (!bitis || o.tarih<=bitis))
+    .reduce((s,o)=>s+(Number(o.tutar)||0), 0);
+}
+// "Kalan (genel)" her zaman TÜM ZAMANLAR bakiyesidir — seçili tarih aralığı/bölge filtresinden etkilenmez.
+function odemeKalanGenel(dayibasiId){
+  return odemeHakedisToplam(dayibasiId, null, null, null) - odemeOdenenToplam(dayibasiId, null, null);
+}
+
+/* ---- Sayfa/sekme/bölge geçişleri ---- */
+function renderOdemeler(){
+  if(sayfaGizliMi('pageOdemeler')) return;
+  if(odemeIcSekmeAktif==='gunluk') renderOdemeGunluk(); else renderOdemeBakiye();
+}
+function odemeSekmeGecis(sekme){
+  odemeIcSekmeAktif = sekme;
+  const gunlukTab = document.getElementById('odemeTab_gunluk');
+  const bakiyeTab = document.getElementById('odemeTab_bakiye');
+  if(gunlukTab) gunlukTab.classList.toggle('active', sekme==='gunluk');
+  if(bakiyeTab) bakiyeTab.classList.toggle('active', sekme==='bakiye');
+  const gunlukIcerik = document.getElementById('odemeIcerikGunluk');
+  const bakiyeIcerik = document.getElementById('odemeIcerikBakiye');
+  if(gunlukIcerik) gunlukIcerik.classList.toggle('hidden', sekme!=='gunluk');
+  if(bakiyeIcerik) bakiyeIcerik.classList.toggle('hidden', sekme!=='bakiye');
+  renderOdemeler();
+}
+function odemeBolgeSekmeGecis(bolge){
+  odemeBolgeAktif = bolge;
+  ['tekeliler','kalemli'].forEach(b=>{
+    document.getElementById('odemeBolgeTab_'+b).classList.toggle('active', b===bolge);
+  });
+  renderOdemeGunluk();
+}
+function odemeGunlukTarihDegisti(deger){
+  odemeGunlukTarih = deger || todayStr();
+  renderOdemeGunluk();
+}
+function odemeBakiyeFiltreDegisti(){
+  const b = document.getElementById('odemeBakiyeBaslangic');
+  const s = document.getElementById('odemeBakiyeBitis');
+  const r = document.getElementById('odemeBakiyeBolgeSelect');
+  odemeBakiyeBaslangic = (b && b.value) || todayStr().slice(0,8)+'01';
+  odemeBakiyeBitis = (s && s.value) || todayStr();
+  odemeBakiyeBolge = r ? r.value : '';
+  renderOdemeBakiye();
+}
+
+/* ---- Günlük Giriş ---- */
+function yevmiyeHucreGuncelle(tarih, bolge, dayibasiId, alan, deger){
+  const v = Math.max(0, Math.floor(Number(deger)||0));
+  let kayit = state.yevmiyeKayitlari.find(y=>y.tarih===tarih && y.bolge===bolge && y.dayibasiId===dayibasiId);
+  if(!kayit){
+    if(v<=0){ renderAll(); return; } // hiçbir şey girilmedi, boş kayıt oluşturma
+    const ayarlar = odemeAyarlariGetir();
+    kayit = {
+      id: 'yv_'+tarih+'_'+bolge+'_'+dayibasiId,
+      tarih, bolge, dayibasiId,
+      sayilar: { ...YEVMIYE_BOS_SAYILAR },
+      // Kayıt İLK oluşturulduğu andaki ₺ oranların snapshot'ı — sonradan oran ayarı
+      // değişse bile bu kaydın hakedişi hep bu snapshot'a göre hesaplanır.
+      yevmiyeler: { kirim:ayarlar.kirim||0, sulama:ayarlar.sulama||0, dizimAsim:ayarlar.dizimAsim||0, sera:ayarlar.sera||0, capa:ayarlar.capa||0 },
+      olusturma: Date.now()
+    };
+    state.yevmiyeKayitlari.push(kayit);
+  }
+  kayit.sayilar[alan] = v;
+  Object.assign(kayit, sonIslemDamgasi());
+  const hepsiBos = YEVMIYE_ALANLARI.every(f=>!(Number(kayit.sayilar[f])>0));
+  if(hepsiBos){
+    state.yevmiyeKayitlari = state.yevmiyeKayitlari.filter(y=>y.id!==kayit.id);
+  }
+  renderAll();
+}
+function renderOdemeGunluk(){
+  if(sayfaGizliMi('pageOdemeler')) return;
+  const wrap = document.getElementById('odemeGunlukListe');
+  if(!wrap) return;
+  const tarihInput = document.getElementById('odemeGunlukTarihInput');
+  if(tarihInput && document.activeElement!==tarihInput) tarihInput.value = odemeGunlukTarih;
+  if(wrap.contains(document.activeElement)) return; // kullanıcı bir hücrede yazarken listeyi yeniden çizme
+  const tarih = odemeGunlukTarih;
+  const bolge = odemeBolgeAktif;
+  const dayibasilar = odemeAktifDayibasilar();
+  const oranlar = odemeGunSnapshotOranlari(tarih, bolge);
+  const kolonToplam = { ...YEVMIYE_BOS_SAYILAR };
+  let genelToplam = 0;
+
+  const satirVerileri = dayibasilar.map(d=>{
+    const kayit = state.yevmiyeKayitlari.find(y=>y.tarih===tarih && y.bolge===bolge && y.dayibasiId===d.id);
+    const sayilar = kayit ? kayit.sayilar : {};
+    let satirToplam = 0;
+    YEVMIYE_ALANLARI.forEach(f=>{ const v = Number(sayilar[f])||0; kolonToplam[f]+=v; satirToplam+=v; });
+    genelToplam += satirToplam;
+    return { d, sayilar, satirToplam };
+  });
+
+  const girisHucre = (d, sayilar, f) => `<input type="number" inputmode="numeric" min="0" step="1" value="${sayilar[f]?sayilar[f]:''}" onchange="yevmiyeHucreGuncelle('${tarih}','${bolge}','${d.id}','${f}',this.value)">`;
+
+  const tabloBasliklari = YEVMIYE_ALANLARI.map(f=>`<th class="num">${i18n(YEVMIYE_ETIKETLER[f])}${oranlar?`<span class="odeme-oran-ipucu">₺${fmt(oranlar[f]||0,0)}</span>`:''}</th>`).join('');
+  const tabloSatirlari = satirVerileri.map(({d,sayilar,satirToplam})=>`
+    <tr data-id="${d.id}">
+      <td>${escapeHtml(d.ad)}</td>
+      ${YEVMIYE_ALANLARI.map(f=>`<td class="num">${girisHucre(d,sayilar,f)}</td>`).join('')}
+      <td class="num"><b>${fmt(satirToplam,0)}</b></td>
+    </tr>`).join('');
+  const tabloGenelToplam = satirVerileri.length ? `
+    <tr class="odeme-genel-toplam-row">
+      <td><b>${i18n('Genel Toplam')}</b></td>
+      ${YEVMIYE_ALANLARI.map(f=>`<td class="num"><b>${fmt(kolonToplam[f],0)}</b></td>`).join('')}
+      <td class="num"><b>${fmt(genelToplam,0)}</b></td>
+    </tr>` : '';
+
+  const kartlar = satirVerileri.map(({d,sayilar,satirToplam})=>`
+    <div class="odeme-kart" data-id="${d.id}">
+      <div class="odeme-kart-ad">${escapeHtml(d.ad)}</div>
+      <div class="odeme-mini-grid">
+        ${YEVMIYE_ALANLARI.map(f=>`
+          <div class="field">
+            <label>${i18n(YEVMIYE_ETIKETLER[f])}</label>
+            ${girisHucre(d,sayilar,f)}
+          </div>`).join('')}
+      </div>
+      <div class="odeme-kart-toplam">${i18n('Toplam')}: <b>${fmt(satirToplam,0)}</b></div>
+    </div>`).join('');
+
+  wrap.innerHTML = `
+    <div class="odeme-table-wrap">
+      <table class="iklim-table odeme-gunluk-table">
+        <thead><tr>
+          <th>${i18n('Dayıbaşı')}</th>
+          ${tabloBasliklari}
+          <th class="num">${i18n('Toplam')}</th>
+        </tr></thead>
+        <tbody>
+          ${tabloSatirlari || `<tr><td colspan="7" class="iklim-table-empty">${i18n('Aktif dayıbaşı yok')}</td></tr>`}
+          ${tabloGenelToplam}
+        </tbody>
+      </table>
+    </div>
+    <div class="odeme-card-list">
+      ${kartlar || `<div class="item">${i18n('Aktif dayıbaşı yok')}</div>`}
+      ${satirVerileri.length ? `<div class="odeme-genel-toplam-sticky">${i18n('Genel Toplam')}: ${fmt(genelToplam,0)}</div>` : ''}
+    </div>
+  `;
+}
+
+/* ---- Dayıbaşı Yönetimi ---- */
+function openDayibasiYonetModal(){
+  openModal(`
+    <h2>${i18n('Dayıbaşıları Yönet')}</h2>
+    <div class="list-small" id="dayibasiYonetListe" style="max-height:260px;"></div>
+    <div class="field" style="margin-top:10px;">
+      <label>${i18n('Dayıbaşı Ekle')}</label>
+      <div style="display:flex;gap:8px;">
+        <input id="fDayibasiYeniAd" type="text" style="flex:1;" onkeydown="if(event.key==='Enter')submitDayibasiEkle()">
+        <button class="btn btn-primary" onclick="submitDayibasiEkle()">${i18n('Ekle')}</button>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-muted" onclick="closeModal();renderOdemeler();">${i18n('Kapat')}</button>
+    </div>
+  `);
+  renderDayibasiYonetListe();
+}
+function renderDayibasiYonetListe(){
+  const el = document.getElementById('dayibasiYonetListe');
+  if(!el) return;
+  if(el.contains(document.activeElement)) return;
+  const liste = [...state.dayibasilar].sort((a,b)=>(a.ad||'').localeCompare(b.ad||'','tr'));
+  el.innerHTML = liste.map(d=>`
+    <div class="item" style="display:flex;align-items:center;gap:8px;">
+      <input type="text" value="${escapeHtml(d.ad)}" style="flex:1;border:1px solid var(--border);border-radius:5px;padding:4px 6px;" onchange="dayibasiAdGuncelle('${d.id}',this.value)">
+      <label style="display:flex;align-items:center;gap:4px;font-size:11px;white-space:nowrap;">
+        <input type="checkbox" ${d.aktif!==false?'checked':''} onchange="dayibasiAktifDegistir('${d.id}',this.checked)">${i18n('Aktif')}
+      </label>
+    </div>`).join('') || `<div class="item">${i18n('Henüz dayıbaşı eklenmedi')}</div>`;
+}
+function submitDayibasiEkle(){
+  const input = document.getElementById('fDayibasiYeniAd');
+  const ad = input.value.trim();
+  if(!ad){ alert('Ad girin.'); return; }
+  if(adCakismaVarMi(state.dayibasilar, ad)){ alert('Bu isimde bir dayıbaşı zaten var.'); return; }
+  state.dayibasilar.push({ id: uid(), ad, aktif:true, ts: Date.now(), ...sonIslemDamgasi() });
+  input.value = '';
+  renderDayibasiYonetListe();
+  renderAll();
+}
+function dayibasiAdGuncelle(id, deger){
+  const d = state.dayibasilar.find(x=>x.id===id);
+  if(!d) return;
+  const ad = deger.trim();
+  if(!ad){ renderAll(); return; }
+  if(adCakismaVarMi(state.dayibasilar, ad, id)){ alert('Bu isimde bir dayıbaşı zaten var.'); renderDayibasiYonetListe(); renderAll(); return; }
+  d.ad = ad;
+  Object.assign(d, sonIslemDamgasi());
+  renderAll();
+}
+function dayibasiAktifDegistir(id, checked){
+  const d = state.dayibasilar.find(x=>x.id===id);
+  if(!d) return;
+  d.aktif = !!checked;
+  Object.assign(d, sonIslemDamgasi());
+  renderAll();
+}
+
+/* ---- Yövmiye Ayarları ---- */
+function openYevmiyeAyarlariModal(){
+  const a = odemeAyarlariGetir();
+  openModal(`
+    <h2>${i18n('Yövmiye Ayarları')}</h2>
+    <div class="hint-box">${i18n('Yeni oranlar sadece bundan sonraki günlük kayıtlara uygulanır. Geçmiş kayıtlar etkilenmez.')}</div>
+    <div class="row3">
+      <div class="field"><label>${i18n('Kırım')} (₺)</label><input id="fYevmiyeKirim" type="number" min="0" step="1" value="${a.kirim||0}"></div>
+      <div class="field"><label>${i18n('Sulama')} (₺)</label><input id="fYevmiyeSulama" type="number" min="0" step="1" value="${a.sulama||0}"></div>
+      <div class="field"><label>${i18n('Dizim-Asım')} (₺)</label><input id="fYevmiyeDizimAsim" type="number" min="0" step="1" value="${a.dizimAsim||0}"></div>
+    </div>
+    <div class="row2">
+      <div class="field"><label>${i18n('Sera K.')} (₺)</label><input id="fYevmiyeSera" type="number" min="0" step="1" value="${a.sera||0}"></div>
+      <div class="field"><label>${i18n('Çapa')} (₺)</label><input id="fYevmiyeCapa" type="number" min="0" step="1" value="${a.capa||0}"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-muted" onclick="closeModal()">${i18n('Vazgeç')}</button>
+      <button class="btn btn-primary" onclick="submitYevmiyeAyarlari()">${i18n('Kaydet')}</button>
+    </div>
+  `);
+}
+function submitYevmiyeAyarlari(){
+  const guncelleme = {
+    id: 'guncel',
+    kirim: Number(document.getElementById('fYevmiyeKirim').value)||0,
+    sulama: Number(document.getElementById('fYevmiyeSulama').value)||0,
+    dizimAsim: Number(document.getElementById('fYevmiyeDizimAsim').value)||0,
+    sera: Number(document.getElementById('fYevmiyeSera').value)||0,
+    capa: Number(document.getElementById('fYevmiyeCapa').value)||0,
+    ts: Date.now()
+  };
+  Object.assign(guncelleme, sonIslemDamgasi());
+  if(state.odemeAyarlari.length){ Object.assign(state.odemeAyarlari[0], guncelleme); }
+  else { state.odemeAyarlari.push(guncelleme); }
+  closeModal(); renderAll();
+}
+
+/* ---- Bakiye / Özet ---- */
+function renderOdemeBakiye(){
+  if(sayfaGizliMi('pageOdemeler')) return;
+  const tbody = document.getElementById('odemeBakiyeTbody');
+  if(!tbody) return;
+  if(odemeBakiyeBaslangic==null) odemeBakiyeBaslangic = todayStr().slice(0,8)+'01';
+  if(odemeBakiyeBitis==null) odemeBakiyeBitis = todayStr();
+  const baslangicInput = document.getElementById('odemeBakiyeBaslangic');
+  const bitisInput = document.getElementById('odemeBakiyeBitis');
+  const bolgeInput = document.getElementById('odemeBakiyeBolgeSelect');
+  if(baslangicInput && document.activeElement!==baslangicInput) baslangicInput.value = odemeBakiyeBaslangic;
+  if(bitisInput && document.activeElement!==bitisInput) bitisInput.value = odemeBakiyeBitis;
+  if(bolgeInput && document.activeElement!==bolgeInput) bolgeInput.value = odemeBakiyeBolge;
+  if(!tbody.contains(document.activeElement)){
+    const baslangic = odemeBakiyeBaslangic, bitis = odemeBakiyeBitis, bolge = odemeBakiyeBolge;
+    const tumDayibasilar = [...state.dayibasilar].sort((a,b)=>(a.ad||'').localeCompare(b.ad||'','tr'));
+    tbody.innerHTML = tumDayibasilar.map(d=>{
+      const hakedis = odemeHakedisToplam(d.id, baslangic, bitis, bolge||null);
+      const odenen = odemeOdenenToplam(d.id, baslangic, bitis);
+      const kalan = odemeKalanGenel(d.id);
+      return `<tr class="odeme-bakiye-row" onclick="openOdemeGirModal('${d.id}')">
+        <td>${escapeHtml(d.ad)}${d.aktif===false?' <span style="color:var(--muted);font-size:10px;">('+i18n('Pasif')+')</span>':''}</td>
+        <td class="num">${fmt(hakedis,0)}</td>
+        <td class="num">${fmt(odenen,0)}</td>
+        <td class="num ${kalan>0?'odeme-kalan-uyari':'odeme-kalan-ok'}"><b>${fmt(kalan,0)}</b></td>
+      </tr>`;
+    }).join('') || `<tr><td colspan="4" class="iklim-table-empty">${i18n('Henüz dayıbaşı eklenmedi')}</td></tr>`;
+  }
+  renderOdemeGecmisListesi();
+}
+function openOdemeGirModal(dayibasiId){
+  const d = state.dayibasilar.find(x=>x.id===dayibasiId);
+  if(!d) return;
+  const kalan = Math.round(odemeKalanGenel(dayibasiId));
+  openModal(`
+    <h2>${i18n('Ödeme Gir')} — ${escapeHtml(d.ad)}</h2>
+    <div class="row2">
+      <div class="field"><label>${i18n('Tutar (₺)')}</label><input id="fOdemeTutar" type="number" min="0" step="1" value="${kalan>0?kalan:''}"></div>
+      <div class="field"><label>${i18n('Tarih')}</label><input id="fOdemeTarih" type="date" value="${todayStr()}"></div>
+    </div>
+    <div class="field"><label>${i18n('Not (opsiyonel)')}</label><input id="fOdemeNot" type="text"></div>
+    <div class="modal-actions">
+      <button class="btn btn-muted" onclick="closeModal()">${i18n('Vazgeç')}</button>
+      <button class="btn btn-primary" onclick="submitOdemeGir('${dayibasiId}')">${i18n('Kaydet')}</button>
+    </div>
+  `);
+}
+function submitOdemeGir(dayibasiId){
+  const tutar = Number(document.getElementById('fOdemeTutar').value)||0;
+  const tarih = document.getElementById('fOdemeTarih').value || todayStr();
+  const notMetni = document.getElementById('fOdemeNot').value.trim();
+  if(tutar<=0){ alert('Tutar girin.'); return; }
+  state.odemeKayitlari.push({ id: uid(), tarih, dayibasiId, tutar, not: notMetni, olusturma: Date.now(), ...sonIslemDamgasi() });
+  closeModal(); renderAll();
+}
+function odemeSil(id){
+  if(!confirm('Bu ödeme kaydı silinsin mi?')) return;
+  silmeYedekAl(['odemeKayitlari'], 'Ödeme kaydı');
+  state.odemeKayitlari = state.odemeKayitlari.filter(x=>x.id!==id);
+  renderAll();
+}
+function renderOdemeGecmisListesi(){
+  const el = document.getElementById('odemeGecmisListesi');
+  if(!el) return;
+  if(el.contains(document.activeElement)) return;
+  const liste = [...state.odemeKayitlari].sort((a,b)=>b.tarih.localeCompare(a.tarih));
+  el.innerHTML = liste.map(o=>{
+    const d = state.dayibasilar.find(x=>x.id===o.dayibasiId);
+    return `<div class="item" style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
+      <span>${escapeHtml(o.tarih)} · ${escapeHtml(d?d.ad:i18n('(silinmiş)'))} · <b>${fmt(o.tutar,0)}₺</b>${o.not?' · '+escapeHtml(o.not):''}</span>
+      <button class="del" title="${i18n('Sil')}" onclick="odemeSil('${o.id}')" style="border:none;background:transparent;color:var(--muted);font-size:15px;">×</button>
+    </div>`;
+  }).join('') || `<div class="item">${i18n('Henüz ödeme kaydı yok')}</div>`;
+}
+
+/* ---- Yazdırılabilir Evrak ---- */
+function odemeYazdir(){
+  const tarih = odemeGunlukTarih;
+  const bolge = odemeBolgeAktif;
+  const bolgeAdBuyuk = bolge==='kalemli' ? 'KALEMLİ' : 'TEKELİLER';
+  const tp = (tarih||'').split('-');
+  const tarihGoster = tp.length===3 ? `${tp[2]}.${tp[1]}.${tp[0]}` : (tarih||'');
+  const guncelDayibasilar = state.dayibasilar.filter(d=>{
+    const y = state.yevmiyeKayitlari.find(x=>x.tarih===tarih && x.bolge===bolge && x.dayibasiId===d.id);
+    return y && YEVMIYE_ALANLARI.some(f=>Number(y.sayilar[f])>0);
+  }).sort((a,b)=>(a.ad||'').localeCompare(b.ad||'','tr'));
+  let genelToplam = 0;
+  const satirlar = guncelDayibasilar.map(d=>{
+    const y = state.yevmiyeKayitlari.find(x=>x.tarih===tarih && x.bolge===bolge && x.dayibasiId===d.id);
+    const s = y.sayilar;
+    const toplam = YEVMIYE_ALANLARI.reduce((sum,f)=>sum+(Number(s[f])||0),0);
+    genelToplam += toplam;
+    return `<tr><td>${escapeHtml(d.ad)}</td>${YEVMIYE_ALANLARI.map(f=>`<td>${s[f]?fmt(s[f],0):''}</td>`).join('')}<td><b>${fmt(toplam,0)}</b></td><td></td></tr>`;
+  }).join('');
+  const bosSatir = `<tr><td>&nbsp;</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>`;
+  const printEl = document.getElementById('odemePrintSayfa');
+  if(!printEl) return;
+  printEl.innerHTML = `
+    <div class="odeme-print">
+      <div class="odeme-print-baslik">${bolgeAdBuyuk}</div>
+      <div class="odeme-print-tarih">TARİH: ${tarihGoster}</div>
+      <table class="odeme-print-table">
+        <thead><tr>
+          <th>DAYIBAŞI</th><th>KIRIM</th><th>SULAMA</th><th>DİZİM-ASIM</th><th>SERA K.</th><th>ÇAPA</th><th>TOPLAM</th><th>İMZA</th>
+        </tr></thead>
+        <tbody>
+          ${satirlar}
+          ${bosSatir.repeat(3)}
+        </tbody>
+      </table>
+      <div class="odeme-print-alt">
+        <div class="odeme-print-genel-toplam">GENEL TOPLAM<span>${fmt(genelToplam,0)}</span></div>
+      </div>
+      <div class="odeme-print-sayim">SAYIM YAPAN: ________________________</div>
+    </div>
+  `;
+  setTimeout(()=>window.print(), 50);
 }
 
 /* =========================================================
