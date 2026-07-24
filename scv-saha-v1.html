@@ -481,10 +481,25 @@ body.has-fullscreen-panel{overflow:hidden;}
 .tarla-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;max-height:340px;overflow-y:auto;padding:2px;}
 .tarla-tile{
   background:var(--panel);border:2px solid var(--border);border-radius:14px;padding:16px 10px;text-align:center;min-height:64px;
+  position:relative;
 }
 .tarla-tile:active{background:var(--green-700);border-color:var(--green-700);color:#fff;}
 .tarla-tile b{font-family:'Barlow Semi Condensed',sans-serif;font-weight:800;font-size:19px;display:block;}
 .tarla-tile span{font-size:11px;opacity:.8;}
+/* Çoklu seçim (dokun=seç/bırak) durumundaki dolgu rengi + seçim sırası rozeti */
+.tarla-tile.sel{background:var(--green-700);border-color:var(--green-700);color:#fff;}
+.tarla-tile.sel span{opacity:.9;}
+.tile-sira{
+  position:absolute;top:6px;right:8px;min-width:22px;height:22px;line-height:22px;border-radius:11px;
+  background:#fff;color:var(--green-700);font-style:normal;font-weight:800;font-size:13px;padding:0 4px;
+}
+/* Seçili tarla/sera etiket şeritleri (tek dokunuşla çıkarma) */
+.secim-chip-row{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0;}
+.secim-chip{
+  min-height:44px;display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border-radius:12px;
+  border:2px solid var(--green-700);background:var(--green-100);color:var(--green-900);font-weight:800;font-size:15px;
+}
+.secim-chip.sabit{border-color:var(--border);background:var(--panel-2);}
 .stepper-wrap{display:flex;flex-direction:column;align-items:center;gap:6px;padding:10px 0 16px;}
 .stepper-label{font-size:12px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.05em;}
 .stepper{display:flex;align-items:center;gap:16px;}
@@ -989,7 +1004,7 @@ const AYARLAR = {
   UNITE_PX: 40                // referans kapasitedeki sera-box genişliği (px) — kroki oranı
 };
 const STORAGE_KEY = 'scvSahaKrokiV1';
-const APP_SURUM = 'v52'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
+const APP_SURUM = 'v53'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
 
 /* =========================================================
    HATA / DONMA GÜNLÜĞÜ — "bazen donuyor" şikayetini araştırmak için.
@@ -1120,6 +1135,16 @@ const I18N_EN = {
   'Çeşit girin.':'Enter a variety.',
   'Hangi tarla?':'Which field?', 'Kaç dizi kırıldı':'How many strings cut', "Basılı tut: 10'ar artır":'Hold to add 10 at a time',
   '+ Detaylı bilgi ekle (işçi, yevmiye, kayıp)':'+ Add details (workers, wage, loss)', 'Geri':'Back',
+  '+ Tarla Ekle (aynı gün ikinci tarla)':'+ Add Field (second field, same day)',
+  'Eklenecek başka tarla yok':'No other field to add',
+  'Hangi seralara dizilecek? (opsiyonel)':'Which greenhouses will it be strung in? (optional)',
+  'Sera seçmezseniz dizi "bekleyen" kalır — sonradan sera ekranından atayabilirsiniz.':'If you don\'t pick a greenhouse, the strings stay "pending" — you can assign them later from the greenhouse screen.',
+  'sera seçildi — seçim sırasına göre doldurulacak':'greenhouse(s) selected — will be filled in selection order',
+  'toplam boş yer':'total free space',
+  'Bu bölgede sera yok.':'No greenhouses in this region.',
+  'Ort. Dizi Ağırlığı (kg, opsiyonel)':'Avg. String Weight (kg, optional)',
+  'Tartım sonrası girilebilir':'Can be entered after weighing',
+  'son':'last',
   'Kutu Ekle':'Add Box', 'Sulama Kaydı Ekle':'Add Irrigation Record',
   'Tarla Adı':'Field Name', 'Çiftçi':'Farmer', 'Dekar':'Decares', 'Varyete Kodu / Çeşit':'Variety Code / Type', 'Bölge':'Region',
   'Diğer / Belirtilmemiş':'Other / Unspecified',
@@ -2532,14 +2557,26 @@ function submitGubreHizliEkle(tarlaId){
    ========================================================= */
 let kirimModalPresetTarlaId = null;
 let kirimAkisTarlaId = null;
+let kirimAkisEkTarlaIds = [];   // adım 2'de eklenen ek tarlalar (aynı gün aynı çeşit, ikinci tarla senaryosu)
+let kirimAkisSeraIds = [];      // adım 2'de seçilen hedef seralar (seçim sırası = doldurma sırası)
+let kirimEkTarlaPanelAcik = false;
+let kirimSeraBolgeAktif = 'tumu';
+function kirimAkisSecimleriSifirla(){
+  kirimAkisEkTarlaIds = [];
+  kirimAkisSeraIds = [];
+  kirimEkTarlaPanelAcik = false;
+  kirimSeraBolgeAktif = 'tumu';
+}
 function openKirimModal(presetTarlaId){
   if(!state.tarlalar.length){ alert('Önce en az bir tarla ekleyin.'); return; }
   kirimModalPresetTarlaId = presetTarlaId || null;
+  kirimAkisSecimleriSifirla();
   if(presetTarlaId){ kirimAkisTarlaId = presetTarlaId; kirimAdim2Ac(); }
   else { kirimAdim1Ac(); }
 }
 function kirimAdim1Ac(){
   kirimAkisTarlaId = null;
+  kirimAkisSecimleriSifirla();
   const tiles = state.tarlalar.map(t=>`
     <button class="tarla-tile" type="button" onclick="kirimTarlaSecildi('${t.id}')">
       <b>${escapeHtml(t.ad)}</b><span>${escapeHtml(t.cesit||'-')}</span>
@@ -2555,6 +2592,7 @@ function kirimAdim1Ac(){
 }
 function kirimTarlaSecildi(tarlaId){
   kirimAkisTarlaId = tarlaId;
+  kirimAkisEkTarlaIds = kirimAkisEkTarlaIds.filter(id=>id!==tarlaId);
   kirimAdim2Ac();
 }
 function kirimSonOrtDiziKg(tarlaId){
@@ -2573,6 +2611,7 @@ function kirimAdim2Ac(){
     : `<button class="btn btn-muted" onclick="kirimAdim1Ac()">${i18n('Geri')}</button>`;
   openModal(`
     <h2>${escapeHtml(t?t.ad:'')}</h2>
+    <div id="kirimEkTarlaAlan">${kirimEkTarlaAlaniHtml()}</div>
     <div class="stepper-wrap">
       <div class="stepper-label">${i18n('Kaç dizi kırıldı')}</div>
       <div class="stepper">
@@ -2586,11 +2625,14 @@ function kirimAdim2Ac(){
       <div class="field"><label>${i18n('Kırım No (kaçıncı kırım)')}</label>
         <select id="k2KirimNo">${[1,2,3,4,5,6].map(n=>`<option value="${n}" ${n===kirimNoVarsayilan?'selected':''}>${n}. ${i18n('kırım')}</option>`).join('')}</select>
       </div>
-      <div class="field"><label>${i18n('Ort. Dizi Ağırlığı (kg)')}</label><input id="k2OrtDiziKg" type="number" min="0" step="0.01" value="${sonOrtKg}"></div>
+      <div class="field"><label>${i18n('Ort. Dizi Ağırlığı (kg, opsiyonel)')}</label><input id="k2OrtDiziKg" type="number" min="0" step="0.01" placeholder="${sonOrtKg?i18n('son')+': '+sonOrtKg:i18n('Tartım sonrası girilebilir')}"></div>
     </div>
-    <div class="field"><label>${i18n('Tarih (Hasat Tarihi)')}</label><input id="k2Tarih" type="date" value="${todayStr()}"></div>
-    <div class="hint-box">${i18n('Bu tütün hangi seraya dizilecek, hemen seçmek zorunda değilsiniz — daha sonra sera ekranından "Tütün Dizimi Ekle" ile atayabilirsiniz.')}</div>
-    <button class="btn btn-muted" type="button" style="width:100%;margin-top:2px;" onclick="kirimDetayAcKapa()">${i18n('+ Detaylı bilgi ekle (işçi, yevmiye, kayıp)')}</button>
+    <div class="row2">
+      <div class="field"><label>${i18n('Tarih (Hasat Tarihi)')}</label><input id="k2Tarih" type="date" value="${todayStr()}"></div>
+      <div class="field"><label>${i18n('Dizim Tarihi')}</label><input id="k2DizimTarih" type="date" value="${todayStr()}"></div>
+    </div>
+    <div id="kirimSeraBolumu">${kirimSeraBolumuHtml()}</div>
+    <button class="btn btn-muted" type="button" style="width:100%;margin-top:8px;" onclick="kirimDetayAcKapa()">${i18n('+ Detaylı bilgi ekle (işçi, yevmiye, kayıp)')}</button>
     <div id="kirimDetayAlan" class="hidden">
       <div class="row3" style="margin-top:8px;">
         <div class="field"><label>${i18n('İşçi Sayısı')}</label><input id="k2Isci" type="number" min="0" step="1"></div>
@@ -2612,6 +2654,102 @@ function kirimAdim2Ac(){
 function kirimDetayAcKapa(){
   document.getElementById('kirimDetayAlan').classList.toggle('hidden');
 }
+/* ---- Adım 2: ek tarla seçimi (aynı gün, aynı çeşit iki tarla senaryosu) ---- */
+function kirimEkTarlaAlaniHtml(){
+  const anaTarla = tarlaBul(kirimAkisTarlaId);
+  const ekTarlalar = kirimAkisEkTarlaIds.map(id=>tarlaBul(id)).filter(Boolean);
+  const chipsHtml = ekTarlalar.length ? `
+    <div class="secim-chip-row">
+      <span class="secim-chip sabit">${escapeHtml(anaTarla?anaTarla.ad:'')}</span>
+      ${ekTarlalar.map(t=>`<button type="button" class="secim-chip" onclick="kirimEkTarlaToggle('${t.id}')">${escapeHtml(t.ad)} ×</button>`).join('')}
+    </div>` : '';
+  const digerler = state.tarlalar.filter(t=>t.id!==kirimAkisTarlaId);
+  const tilesHtml = digerler.length ? `<div class="tarla-grid">${digerler.map(t=>`
+    <button class="tarla-tile${kirimAkisEkTarlaIds.includes(t.id)?' sel':''}" type="button" onclick="kirimEkTarlaToggle('${t.id}')">
+      <b>${escapeHtml(t.ad)}</b><span>${escapeHtml(t.cesit||'-')}</span>
+    </button>`).join('')}</div>` : `<div class="item">${i18n('Eklenecek başka tarla yok')}</div>`;
+  return `
+    ${chipsHtml}
+    <button class="btn btn-muted" type="button" style="width:100%;" onclick="kirimEkTarlaPanelToggle()">${i18n('+ Tarla Ekle (aynı gün ikinci tarla)')}</button>
+    <div class="${kirimEkTarlaPanelAcik?'':'hidden'}" style="margin-top:8px;">${tilesHtml}</div>`;
+}
+function kirimEkTarlaAlaniGuncelle(){
+  const el = document.getElementById('kirimEkTarlaAlan');
+  if(el) el.innerHTML = kirimEkTarlaAlaniHtml();
+}
+function kirimEkTarlaPanelToggle(){
+  kirimEkTarlaPanelAcik = !kirimEkTarlaPanelAcik;
+  kirimEkTarlaAlaniGuncelle();
+}
+function kirimEkTarlaToggle(tarlaId){
+  if(kirimAkisEkTarlaIds.includes(tarlaId)) kirimAkisEkTarlaIds = kirimAkisEkTarlaIds.filter(id=>id!==tarlaId);
+  else kirimAkisEkTarlaIds.push(tarlaId);
+  kirimEkTarlaAlaniGuncelle();
+}
+/* ---- Adım 2: hedef sera seçimi (opsiyonel, çoklu; seçim sırası = doldurma sırası) ---- */
+const KIRIM_SERA_VARSAYILAN_KAPASITE = 400; // sera kapasitesi tanımsızsa sırayla doldurma için varsayılan
+function kirimSeraKapasitesi(sera){
+  return (Number(sera && sera.kapasite)>0) ? Number(sera.kapasite) : KIRIM_SERA_VARSAYILAN_KAPASITE;
+}
+function seraKalanYer(seraId){
+  const sera = seraBul(seraId);
+  if(!sera) return 0;
+  return Math.max(0, kirimSeraKapasitesi(sera) - seraGuncelDolu(sera));
+}
+/* Sırayla doldurma: her seraya (seçim sırasına göre) kalan kapasitesi kadar dizi ver,
+   artan miktar sonraki seraya geçsin. Sığmayan kısım "kalan" olarak döner (bekleyen kalır
+   ya da onayla son seraya taşırılır). */
+function seraSirayliDagilim(toplamDizi, seraIdListesi){
+  let kalan = Math.max(0, Number(toplamDizi)||0);
+  const dagitim = [];
+  (seraIdListesi||[]).forEach(seraId=>{
+    if(kalan<=0) return;
+    const miktar = Math.min(kalan, seraKalanYer(seraId));
+    if(miktar>0){ dagitim.push({ seraId, miktar }); kalan -= miktar; }
+  });
+  return { dagitim, kalan };
+}
+function kirimSeraTilesHtml(){
+  let liste = seralarSirali();
+  if(kirimSeraBolgeAktif!=='tumu') liste = liste.filter(s=>s.bolge===kirimSeraBolgeAktif);
+  if(!liste.length) return `<div class="item" style="grid-column:1/-1;">${i18n('Bu bölgede sera yok.')}</div>`;
+  return liste.map(s=>{
+    const sira = kirimAkisSeraIds.indexOf(s.id);
+    const dolu = seraGuncelDolu(s);
+    return `<button class="tarla-tile${sira>=0?' sel':''}" type="button" onclick="kirimSeraToggle('${s.id}')">
+      ${sira>=0?`<i class="tile-sira">${sira+1}</i>`:''}
+      <b>${escapeHtml(s.ad)}</b><span>${fmt(dolu,0)}/${fmt(kirimSeraKapasitesi(s),0)} dizi</span>
+    </button>`;
+  }).join('');
+}
+function kirimSeraOzetHtml(){
+  if(!kirimAkisSeraIds.length) return i18n('Sera seçmezseniz dizi "bekleyen" kalır — sonradan sera ekranından atayabilirsiniz.');
+  const toplamYer = kirimAkisSeraIds.reduce((s,id)=>s+seraKalanYer(id),0);
+  return `${kirimAkisSeraIds.length} ${i18n('sera seçildi — seçim sırasına göre doldurulacak')} · ${i18n('toplam boş yer')}: ${fmt(toplamYer,0)} dizi`;
+}
+function kirimSeraBolumuHtml(){
+  const tabBtn = (b,etiket)=>`<button class="tab-btn${kirimSeraBolgeAktif===b?' active':''}" type="button" onclick="kirimSeraBolgeSec('${b}')">${etiket}</button>`;
+  return `
+    <div class="step-eyebrow" style="margin-top:12px;">${i18n('Hangi seralara dizilecek? (opsiyonel)')}</div>
+    <div class="page-tabs bolge-tabs" style="margin-bottom:8px;">
+      ${tabBtn('tumu', i18n('Tümü'))}${tabBtn('tekeliler','Tekeliler')}${tabBtn('kalemli','Kalemli')}
+    </div>
+    <div class="tarla-grid" id="kirimSeraGrid">${kirimSeraTilesHtml()}</div>
+    <div class="hint-box" id="kirimSeraOzet">${kirimSeraOzetHtml()}</div>`;
+}
+function kirimSeraBolumuGuncelle(){
+  const el = document.getElementById('kirimSeraBolumu');
+  if(el) el.innerHTML = kirimSeraBolumuHtml();
+}
+function kirimSeraBolgeSec(bolge){
+  kirimSeraBolgeAktif = bolge;
+  kirimSeraBolumuGuncelle();
+}
+function kirimSeraToggle(seraId){
+  if(kirimAkisSeraIds.includes(seraId)) kirimAkisSeraIds = kirimAkisSeraIds.filter(id=>id!==seraId);
+  else kirimAkisSeraIds.push(seraId);
+  kirimSeraBolumuGuncelle();
+}
 let kirimStepperInterval = null;
 function kirimStepperAdimAt(delta){
   const el = document.getElementById('k2Dizi');
@@ -2629,13 +2767,17 @@ function kirimStepperBirak(){
 }
 function submitKirimEkle(){
   const soldurmaRaw = document.getElementById('k2Soldurma').value;
+  const tarlaIds = [kirimAkisTarlaId, ...kirimAkisEkTarlaIds.filter(id=>id!==kirimAkisTarlaId)].filter(Boolean);
   const k = {
     id: uid(),
     tarih: document.getElementById('k2Tarih').value || todayStr(),
-    tarlaId: kirimAkisTarlaId,
+    tarlaId: tarlaIds.length===1 ? tarlaIds[0] : null,
+    tarlaIds,
+    // çoklu tarlada tarlaId null kalır; çeşit türetilebilsin diye ana tarlanın çeşidi yazılır (aynı gün aynı çeşit senaryosu)
+    cesit: tarlaIds.length>1 ? ((tarlaBul(kirimAkisTarlaId)||{}).cesit||'') : '',
     kirimNo: Number(document.getElementById('k2KirimNo').value),
     diziSayisi: Number(document.getElementById('k2Dizi').value)||0,
-    ortDiziKg: Number(document.getElementById('k2OrtDiziKg').value)||0,
+    ortDiziKg: Number(document.getElementById('k2OrtDiziKg').value)||0, // opsiyonel — tartım sonrası düzenleme modalından girilebilir
     seraDagilimi: [],
     isciSayisi: Number(document.getElementById('k2Isci').value)||0,
     yevmiye: Number(document.getElementById('k2Yevmiye').value)||0,
@@ -2646,10 +2788,29 @@ function submitKirimEkle(){
     olusturma: Date.now(),
     ...sonIslemDamgasi()
   };
-  if(!k.tarlaId){ alert('Tarla seçin.'); return; }
+  if(!tarlaIds.length){ alert('Tarla seçin.'); return; }
   if(k.diziSayisi<=0){ alert('Dizi sayısı girin.'); return; }
-  if(k.ortDiziKg<=0){ alert('Ort. Dizi Ağırlığı girin (sera doluluğu bundan hesaplanır).'); return; }
+  // DİZİM tarihi ayrı ve bağımsız bir alan — kırım (hasat) tarihinden türetilmez
+  const dizimTarihiEl = document.getElementById('k2DizimTarih');
+  const dizimTarihi = (dizimTarihiEl && dizimTarihiEl.value) || todayStr();
+  // Seçilen seralara sırayla doldurma; sığmayan kısım için mevcut kapasite aşım onayı deseni
+  let dagitim = [];
+  if(kirimAkisSeraIds.length){
+    const sonuc = seraSirayliDagilim(k.diziSayisi, kirimAkisSeraIds);
+    dagitim = sonuc.dagitim;
+    if(sonuc.kalan>0){
+      const sonSeraId = kirimAkisSeraIds[kirimAkisSeraIds.length-1];
+      const sonKayit = dagitim.find(d=>d.seraId===sonSeraId);
+      const sonPlanlanan = sonKayit ? sonKayit.miktar : 0;
+      if(seraKapasiteAsimOnayi(sonSeraId, sonPlanlanan + sonuc.kalan)){
+        if(sonKayit) sonKayit.miktar += sonuc.kalan;
+        else dagitim.push({ seraId: sonSeraId, miktar: sonuc.kalan });
+      }
+      // onaylanmazsa kalan miktar "bekleyen" olarak kalır
+    }
+  }
   state.kirimlar.push(k);
+  dagitim.forEach(d=>dizimUygula(k, d.seraId, d.miktar, dizimTarihi));
   if(kirimModalPresetTarlaId){ renderAll(); openTarlaDetay(kirimModalPresetTarlaId); }
   else { closeModal(); renderAll(); }
 }
@@ -2674,7 +2835,7 @@ function openKirimDuzenleModal(kirimId, returnTarlaId){
       </div>
       <div class="field"><label>${i18n('Dizi Sayısı')}</label><input id="kdDiziSayisi" type="number" min="0" step="1" value="${k.diziSayisi}"></div>
     </div>
-    <div class="field"><label>${i18n('Ort. Dizi Ağırlığı (kg)')}</label><input id="kdOrtDiziKg" type="number" min="0" step="0.01" value="${k.ortDiziKg}"></div>
+    <div class="field"><label>${i18n('Ort. Dizi Ağırlığı (kg, opsiyonel)')}</label><input id="kdOrtDiziKg" type="number" min="0" step="0.01" value="${k.ortDiziKg||''}" placeholder="${i18n('Tartım sonrası girilebilir')}"></div>
     <div class="field">
       <label>${i18n('Tarla(lar) (opsiyonel)')}</label>
       <div class="list-small">${tarlaChkHtml}</div>
@@ -2708,7 +2869,6 @@ function submitKirimDuzenle(kirimId){
   const yeniOrtKg = Number(document.getElementById('kdOrtDiziKg').value)||0;
   if(!cesitGirisi && !yeniTarlaIds.length){ alert(i18n('Çeşit girin.')); return; }
   if(yeniDizi<=0){ alert('Dizi sayısı girin.'); return; }
-  if(yeniOrtKg<=0){ alert('Ort. Dizi Ağırlığı girin.'); return; }
   const atananDizi = (k.seraDagilimi||[]).reduce((s,d)=>s+(Number(d.diziSayisi)||0),0);
   if(yeniDizi < atananDizi){ alert('Dizi sayısı, seralara zaten dağıtılmış miktardan ('+fmt(atananDizi,0)+' dizi) az olamaz.'); return; }
 
