@@ -1127,7 +1127,7 @@ const AYARLAR = {
   UNITE_PX: 40                // referans kapasitedeki sera-box genişliği (px) — kroki oranı
 };
 const STORAGE_KEY = 'scvSahaKrokiV1';
-const APP_SURUM = 'v56'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
+const APP_SURUM = 'v57'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
 
 /* =========================================================
    HATA / DONMA GÜNLÜĞÜ — "bazen donuyor" şikayetini araştırmak için.
@@ -1590,7 +1590,12 @@ function sonSilineniGeriAl(){
   geriAlToastGizle();
   renderAll();
 }
-function todayStr(){ return new Date().toISOString().slice(0,10); }
+function todayStr(){
+  // Yerel tarihe göre YYYY-MM-DD. toISOString() UTC döndürdüğü için TR saatiyle
+  // gece 00:00-03:00 arasında "bugün"ü bir önceki gün gösteriyordu.
+  const d = new Date();
+  return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+}
 function mevcutKullaniciAdi(){
   const email = fbAuth.currentUser && fbAuth.currentUser.email;
   if(!email) return 'Bilinmeyen';
