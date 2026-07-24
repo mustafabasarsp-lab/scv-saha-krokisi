@@ -793,6 +793,7 @@ body.has-fullscreen-panel{overflow:hidden;}
             <button class="tab-btn" id="seraBolgeTab_tekeliler" onclick="seraBolgeSekmeGecis('tekeliler')">Tekeliler</button>
             <button class="tab-btn" id="seraBolgeTab_kalemli" onclick="seraBolgeSekmeGecis('kalemli')">Kalemli</button>
           </div>
+          <button class="tab-btn" id="seraTermometreFiltreBtn" onclick="seraTermometreFiltreToggle()" data-i18n="🌡️ Sadece Termometreli">🌡️ Sadece Termometreli</button>
         </div>
         <div style="display:flex;align-items:center;gap:6px;">
           <button class="icon-btn ghost" onclick="panelTamEkranAc('seraPanelBox')" title="Tam Ekran" data-i18n-title="Tam Ekran">⤢</button>
@@ -987,7 +988,7 @@ const AYARLAR = {
   UNITE_PX: 40                // referans kapasitedeki sera-box genişliği (px) — kroki oranı
 };
 const STORAGE_KEY = 'scvSahaKrokiV1';
-const APP_SURUM = 'v49'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
+const APP_SURUM = 'v50'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
 
 /* =========================================================
    HATA / DONMA GÜNLÜĞÜ — "bazen donuyor" şikayetini araştırmak için.
@@ -1133,6 +1134,12 @@ const I18N_EN = {
   'Rapor (dışa aktarım — geri yüklenemez)':'Report (export — cannot be restored)',
   '📊 Excel Raporu (.xlsx)':'📊 Excel Report (.xlsx)', '⭳ Kırım Kayıtları (.csv)':'⭳ Harvest Records (.csv)',
   'Tek Seferlik Güncellemeler':'One-Time Updates',
+  '+ Paketleme partisi bilgisi ekle (tavlama, ürün kodu, adet)':'+ Add packaging batch info (curing, product code, count)',
+  'Tavlama Tarihi':'Curing Date', 'Paketleme Tarihi':'Packaging Date', 'Ürün Kodu':'Product Code', 'Sera Sayısı':'Greenhouse Count',
+  'XX1 Adet':'XX1 Count', 'X1 Adet':'X1 Count', 'X2 Adet':'X2 Count', 'Toplam Adet':'Total Count',
+  'Soldurma Süresi (gün)':'Wilting Duration (days)',
+  'Termometre':'Thermometer', 'Var':'Yes', 'Yok':'No',
+  '🌡️ Termometre Ekle':'🌡️ Add Thermometer', '🌡️ Termometre Çıkar':'🌡️ Remove Thermometer', '🌡️ Sadece Termometreli':'🌡️ Thermometer Only',
 };
 function i18n(tr){ return currentLang==='en' ? (I18N_EN[tr] || tr) : tr; }
 function dilDegistir(){
@@ -1735,11 +1742,18 @@ function renderToplamIstatistik(){
 }
 
 let seraBolgeAktif = 'tumu';
+let seraTermometreFiltre = false;
 function seraBolgeSekmeGecis(bolge){
   seraBolgeAktif = bolge;
   ['tumu','tekeliler','kalemli'].forEach(b=>{
     document.getElementById('seraBolgeTab_'+b).classList.toggle('active', b===bolge);
   });
+  renderSeralar();
+}
+function seraTermometreFiltreToggle(){
+  seraTermometreFiltre = !seraTermometreFiltre;
+  const btn = document.getElementById('seraTermometreFiltreBtn');
+  if(btn) btn.classList.toggle('active', seraTermometreFiltre);
   renderSeralar();
 }
 function openSeraEkleModalAktifBolgeIle(){
@@ -1749,6 +1763,7 @@ function renderSeralar(){
   if(sayfaGizliMi('pageSaha')) return;
   const el = document.getElementById('seraPlot');
   let liste = seraBolgeAktif==='tumu' ? state.seralar : state.seralar.filter(s=>s.bolge===seraBolgeAktif);
+  if(seraTermometreFiltre) liste = liste.filter(s=>s.termometreVar===true);
   const aramaInput = document.getElementById('seraAramaInput');
   const arama = aramaInput ? aramaInput.value.trim().toLocaleLowerCase('tr') : '';
   if(arama) liste = liste.filter(s=>(s.ad||'').toLocaleLowerCase('tr').includes(arama));
@@ -1920,6 +1935,7 @@ function submitSeraEkle(){
   if(adCakismaVarMi(state.seralar, f.ad) && !confirm(`"${f.ad}" adında bir sera zaten var. Yine de eklensin mi?`)) return;
   state.seralar.push({
     id: uid(), ad: f.ad, kapasite: f.kapasite, bolge: f.bolge,
+    termometreVar: false,
     donemler: [], olusturma: Date.now(), ...sonIslemDamgasi()
   });
   closeModal(); renderAll();
@@ -2015,6 +2031,13 @@ function seraSil(id){
   state.seralar = state.seralar.filter(s=>s.id!==id);
   closeModal(); renderAll();
 }
+function seraTermometreToggle(id){
+  const s = seraBul(id);
+  if(!s) return;
+  s.termometreVar = !s.termometreVar;
+  Object.assign(s, sonIslemDamgasi());
+  renderAll(); openSeraDetay(id);
+}
 
 function openSeraDetay(id){
   const s = seraBul(id);
@@ -2079,6 +2102,7 @@ function openSeraDetay(id){
     <div class="detail-grid">
       <div>${i18n('Kapasite')}<b>${fmt(s.kapasite,0)} dizi</b></div>
       <div>${i18n('Bölge')}<b>${s.bolge==='tekeliler'?'Tekeliler':s.bolge==='kalemli'?'Kalemli':'-'}</b></div>
+      <div>${i18n('Termometre')}<b>${s.termometreVar?i18n('Var'):i18n('Yok')}</b></div>
       <div>${i18n('Son İşlem')}<b>${sonIslemEtiket(s)}</b></div>
     </div>
     ${aktifBlokHtml}
@@ -2090,6 +2114,7 @@ function openSeraDetay(id){
       <button class="btn btn-muted" onclick="closeModal()">${i18n('Kapat')}</button>
       <button class="btn btn-primary" onclick="openSeraDizimModal('${s.id}')">${i18n('+ Tütün Dizimi Ekle')}</button>
       <button class="btn" onclick="openSeraDuzenleModal('${s.id}')">${i18n('Düzenle')}</button>
+      <button class="btn" onclick="seraTermometreToggle('${s.id}')">${s.termometreVar?i18n('🌡️ Termometre Çıkar'):i18n('🌡️ Termometre Ekle')}</button>
       ${d? `<button class="btn" onclick="seraBosalt('${s.id}')">${i18n('Boşalt')}</button>` : ''}
       <button class="btn btn-danger" onclick="seraSil('${s.id}')">${i18n('Sil')}</button>
     </div>
@@ -2567,6 +2592,7 @@ function kirimAdim2Ac(){
         <div class="check-row"><input type="checkbox" id="k2AltYas"><label for="k2AltYas" style="text-transform:none;font-size:12.5px;">${i18n('18 yaş altı çalışan yok')}</label></div>
         <div class="field"><label>${i18n('Çalışma Saati')}</label><input id="k2CalismaSaati" type="number" min="0" step="0.5"></div>
       </div>
+      <div class="field"><label>${i18n('Soldurma Süresi (gün)')}</label><input id="k2Soldurma" type="number" min="0" step="1"></div>
     </div>
     <div class="modal-actions">
       ${geriBtn}
@@ -2593,6 +2619,7 @@ function kirimStepperBirak(){
   kirimStepperInterval = null;
 }
 function submitKirimEkle(){
+  const soldurmaRaw = document.getElementById('k2Soldurma').value;
   const k = {
     id: uid(),
     tarih: document.getElementById('k2Tarih').value || todayStr(),
@@ -2606,6 +2633,7 @@ function submitKirimEkle(){
     kayipDizi: Number(document.getElementById('k2Kayip').value)||0,
     altYasYok: document.getElementById('k2AltYas').checked,
     calismaSaati: Number(document.getElementById('k2CalismaSaati').value)||0,
+    soldurmaGunSayisi: soldurmaRaw!=='' ? (Number(soldurmaRaw)||0) : null,
     olusturma: Date.now(),
     ...sonIslemDamgasi()
   };
@@ -2651,6 +2679,7 @@ function openKirimDuzenleModal(kirimId, returnTarlaId){
       <div class="check-row"><input type="checkbox" id="kdAltYas" ${k.altYasYok?'checked':''}><label for="kdAltYas" style="text-transform:none;font-size:12.5px;">${i18n('18 yaş altı çalışan yok')}</label></div>
       <div class="field"><label>${i18n('Çalışma Saati')}</label><input id="kdCalismaSaati" type="number" min="0" step="0.5" value="${k.calismaSaati||0}"></div>
     </div>
+    <div class="field"><label>${i18n('Soldurma Süresi (gün)')}</label><input id="kdSoldurma" type="number" min="0" step="1" value="${k.soldurmaGunSayisi??''}"></div>
     <div class="modal-actions">
       <button class="btn btn-muted" onclick="${returnTarlaId?`openTarlaDetay('${returnTarlaId}')`:'closeModal()'}">${i18n('Vazgeç')}</button>
       <button class="btn btn-primary" onclick="submitKirimDuzenle('${kirimId}')">${i18n('Kaydet')}</button>
@@ -2691,6 +2720,8 @@ function submitKirimDuzenle(kirimId){
   k.kayipDizi = Number(document.getElementById('kdKayip').value)||0;
   k.altYasYok = document.getElementById('kdAltYas').checked;
   k.calismaSaati = Number(document.getElementById('kdCalismaSaati').value)||0;
+  const kdSoldurmaRaw = document.getElementById('kdSoldurma').value;
+  k.soldurmaGunSayisi = kdSoldurmaRaw!=='' ? (Number(kdSoldurmaRaw)||0) : null;
   Object.assign(k, sonIslemDamgasi());
 
   // seraya zaten dizilmiş kayıtlardaki türetilmiş bilgileri (kg, tarla, çeşit, hasat tarihi) güncelle
@@ -2847,7 +2878,7 @@ function submitSeraDizimEkle(seraId){
     const k = {
       id: uid(), tarih: hasatTarih, tarlaId: tarlaIds.length===1?tarlaIds[0]:null, tarlaIds, cesit, kirimNo: null,
       diziSayisi, ortDiziKg, seraDagilimi: [],
-      isciSayisi: 0, yevmiye: 0, kayipDizi: 0, altYasYok: false, calismaSaati: 0,
+      isciSayisi: 0, yevmiye: 0, kayipDizi: 0, altYasYok: false, calismaSaati: 0, soldurmaGunSayisi: null,
       olusturma: Date.now(), ...sonIslemDamgasi()
     };
     state.kirimlar.push(k);
@@ -2954,6 +2985,10 @@ function openVeriYonetimiModal(){
         <button class="btn" onclick="kalemliSeralariTopluKur()">🏠 Kalemli B/C/D/E Seralarını Toplu Kur</button>
       </div>
       <div class="hint-box">Kalemli bölgesine B1-B41, C1-C37, D1-D35, E1-E35 seralarını 400 dizi kapasiteli olarak ekler. Aynı isimde sera zaten varsa dokunmaz, sadece eksik olanları tamamlar.</div>
+      <div class="modal-actions" style="justify-content:flex-start;flex-wrap:wrap;margin-top:8px;">
+        <button class="btn" onclick="gecmisKirimDepoVerisiAktar()">🗂️ Geçmiş Kırım/Depo Verisi Aktar (Tek Seferlik)</button>
+      </div>
+      <div class="hint-box">Kağıt defterden okunan 29.06–23.07 arası 30 kırım/dizim satırını (kırım tarihine göre eşleşen tarlalar çoklu tarla olarak bağlanır) ve 14 depo/kutulama satırını uygulamaya toplu aktarır. Daha önce çalıştırıldıysa uyarı verir.</div>
     </div>
     <div class="field">
       <label>🪲 Hata / Donma Günlüğü</label>
@@ -3070,6 +3105,224 @@ function kalemliFideBilgileriniGuncelle(){
   renderAll(); closeModal();
   alert(`Güncellenen/eklenen tarla: ${guncellenen}${eklenen.length? '\nYeni eklenen: '+eklenen.join(', ')+' (harita konumu yaklaşıktır, sahada GPS ile düzeltebilirsiniz)' : ''}`);
 }
+
+/* =========================================================
+   TEK SEFERLİK: GEÇMİŞ KIRIM / SERA DOLUM / DEPO VERİSİ AKTARIMI
+   (kağıt defterden transkribe edilen 29.06–23.07/2026 kayıtları)
+   ========================================================= */
+/* Depo sayfalarının bölgesi — her iki sayfa da Kalemli deposuna girilir. */
+const IMPORT_DEPO_BOLGE = 'kalemli';
+
+/* Defterdeki el yazısı çeşit kodları → uygulamadaki standart çeşit yazımı.
+   (Tarlalarda kayıtlı yazım "PVH 2310" biçiminde olduğu için aynı standarda çevrilir.) */
+const GECMIS_IMPORT_CESIT_MAP = {
+  'PuH2310':'PVH 2310', 'BsB6195':'BSB 6195', 'BsB6202':'BSB 6202', 'ITB6179':'ITB 6179',
+  'BsB2395':'BSB 2395', 'BsB2390':'BSB 2390', 'BuB2390':'BUB 2390'
+};
+
+/* Sera adının sonundaki "*" = yarım sera (200 dizi); işaretsiz sera 400 dizi. */
+const GECMIS_KIRIM_SATIRLARI = [
+  { no:1,  kirim:'2026-06-29', dizim:'2026-07-01', cesit:'PuH2310', seralar:['A1','A2','A3','B4'] },
+  { no:2,  kirim:'2026-06-30', dizim:'2026-07-02', cesit:'PuH2310', seralar:['A4','A5','A7','A9','A11','A12'] },
+  { no:3,  kirim:'2026-06-30', dizim:'2026-07-03', cesit:'PuH2310', seralar:['A13','A14','A15*'] },
+  { no:4,  kirim:'2026-07-01', dizim:'2026-07-03', cesit:'BsB6195', seralar:['A6','A8','A10'] },
+  { no:5,  kirim:'2026-07-01', dizim:'2026-07-04', cesit:'BsB6195', seralar:['A16','A17'] },
+  { no:6,  kirim:'2026-07-03', dizim:'2026-07-04', cesit:'BsB6202', seralar:['A18','A19','A20','A21','A22','A23'] },
+  { no:7,  kirim:'2026-07-03', dizim:'2026-07-04', cesit:'BsB6195', seralar:['A24','A25','A26'] },
+  { no:8,  kirim:'2026-07-03', dizim:'2026-07-05', cesit:'BsB6195', seralar:['A27','A28','A29','A30*'] },
+  { no:9,  kirim:'2026-07-06', dizim:'2026-07-08', cesit:'BsB6202', seralar:['A31','A32','A33','A34','A35'] },
+  { no:10, kirim:'2026-07-07', dizim:'2026-07-08', cesit:'PuH2310', seralar:['A36','A37','A41*'] },
+  { no:11, kirim:'2026-07-08', dizim:'2026-07-10', cesit:'ITB6179', seralar:['B40','B39'] },
+  { no:12, kirim:'2026-07-08', dizim:'2026-07-10', cesit:'BsB6195', seralar:['B38','B37'] },
+  { no:13, kirim:'2026-07-09', dizim:'2026-07-11', cesit:'BsB6195', seralar:['B36'] },
+  { no:14, kirim:'2026-07-09', dizim:'2026-07-11', cesit:'ITB6179', seralar:['B35','B34','B33'] },
+  { no:15, kirim:'2026-07-10', dizim:'2026-07-12', cesit:'PuH2310', seralar:['B32','B31','B30'] },
+  { no:16, kirim:'2026-07-11', dizim:'2026-07-13', cesit:'ITB6179', seralar:['B29','B28','B27','B26','B25','B24'] },
+  { no:17, kirim:'2026-07-11', dizim:'2026-07-13', cesit:'PuH2310', seralar:['B23','B22','B21','B20*'] },
+  { no:18, kirim:'2026-07-15', dizim:'2026-07-16', cesit:'BsB2395', seralar:['B19','B18','B17','B16*'] },
+  { no:19, kirim:'2026-07-15', dizim:'2026-07-17', cesit:'BsB2390', seralar:['B15','B14','B13'] },
+  { no:20, kirim:'2026-07-15', dizim:'2026-07-17', cesit:'BsB2395', seralar:['B12','B11','B10','B9'] },
+  { no:21, kirim:'2026-07-16', dizim:'2026-07-18', cesit:'BsB6202', seralar:['B8','B7','B6'] },
+  { no:22, kirim:'2026-07-16', dizim:'2026-07-18', cesit:'PuH2310', seralar:['B5','B4','B3','B2','B1'] },
+  { no:23, kirim:'2026-07-16', dizim:'2026-07-19', cesit:'BuB2390', seralar:['A5','A6','A7','A8','A9','A10','A11','A12'] },
+  { no:24, kirim:'2026-07-17', dizim:'2026-07-19', cesit:'BsB6195', seralar:['A13','A14','A15','A16'] },
+  { no:25, kirim:'2026-07-17', dizim:'2026-07-20', cesit:'BsB6195', seralar:['A17','A18'] },
+  { no:26, kirim:'2026-07-17', dizim:'2026-07-20', cesit:'BsB6202', seralar:['A19','A20','A21','A22','A23','A24','C3'] },
+  { no:27, kirim:'2026-07-18', dizim:'2026-07-20', cesit:'PuH2310', seralar:['C4','C5','C6','C7','C8','C9','C10','C11','C12','C13','C14','C15'] },
+  { no:28, kirim:'2026-07-20', dizim:'2026-07-22', cesit:'ITB6179', seralar:['C16','C17','C18','C19','C20','C21'] },
+  { no:29, kirim:'2026-07-21', dizim:'2026-07-22', cesit:'PuH2310', seralar:['C22','C23','C24','C25','C26'] },
+  { no:30, kirim:'2026-07-22', dizim:'2026-07-23', cesit:'PuH2310', seralar:['C27','C28','C29','C30','C31','C32'] }
+];
+
+/* Tarla kırım tablosu (kağıt): kod — 1. kırım tarihi — 2. kırım tarihi.
+   Kırım satırının tarihi hangi tarlaların 1./2. kırım tarihiyle eşleşiyorsa
+   o tarlalar kayda çoklu tarla (tarlaIds) olarak bağlanır. */
+const GECMIS_TARLA_KIRIMLARI = [
+  { kod:'K1',  k1:'2026-07-09', k2:null },
+  { kod:'K2',  k1:'2026-07-06', k2:'2026-07-21' },
+  { kod:'K4',  k1:'2026-07-08', k2:null },
+  { kod:'K13', k1:'2026-07-01', k2:'2026-07-16' },
+  { kod:'K14', k1:'2026-07-02', k2:'2026-07-15' },
+  { kod:'K17', k1:'2026-07-16', k2:null },
+  { kod:'K19', k1:'2026-07-09', k2:'2026-07-20' },
+  { kod:'K20', k1:'2026-07-21', k2:null },
+  { kod:'K21', k1:'2026-06-29', k2:'2026-07-15' },
+  { kod:'K22', k1:'2026-07-17', k2:null },
+  { kod:'K23', k1:'2026-06-30', k2:'2026-07-17' },
+  { kod:'K25', k1:'2026-06-29', k2:'2026-07-20' }
+];
+
+/* Depo/kutulama sayfaları. tavlama null = sayfada tavlama tarihi yok;
+   xx1/x1/x2 null = adetler okunamadı (sadece toplam yazılmış). */
+const GECMIS_DEPO_SATIRLARI = [
+  { sayfa:1, tavlama:'2026-07-13', paket:'2026-07-14', kod:'Kod 1', seraSayisi:3, xx1:19,   x1:37,   x2:6,    toplam:62 },
+  { sayfa:1, tavlama:'2026-07-14', paket:'2026-07-15', kod:'Kod 1', seraSayisi:6, xx1:1,    x1:36,   x2:78,   toplam:115 },
+  { sayfa:1, tavlama:'2026-07-15', paket:'2026-07-16', kod:'Kod 2', seraSayisi:4, xx1:2,    x1:27,   x2:46,   toplam:75 },
+  { sayfa:1, tavlama:'2026-07-16', paket:'2026-07-17', kod:'Kod 2', seraSayisi:3, xx1:2,    x1:7,    x2:46,   toplam:55 },
+  { sayfa:1, tavlama:'2026-07-17', paket:'2026-07-17', kod:'Kod 2', seraSayisi:6, xx1:1,    x1:43,   x2:33,   toplam:77 },
+  { sayfa:1, tavlama:'2026-07-16', paket:'2026-07-17', kod:'Kod 3', seraSayisi:6, xx1:0,    x1:8,    x2:6,    toplam:14 },
+  { sayfa:1, tavlama:'2026-07-13', paket:'2026-07-18', kod:'Kod 3', seraSayisi:1, xx1:0,    x1:20,   x2:28,   toplam:48 },
+  { sayfa:1, tavlama:'2026-07-12', paket:'2026-07-18', kod:'Kod 2', seraSayisi:3, xx1:null, x1:null, x2:null, toplam:62 },
+  { sayfa:1, tavlama:'2026-07-20', paket:'2026-07-21', kod:'Kod 2', seraSayisi:4, xx1:2,    x1:35,   x2:25,   toplam:62 },
+  { sayfa:2, tavlama:null,         paket:'2026-07-16', kod:'Kod 2', seraSayisi:2, xx1:1,    x1:16,   x2:21,   toplam:38 },
+  { sayfa:2, tavlama:null,         paket:'2026-07-16', kod:'Kod 2', seraSayisi:2, xx1:2,    x1:35,   x2:25,   toplam:62 },
+  { sayfa:2, tavlama:null,         paket:'2026-07-21', kod:'Kod 2', seraSayisi:4, xx1:1,    x1:13,   x2:15,   toplam:29 },
+  { sayfa:2, tavlama:null,         paket:'2026-07-22', kod:'Kod 2', seraSayisi:3, xx1:2,    x1:35,   x2:12,   toplam:49 },
+  { sayfa:2, tavlama:null,         paket:'2026-07-22', kod:'Kod 3', seraSayisi:3, xx1:1,    x1:14,   x2:11,   toplam:26 }
+];
+
+/* ---- Saf hesap yardımcıları (Node ile ayrıca test edilebilir) ---- */
+function gecmisImportGunFarki(t1, t2){
+  return Math.round((new Date(t2+'T00:00:00') - new Date(t1+'T00:00:00')) / 86400000);
+}
+/* En erken kırım tarihinde ilkKg, en geç kırım tarihinde sonKg; aradakiler
+   tarihe göre doğrusal interpolasyon. 2 ondalığa yuvarlanır. */
+function gecmisImportOrtKg(tarih, ilkTarih, sonTarih, ilkKg, sonKg){
+  const toplamGun = gecmisImportGunFarki(ilkTarih, sonTarih);
+  if(toplamGun<=0) return ilkKg;
+  const oran = gecmisImportGunFarki(ilkTarih, tarih) / toplamGun;
+  return Math.round((ilkKg + (sonKg-ilkKg)*oran) * 100) / 100;
+}
+function gecmisImportSeraAyristir(adlar){
+  // 'A15*' → yarım sera (200 dizi); diğerleri 400 dizi
+  return adlar.map(a=>{
+    const yarim = a.endsWith('*');
+    return { ad: yarim ? a.slice(0,-1) : a, dizi: yarim ? 200 : 400 };
+  });
+}
+function gecmisImportTarlaBulKodla(kod){
+  const hedef = kod.toUpperCase();
+  return state.tarlalar.find(t=>{
+    const parcalar = (t.ad||'').toUpperCase().split(/[^A-Z0-9]+/).filter(Boolean);
+    return parcalar.includes(hedef);
+  }) || null;
+}
+
+function gecmisKirimDepoVerisiAktar(){
+  const oncedenVar = state.kirimlar.some(k=>k.gecmisImport===true) || state.depoKutulari.some(k=>k.gecmisImport===true);
+  if(oncedenVar && !confirm('DİKKAT: Bu aktarım daha önce çalıştırılmış görünüyor (geçmiş import işaretli kayıtlar mevcut). Tekrar çalıştırılırsa kayıtlar İKİNCİ KEZ eklenir. Yine de devam edilsin mi?')) return;
+  if(!confirm('Kağıt defterden okunan geçmiş veriler aktarılacak:\n• 30 kırım/dizim satırı (kırım tarihine göre eşleşen tarlalar kayda çoklu tarla olarak bağlanır)\n• 2. tur dolan seraların önceki dönemi kapatılır\n• 14 depo/kutulama kaydı (Kalemli deposu)\n\nDevam edilsin mi?')) return;
+
+  const ilkKirim = GECMIS_KIRIM_SATIRLARI.reduce((m,s)=>s.kirim<m?s.kirim:m, GECMIS_KIRIM_SATIRLARI[0].kirim);
+  const sonKirim = GECMIS_KIRIM_SATIRLARI.reduce((m,s)=>s.kirim>m?s.kirim:m, GECMIS_KIRIM_SATIRLARI[0].kirim);
+
+  let olusanKirim = 0, tarlaliKayit = 0, tarlasizKayit = 0, karisikKirimNo = 0, kapatilanDonem = 0, toplamDizi = 0;
+  const eslesenTarlaKodlari = new Set();
+  const bulunamayanTarlalar = new Set();
+  const bulunamayanSeralar = [];
+  const seraSonDolduranSatir = {}; // seraId → bu import'ta en son dolduran satır no (2. tur tespiti)
+
+  /* Satırlar kronolojik sırada uygulanır (dizi zaten tarih sıralı) —
+     böylece 2. tur dolumda önceki dönem doğru kapanır. */
+  GECMIS_KIRIM_SATIRLARI.forEach(satir=>{
+    const cesit = GECMIS_IMPORT_CESIT_MAP[satir.cesit] || satir.cesit;
+    const ortKg = gecmisImportOrtKg(satir.kirim, ilkKirim, sonKirim, 3.5, 3.7);
+    const soldurma = gecmisImportGunFarki(satir.kirim, satir.dizim);
+    const seraPaylari = gecmisImportSeraAyristir(satir.seralar);
+    const satirToplamDizi = seraPaylari.reduce((s,x)=>s+x.dizi,0);
+
+    /* Bu kırım tarihi, tarla tablosunda hangi tarlaların 1./2. kırım tarihiyle eşleşiyor?
+       Eşleşenlerin hepsi tek kayda çoklu tarla olarak bağlanır (kayıt bölünmez). */
+    const esler = GECMIS_TARLA_KIRIMLARI
+      .filter(t=>t.k1===satir.kirim || t.k2===satir.kirim)
+      .map(t=>({ kod:t.kod, kirimNo: t.k1===satir.kirim ? 1 : 2 }));
+
+    const tarlaIds = [];
+    esler.forEach(e=>{
+      const tarla = gecmisImportTarlaBulKodla(e.kod);
+      if(tarla){ tarlaIds.push(tarla.id); eslesenTarlaKodlari.add(e.kod); }
+      else bulunamayanTarlalar.add(e.kod);
+    });
+
+    /* kirimNo: eşleşen tarlaların tümü aynı numaradaysa o numara; karışıksa
+       (aynı gün kimine 1., kimine 2. kırım) null — kirimNoEtiket() null'ı
+       düz "kırım" olarak gösterir, yanıltıcı numara basmaz. */
+    const nolar = [...new Set(esler.map(e=>e.kirimNo))];
+    let kirimNo = null;
+    if(tarlaIds.length && nolar.length===1) kirimNo = nolar[0];
+    else if(tarlaIds.length && nolar.length>1) karisikKirimNo++;
+
+    const k = {
+      id: uid(),
+      tarih: satir.kirim,                    // KIRIM (hasat) tarihi — dizim tarihinden bağımsız
+      tarlaId: tarlaIds.length===1 ? tarlaIds[0] : null,
+      tarlaIds,
+      cesit,
+      kirimNo,
+      diziSayisi: satirToplamDizi,
+      ortDiziKg: ortKg,
+      seraDagilimi: [],
+      isciSayisi: 0, yevmiye: 0, kayipDizi: 0, altYasYok: false, calismaSaati: 0,
+      soldurmaGunSayisi: soldurma,           // dizim − kırım gün farkı
+      gecmisImport: true,
+      olusturma: Date.now(),
+      ...sonIslemDamgasi()
+    };
+    state.kirimlar.push(k);
+    olusanKirim++; toplamDizi += satirToplamDizi;
+    if(tarlaIds.length) tarlaliKayit++; else tarlasizKayit++;
+
+    seraPaylari.forEach(sp=>{
+      const sera = state.seralar.find(s=>(s.ad||'').trim().toUpperCase()===sp.ad.toUpperCase());
+      if(!sera){ bulunamayanSeralar.push('Satır '+satir.no+': '+sp.ad); return; }
+      // 2. tur dolum: bu import'ta DAHA ÖNCEKİ bir satırda dolduysa önceki dönemi kapat
+      if(seraSonDolduranSatir[sera.id] != null && seraSonDolduranSatir[sera.id] !== satir.no){
+        const d = seraAktifDonem(sera);
+        if(d){ d.aktif = false; d.bitis = new Date(satir.dizim+'T12:00:00').getTime(); kapatilanDonem++; }
+      }
+      dizimUygula(k, sera.id, sp.dizi, satir.dizim); // DİZİM tarihi ayrı alan olarak geçilir
+      seraSonDolduranSatir[sera.id] = satir.no;
+    });
+  });
+
+  /* ---- Depo/kutulama kayıtları (her iki sayfa da Kalemli deposuna) ---- */
+  let olusanDepo = 0;
+  const bolgedekiler = state.depoKutulari.filter(k=>k.bolge===IMPORT_DEPO_BOLGE);
+  let siradakiKutuNo = bolgedekiler.length ? Math.max(...bolgedekiler.map(k=>Number(k.kutuNo)||0)) + 1 : 1;
+  GECMIS_DEPO_SATIRLARI.forEach(r=>{
+    state.depoKutulari.push({
+      id: uid(), bolge: IMPORT_DEPO_BOLGE, kutuNo: siradakiKutuNo++,
+      kg: 0, tarih: r.paket, kalite: '',
+      tavlamaTarihi: r.tavlama, paketlemeTarihi: r.paket,
+      urunKodu: r.kod, seraSayisi: r.seraSayisi,
+      xx1Adet: r.xx1, x1Adet: r.x1, x2Adet: r.x2, toplamAdet: r.toplam,
+      gecmisImport: true,
+      olusturma: Date.now(), ...sonIslemDamgasi()
+    });
+    olusanDepo++;
+  });
+
+  renderAll(); closeModal();
+  alert('Geçmiş veri aktarımı tamamlandı.\n'
+    + '\nKırım kaydı: ' + olusanKirim + ' (' + tarlaliKayit + ' tarlalı, ' + tarlasizKayit + ' tarlasız) — toplam ' + fmt(toplamDizi,0) + ' dizi'
+    + '\nEşleşen tarla: ' + (eslesenTarlaKodlari.size ? [...eslesenTarlaKodlari].join(', ') : '-')
+    + '\nBulunamayan tarla: ' + (bulunamayanTarlalar.size ? [...bulunamayanTarlalar].join(', ') + ' (kayda bağlanamadı)' : 'yok')
+    + '\nBulunamayan sera: ' + (bulunamayanSeralar.length ? bulunamayanSeralar.join(', ') + ' (bu dizimler atlandı)' : 'yok')
+    + '\nKırım no karışık kalan kayıt (1.+2. aynı gün, no boş bırakıldı): ' + karisikKirimNo
+    + '\nKapatılan sera dönemi (2. tur): ' + kapatilanDonem
+    + '\nDepo/kutulama kaydı: ' + olusanDepo);
+}
+
 function tumVerileriYedekle(){
   const json = JSON.stringify(state, null, 2);
   const blob = new Blob([json], { type:'application/json;charset=utf-8;' });
@@ -3526,21 +3779,60 @@ function openKutuEkleModal(){
         </select>
       </div>
     </div>
+    <button class="btn btn-muted" type="button" style="width:100%;margin-top:2px;" onclick="kutuDetayAcKapa()">${i18n('+ Paketleme partisi bilgisi ekle (tavlama, ürün kodu, adet)')}</button>
+    <div id="kutuDetayAlan" class="hidden">
+      <div class="row2" style="margin-top:8px;">
+        <div class="field"><label>${i18n('Tavlama Tarihi')}</label><input id="fKutuTavlamaTarihi" type="date"></div>
+        <div class="field"><label>${i18n('Paketleme Tarihi')}</label><input id="fKutuPaketlemeTarihi" type="date"></div>
+      </div>
+      <div class="row2">
+        <div class="field"><label>${i18n('Ürün Kodu')}</label><input id="fKutuUrunKodu" type="text" placeholder="örn. Kod 1"></div>
+        <div class="field"><label>${i18n('Sera Sayısı')}</label><input id="fKutuSeraSayisi" type="number" min="0" step="1"></div>
+      </div>
+      <div class="row3">
+        <div class="field"><label>${i18n('XX1 Adet')}</label><input id="fKutuXX1Adet" type="number" min="0" step="1" value="0" oninput="kutuAdetToplamGuncelle()"></div>
+        <div class="field"><label>${i18n('X1 Adet')}</label><input id="fKutuX1Adet" type="number" min="0" step="1" value="0" oninput="kutuAdetToplamGuncelle()"></div>
+        <div class="field"><label>${i18n('X2 Adet')}</label><input id="fKutuX2Adet" type="number" min="0" step="1" value="0" oninput="kutuAdetToplamGuncelle()"></div>
+      </div>
+      <div class="field"><label>${i18n('Toplam Adet')}</label><input id="fKutuToplamAdet" type="number" value="0" readonly></div>
+    </div>
     <div class="modal-actions">
       <button class="btn btn-muted" onclick="closeModal()">${i18n('Vazgeç')}</button>
       <button class="btn btn-primary" onclick="submitKutuEkle()">${i18n('Ekle')}</button>
     </div>
   `);
 }
+function kutuDetayAcKapa(){
+  document.getElementById('kutuDetayAlan').classList.toggle('hidden');
+}
+function kutuAdetToplamGuncelle(){
+  const xx1 = Number(document.getElementById('fKutuXX1Adet').value)||0;
+  const x1 = Number(document.getElementById('fKutuX1Adet').value)||0;
+  const x2 = Number(document.getElementById('fKutuX2Adet').value)||0;
+  document.getElementById('fKutuToplamAdet').value = xx1 + x1 + x2;
+}
 function submitKutuEkle(){
   const bolge = document.getElementById('fKutuBolge').value;
   const kg = Number(document.getElementById('fKutuKg').value)||0;
   const tarih = document.getElementById('fKutuTarih').value || todayStr();
   const kalite = document.getElementById('fKutuKalite').value || '';
+  const tavlamaTarihi = document.getElementById('fKutuTavlamaTarihi').value || '';
+  const paketlemeTarihi = document.getElementById('fKutuPaketlemeTarihi').value || '';
+  const urunKodu = document.getElementById('fKutuUrunKodu').value.trim();
+  const seraSayisi = Number(document.getElementById('fKutuSeraSayisi').value)||0;
+  const xx1Adet = Number(document.getElementById('fKutuXX1Adet').value)||0;
+  const x1Adet = Number(document.getElementById('fKutuX1Adet').value)||0;
+  const x2Adet = Number(document.getElementById('fKutuX2Adet').value)||0;
+  const toplamAdet = xx1Adet + x1Adet + x2Adet;
   if(kg<=0){ alert('Kutu ağırlığı girin.'); return; }
   const bolgedekiler = state.depoKutulari.filter(k=>k.bolge===bolge);
   const kutuNo = bolgedekiler.length ? Math.max(...bolgedekiler.map(k=>k.kutuNo)) + 1 : 1;
-  state.depoKutulari.push({ id: uid(), bolge, kutuNo, kg, tarih, kalite, olusturma: Date.now(), ...sonIslemDamgasi() });
+  state.depoKutulari.push({
+    id: uid(), bolge, kutuNo, kg, tarih, kalite,
+    tavlamaTarihi, paketlemeTarihi, urunKodu, seraSayisi,
+    xx1Adet, x1Adet, x2Adet, toplamAdet,
+    olusturma: Date.now(), ...sonIslemDamgasi()
+  });
   closeModal(); renderAll();
 }
 function kutuSil(id){
@@ -3612,6 +3904,8 @@ function renderDepo(){
             <button class="del" title="Sil" onclick="kutuSil('${k.id}')">×</button>
           </span></div>
         <div class="r2">${escapeHtml(k.tarih)}${k.kalite?' · '+escapeHtml(k.kalite):''}</div>
+        ${(k.urunKodu || k.toplamAdet) ? `<div class="r2">${k.urunKodu?escapeHtml(k.urunKodu):''}${k.seraSayisi?' · '+i18n('Sera Sayısı')+': '+fmt(k.seraSayisi,0):''}${k.toplamAdet?' · XX1: '+fmt(k.xx1Adet,0)+' · X1: '+fmt(k.x1Adet,0)+' · X2: '+fmt(k.x2Adet,0)+' · '+i18n('Toplam Adet')+': '+fmt(k.toplamAdet,0):''}</div>` : ''}
+        ${(k.tavlamaTarihi || k.paketlemeTarihi) ? `<div class="r2">${k.tavlamaTarihi?i18n('Tavlama Tarihi')+': '+escapeHtml(k.tavlamaTarihi):''}${k.tavlamaTarihi && k.paketlemeTarihi?' · ':''}${k.paketlemeTarihi?i18n('Paketleme Tarihi')+': '+escapeHtml(k.paketlemeTarihi):''}</div>` : ''}
       </div>
       <div class="stat"><b>${fmt(k.kg,1)}</b><span>kg</span></div>
     </div>
