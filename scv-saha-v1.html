@@ -1008,7 +1008,7 @@ const AYARLAR = {
   UNITE_PX: 40                // referans kapasitedeki sera-box genişliği (px) — kroki oranı
 };
 const STORAGE_KEY = 'scvSahaKrokiV1';
-const APP_SURUM = 'v54'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
+const APP_SURUM = 'v55'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
 
 /* =========================================================
    HATA / DONMA GÜNLÜĞÜ — "bazen donuyor" şikayetini araştırmak için.
@@ -1159,6 +1159,7 @@ const I18N_EN = {
   'Viyol (dekar)':'Tray Seedling (decares)', 'Yer Ocağı (dekar)':'Ground Bed (decares)', 'Tahmini Hasat (kg)':'Estimated Harvest (kg)',
   'Uygulanan İlaçlar (opsiyonel)':'Applied Pesticides (optional)', 'Zararlılar (opsiyonel)':'Pests (optional)', 'Gübreler (opsiyonel)':'Fertilizers (optional)',
   'Kutu Ağırlığı (kg)':'Box Weight (kg)', 'Kutulanma Tarihi':'Boxing Date', 'Kalite':'Quality', 'Belirtilmemiş':'Unspecified',
+  'Kutu Adedi (aynı bilgilerle kaç kutu eklenecek)':'Box Count (how many boxes with the same details)',
   'Yol Tarifi':'Directions', '📋 Tarla Detayı':'📋 Field Details', '🧭 Yol Tarifi':'🧭 Directions', 'Konum':'Location',
   'Enlem (lat)':'Latitude (lat)', 'Boylam (lng)':'Longitude (lng)', 'Tarla + Pin Ekle':'Add Field + Pin',
   'Pini Sil':'Delete Pin', '📍 Buradaki GPS Konumumu Kullan':'📍 Use My GPS Location Here',
@@ -2624,9 +2625,9 @@ function kirimAdim2Ac(){
     <div class="stepper-wrap">
       <div class="stepper-label">${i18n('Kaç sera dizilecek?')}</div>
       <div class="stepper">
-        <button type="button" onclick="kirimSeraSayacAyarla(-1)">−</button>
-        <input id="k2SeraSayisi" class="stepper-num" type="number" inputmode="numeric" min="0" step="1" value="${kirimAkisSeraSecimleri.length||kirimSeraHedef||0}" onchange="kirimSeraSayacElle()">
-        <button type="button" class="plus" onclick="kirimSeraSayacAyarla(1)">+</button>
+        <button type="button" onclick="kirimSeraSayacAyarla(-0.5)">−</button>
+        <input id="k2SeraSayisi" class="stepper-num" type="number" inputmode="decimal" min="0" step="0.5" value="${kirimAkisSeraSecimleri.length?kirimSeraSecimDegeri():(kirimSeraHedef||0)}" onchange="kirimSeraSayacElle()">
+        <button type="button" class="plus" onclick="kirimSeraSayacAyarla(0.5)">+</button>
       </div>
       <div class="stepper-sub">${i18n('Seraları aşağıdan seçin — sayaç kendiliğinden güncellenir')}</div>
     </div>
@@ -2714,6 +2715,15 @@ function kirimSeraSecimMiktari(secim){
 function kirimSeraToplamDizi(){
   return kirimAkisSeraSecimleri.reduce((s,x)=>s+kirimSeraSecimMiktari(x),0);
 }
+/* Seçimin "sera cinsinden" değeri: tam sera 1, yarım sera 0,5 sayılır (örn. 3 tam + 1 yarım = 3,5). */
+function kirimSeraSecimDegeri(){
+  const yarimAdet = kirimAkisSeraSecimleri.filter(x=>x.mod==='yarim').length;
+  return (kirimAkisSeraSecimleri.length - yarimAdet) + yarimAdet*0.5;
+}
+/* Elle/butonla girilen değeri 0,5'in katlarına yuvarlar (sayaç yarım sera hassasiyetinde çalışır). */
+function kirimYarimaYuvarla(n){
+  return Math.max(0, Math.round((Number(n)||0)*2)/2);
+}
 function kirimSeraTilesHtml(){
   let liste = seralarSirali();
   if(kirimSeraBolgeAktif!=='tumu') liste = liste.filter(s=>s.bolge===kirimSeraBolgeAktif);
@@ -2739,7 +2749,7 @@ function kirimSeraOzetHtml(){
   const parcalar = [];
   if(tamAdet) parcalar.push(`${tamAdet} ${i18n('tam')}`);
   if(yarimAdet) parcalar.push(`${yarimAdet} ${i18n('yarım')}`);
-  let ozet = `${kirimAkisSeraSecimleri.length} ${i18n('sera')} (${parcalar.join(' + ')}) = ${fmt(kirimSeraToplamDizi(),0)} ${i18n('dizi')}`;
+  let ozet = `${fmt(kirimSeraSecimDegeri(),1)} ${i18n('sera')} (${parcalar.join(' + ')}) = ${fmt(kirimSeraToplamDizi(),0)} ${i18n('dizi')}`;
   const sigmayanlar = kirimAkisSeraSecimleri
     .filter(x=>kirimSeraSecimMiktari(x)>seraKalanYer(x.seraId))
     .map(x=>{ const s = seraBul(x.seraId); return s ? s.ad : ''; }).filter(Boolean);
@@ -2778,18 +2788,19 @@ function kirimSeraToggle(seraId){
 function kirimSeraSayacGoster(){
   const el = document.getElementById('k2SeraSayisi');
   if(!el) return;
-  el.value = kirimAkisSeraSecimleri.length ? kirimAkisSeraSecimleri.length : (kirimSeraHedef||0);
+  el.value = kirimAkisSeraSecimleri.length ? kirimSeraSecimDegeri() : (kirimSeraHedef||0);
 }
 function kirimSeraSayacAyarla(delta){
   const el = document.getElementById('k2SeraSayisi');
   if(!el) return;
-  kirimSeraHedef = Math.max(0, (Number(el.value)||0) + delta);
+  kirimSeraHedef = kirimYarimaYuvarla((Number(el.value)||0) + delta);
   el.value = kirimSeraHedef;
 }
 function kirimSeraSayacElle(){
   const el = document.getElementById('k2SeraSayisi');
   if(!el) return;
-  kirimSeraHedef = Math.max(0, Number(el.value)||0);
+  kirimSeraHedef = kirimYarimaYuvarla(Number(el.value)||0);
+  el.value = kirimSeraHedef;
 }
 /* Elle dizi girişi yalnızca sera seçilmediyse anlamlı — sera seçiliyken alan gizlenir ve kayıtta yok sayılır. */
 function kirimElleDiziGorunum(){
@@ -2810,8 +2821,10 @@ function submitKirimEkle(){
     if(!confirm('Sera seçilmedi ve elle dizi sayısı girilmedi — kayıt 0 dizi ile oluşturulacak, sonradan düzenleyebilirsiniz. Devam edilsin mi?')) return;
   }
   // Sayaç "hedef" olarak kullanıldıysa (elle artırıldıysa) seçimle uyuşmazlıkta onay iste
-  if(kirimSeraHedef>0 && secimler.length && kirimSeraHedef!==secimler.length){
-    if(!confirm(`${kirimSeraHedef} sera dediniz ama ${secimler.length} sera seçtiniz. Seçtiğiniz ${secimler.length} sera ile devam edilsin mi?`)) return;
+  // (karşılaştırma sera cinsinden yapılır: tam sera 1, yarım sera 0,5 — örn. 3 tam + 1 yarım = 3,5)
+  const secimDegeri = kirimSeraSecimDegeri();
+  if(kirimSeraHedef>0 && secimler.length && kirimSeraHedef!==secimDegeri){
+    if(!confirm(`${fmt(kirimSeraHedef,1)} sera dediniz ama ${fmt(secimDegeri,1)} sera seçtiniz. Seçtiğiniz ${fmt(secimDegeri,1)} sera ile devam edilsin mi?`)) return;
   }
   const k = {
     id: uid(),
@@ -4053,6 +4066,7 @@ function openKutuEkleModal(){
         </select>
       </div>
     </div>
+    <div class="field"><label>${i18n('Kutu Adedi (aynı bilgilerle kaç kutu eklenecek)')}</label><input id="fKutuAdet" type="number" inputmode="numeric" min="1" step="1" value="1"></div>
     <div class="modal-actions">
       <button class="btn btn-muted" onclick="closeModal()">${i18n('Vazgeç')}</button>
       <button class="btn btn-primary" onclick="submitKutuEkle()">${i18n('Ekle')}</button>
@@ -4064,14 +4078,24 @@ function submitKutuEkle(){
   const kg = Number(document.getElementById('fKutuKg').value)||0;
   const tarih = document.getElementById('fKutuTarih').value || todayStr();
   const kalite = document.getElementById('fKutuKalite').value || '';
+  // Kutu adedi: aynı bilgilerle birden çok kutu tek seferde eklenebilir (varsayılan 1, tam sayı)
+  const adetEl = document.getElementById('fKutuAdet');
+  const adet = Math.max(1, Math.floor(Number(adetEl && adetEl.value)||1));
   if(kg<=0){ alert('Kutu ağırlığı girin.'); return; }
   const bolgedekiler = state.depoKutulari.filter(k=>k.bolge===bolge);
-  const kutuNo = bolgedekiler.length ? Math.max(...bolgedekiler.map(k=>k.kutuNo)) + 1 : 1;
-  state.depoKutulari.push({
-    id: uid(), bolge, kutuNo, kg, tarih, kalite,
-    olusturma: Date.now(), ...sonIslemDamgasi()
-  });
+  const ilkKutuNo = bolgedekiler.length ? Math.max(...bolgedekiler.map(k=>k.kutuNo)) + 1 : 1;
+  // Her kutu AYRI kayıt olur; kutuNo bölgedeki en büyük numaradan ardışık devam eder
+  for(let i=0; i<adet; i++){
+    state.depoKutulari.push({
+      id: uid(), bolge, kutuNo: ilkKutuNo + i, kg, tarih, kalite,
+      olusturma: Date.now(), ...sonIslemDamgasi()
+    });
+  }
   closeModal(); renderAll();
+  if(adet>1){
+    const bolgeAd = bolge==='tekeliler' ? 'Tekeliler' : 'Kalemli';
+    alert(`${adet} kutu eklendi (Kutu #${ilkKutuNo}–#${ilkKutuNo+adet-1}, ${fmt(kg,1)} kg${kalite?', '+kalite:''}, ${bolgeAd})`);
+  }
 }
 function kutuSil(id){
   const k = state.depoKutulari.find(x=>x.id===id);
