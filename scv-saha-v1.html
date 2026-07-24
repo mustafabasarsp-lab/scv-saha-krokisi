@@ -634,8 +634,14 @@ body.has-fullscreen-panel{overflow:hidden;}
   .panel-fullscreen{inset:6px;}
   .panel-fullscreen .tarla-plot,.panel-fullscreen .sera-plot{max-height:none;}
   /* Alt navigasyon: üstteki sekmeler yerine baş parmak bölgesinde sabit bir
-     çubuk; "Kırım Gir" de Saha sayfasında ayrıca sabit bir buton olarak duruyor. */
-  .page-tabs{display:none;}
+     çubuk; "Kırım Gir" de Saha sayfasında ayrıca sabit bir buton olarak duruyor.
+     NOT: .page-tabs class'ı panel-içi bölge filtrelerinde de kullanılıyor
+     (#seraBolgeTabs, #tarlaBolgeTabs, #depoBolgeTabs / .bolge-tabs) — onlar
+     mobilde gizlenmemeli, bu yüzden kural sadece header'daki ana sekmelere
+     daraltıldı. */
+  .header .page-tabs{display:none;}
+  .bolge-tabs{overflow-x:auto;flex-wrap:nowrap;-webkit-overflow-scrolling:touch;gap:6px;}
+  .bolge-tabs .tab-btn{padding:7px 12px;font-size:12.5px;min-height:34px;white-space:nowrap;flex:0 0 auto;}
   body{padding-bottom:calc(60px + env(safe-area-inset-bottom,0px));}
   .bottom-nav{
     display:flex; position:fixed; left:0; right:0; bottom:0; z-index:90;
@@ -782,7 +788,7 @@ body.has-fullscreen-panel{overflow:hidden;}
         <div class="panel-head-left" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
           <h2 data-i18n="Seralar">Seralar</h2>
           <input type="search" id="seraAramaInput" class="search-input" placeholder="Sera ara…" data-i18n-placeholder="Sera ara…" oninput="renderSeralar()">
-          <div class="page-tabs" id="seraBolgeTabs">
+          <div class="page-tabs bolge-tabs" id="seraBolgeTabs">
             <button class="tab-btn active" id="seraBolgeTab_tumu" onclick="seraBolgeSekmeGecis('tumu')" data-i18n="Tümü">Tümü</button>
             <button class="tab-btn" id="seraBolgeTab_tekeliler" onclick="seraBolgeSekmeGecis('tekeliler')">Tekeliler</button>
             <button class="tab-btn" id="seraBolgeTab_kalemli" onclick="seraBolgeSekmeGecis('kalemli')">Kalemli</button>
@@ -807,7 +813,7 @@ body.has-fullscreen-panel{overflow:hidden;}
       <div class="panel-head-left" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
         <h2 data-i18n="Tarlalar">Tarlalar</h2>
         <input type="search" id="tarlaAramaInput" class="search-input" placeholder="Tarla ara…" data-i18n-placeholder="Tarla ara…" oninput="renderTarlalar()">
-        <div class="page-tabs" id="tarlaBolgeTabs">
+        <div class="page-tabs bolge-tabs" id="tarlaBolgeTabs">
           <button class="tab-btn active" id="tarlaBolgeTab_tumu" onclick="tarlaBolgeSekmeGecis('tumu')" data-i18n="Tümü">Tümü</button>
           <button class="tab-btn" id="tarlaBolgeTab_tekeliler" onclick="tarlaBolgeSekmeGecis('tekeliler')">Tekeliler</button>
           <button class="tab-btn" id="tarlaBolgeTab_kalemli" onclick="tarlaBolgeSekmeGecis('kalemli')">Kalemli</button>
@@ -850,7 +856,7 @@ body.has-fullscreen-panel{overflow:hidden;}
       <div class="panel-head">
         <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
           <h2 data-i18n="Depo">Depo</h2>
-          <div class="page-tabs" id="depoBolgeTabs">
+          <div class="page-tabs bolge-tabs" id="depoBolgeTabs">
             <button class="tab-btn active" id="depoBolgeTab_tekeliler" onclick="depoBolgeSekmeGecis('tekeliler')">Tekeliler</button>
             <button class="tab-btn" id="depoBolgeTab_kalemli" onclick="depoBolgeSekmeGecis('kalemli')">Kalemli</button>
           </div>
@@ -981,7 +987,7 @@ const AYARLAR = {
   UNITE_PX: 40                // referans kapasitedeki sera-box genişliği (px) — kroki oranı
 };
 const STORAGE_KEY = 'scvSahaKrokiV1';
-const APP_SURUM = 'v48'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
+const APP_SURUM = 'v49'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
 
 /* =========================================================
    HATA / DONMA GÜNLÜĞÜ — "bazen donuyor" şikayetini araştırmak için.
