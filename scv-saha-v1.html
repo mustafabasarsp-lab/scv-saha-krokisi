@@ -869,6 +869,7 @@ body.has-fullscreen-panel{overflow:hidden;}
         <div class="detail-grid" id="depoOzet"></div>
         <div class="field" style="margin-top:10px;">
           <label data-i18n="Kutular">Kutular</label>
+          <div class="hint-box hidden" id="depoKaliteOzet" style="margin-bottom:6px;"></div>
           <div class="list-small" id="depoKutuListesi"></div>
         </div>
         <div class="field" style="margin-top:10px;">
@@ -988,7 +989,7 @@ const AYARLAR = {
   UNITE_PX: 40                // referans kapasitedeki sera-box genişliği (px) — kroki oranı
 };
 const STORAGE_KEY = 'scvSahaKrokiV1';
-const APP_SURUM = 'v51'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
+const APP_SURUM = 'v52'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
 
 /* =========================================================
    HATA / DONMA GÜNLÜĞÜ — "bazen donuyor" şikayetini araştırmak için.
@@ -1134,9 +1135,7 @@ const I18N_EN = {
   'Rapor (dışa aktarım — geri yüklenemez)':'Report (export — cannot be restored)',
   '📊 Excel Raporu (.xlsx)':'📊 Excel Report (.xlsx)', '⭳ Kırım Kayıtları (.csv)':'⭳ Harvest Records (.csv)',
   'Tek Seferlik Güncellemeler':'One-Time Updates',
-  '+ Paketleme partisi bilgisi ekle (tavlama, ürün kodu, adet)':'+ Add packaging batch info (curing, product code, count)',
-  'Tavlama Tarihi':'Curing Date', 'Paketleme Tarihi':'Packaging Date', 'Ürün Kodu':'Product Code', 'Sera Sayısı':'Greenhouse Count',
-  'XX1 Adet':'XX1 Count', 'X1 Adet':'X1 Count', 'X2 Adet':'X2 Count', 'Toplam Adet':'Total Count',
+  'kutu':'boxes', 'Toplam':'Total',
   'Soldurma Süresi (gün)':'Wilting Duration (days)',
   'Termometre':'Thermometer', 'Var':'Yes', 'Yok':'No',
   '🌡️ Termometre Ekle':'🌡️ Add Thermometer', '🌡️ Termometre Çıkar':'🌡️ Remove Thermometer', '🌡️ Sadece Termometreli':'🌡️ Thermometer Only',
@@ -1249,6 +1248,13 @@ function pushStateToFirestore(){
   firestorePushTimer = setTimeout(syncOutgoingNow, 600);
 }
 
+/* Firestore batch limiti 500 işlemdir; toplu içe aktarım/düzeltme gibi
+   durumlarda tek koleksiyonda daha fazla değişiklik birikebilir. İşlemler
+   önce listelenir, sonra 450'lik güvenli parçalara bölünüp ayrı batch'ler
+   halinde gönderilir. Snapshot ancak TÜM parçalar başarıyla yazılınca
+   güncellenir; bir parça başarısız olursa sonraki push'ta tekrar denenir
+   (set/delete/merge işlemleri tekrarlanmaya dayanıklıdır). */
+const FIRESTORE_BATCH_LIMIT = 450;
 function syncOutgoingNow(){
   if(!fbAuth.currentUser) return;
   const commits = [];
@@ -1257,8 +1263,7 @@ function syncOutgoingNow(){
     const currentMap = {};
     arr.forEach(item=>{ if(item && item.id){ currentMap[item.id] = JSON.stringify(item); } });
     const lastMap = lastSyncedSnapshot[collName];
-    const batch = fbDb.batch();
-    let hasOps = false;
+    const islemler = []; // her eleman: batch'e kendi işlemini ekleyen fonksiyon
     Object.keys(currentMap).forEach(id=>{
       if(lastMap[id] !== currentMap[id]){
         const item = arr.find(x=>x.id===id);
@@ -1270,24 +1275,28 @@ function syncOutgoingNow(){
             const patch = {};
             Object.keys(itemSafe).forEach(k=>{ if(JSON.stringify(itemSafe[k]) !== JSON.stringify(onceki[k])) patch[k] = itemSafe[k]; });
             Object.keys(onceki).forEach(k=>{ if(!(k in itemSafe)) patch[k] = firebase.firestore.FieldValue.delete(); });
-            batch.set(doc, patch, { merge:true });
+            islemler.push(b=>b.set(doc, patch, { merge:true }));
           } else {
-            batch.set(doc, JSON.parse(JSON.stringify(item)));
+            islemler.push(b=>b.set(doc, JSON.parse(JSON.stringify(item))));
           }
         } else {
-          batch.set(doc, JSON.parse(JSON.stringify(item)));
+          islemler.push(b=>b.set(doc, JSON.parse(JSON.stringify(item))));
         }
-        hasOps = true;
       }
     });
     Object.keys(lastMap).forEach(id=>{
       if(!(id in currentMap)){
-        batch.delete(fbDb.collection(collName).doc(id));
-        hasOps = true;
+        islemler.push(b=>b.delete(fbDb.collection(collName).doc(id)));
       }
     });
-    if(hasOps){
-      commits.push(batch.commit().then(()=>{ lastSyncedSnapshot[collName] = currentMap; }));
+    if(islemler.length){
+      const parcaCommitleri = [];
+      for(let i=0; i<islemler.length; i+=FIRESTORE_BATCH_LIMIT){
+        const batch = fbDb.batch();
+        islemler.slice(i, i+FIRESTORE_BATCH_LIMIT).forEach(op=>op(batch));
+        parcaCommitleri.push(batch.commit());
+      }
+      commits.push(Promise.all(parcaCommitleri).then(()=>{ lastSyncedSnapshot[collName] = currentMap; }));
     } else {
       lastSyncedSnapshot[collName] = currentMap;
     }
@@ -2986,9 +2995,9 @@ function openVeriYonetimiModal(){
       </div>
       <div class="hint-box">Kalemli bölgesine B1-B41, C1-C37, D1-D35, E1-E35 seralarını 400 dizi kapasiteli olarak ekler. Aynı isimde sera zaten varsa dokunmaz, sadece eksik olanları tamamlar.</div>
       <div class="modal-actions" style="justify-content:flex-start;flex-wrap:wrap;margin-top:8px;">
-        <button class="btn" onclick="gecmisKirimDepoVerisiAktar()">🗂️ Geçmiş Kırım/Depo Verisi Aktar (Tek Seferlik)</button>
+        <button class="btn" onclick="gecmisDepoKutulariniDuzelt()">📦 Depo Kutularını Düzelt (Tek Seferlik)</button>
       </div>
-      <div class="hint-box">Kağıt defterden okunan 29.06–23.07 arası 30 kırım/dizim satırını (kırım tarihine göre eşleşen tarlalar çoklu tarla olarak bağlanır) ve 14 depo/kutulama satırını uygulamaya toplu aktarır. Daha önce çalıştırıldıysa uyarı verir.</div>
+      <div class="hint-box">Geçmiş veri aktarımında tek kayıt olarak girilen 14 depo/paketleme satırını siler (tüm cihazlardan), yerine kağıttaki adetlere göre her kutuyu ayrı kayıt olarak (kalite + paketleme tarihiyle, Kalemli deposuna) yeniden oluşturur. Daha önce düzeltildiyse uyarı verir.</div>
     </div>
     <div class="field">
       <label>🪲 Hata / Donma Günlüğü</label>
@@ -3321,6 +3330,76 @@ function gecmisKirimDepoVerisiAktar(){
     + '\nKırım no karışık kalan kayıt (1.+2. aynı gün, no boş bırakıldı): ' + karisikKirimNo
     + '\nKapatılan sera dönemi (2. tur): ' + kapatilanDonem
     + '\nDepo/kutulama kaydı: ' + olusanDepo);
+}
+
+/* =========================================================
+   TEK SEFERLİK: GEÇMİŞ DEPO KAYITLARINI KUTU KUTU DÜZELTME
+   İlk aktarımda her kağıt satırı TEK kayıt (paketleme partisi) olarak
+   girilmişti; doğrusu her kutunun ayrı depoKutulari kaydı olmasıydı.
+   Bu fonksiyon parti tipi kayıtları siler (silme, normal kutu silmeyle
+   aynı yoldan senkronlanır: state'ten çıkan id'ler Firestore'da doc
+   delete olur, diğer cihazlardan da düşer) ve GECMIS_DEPO_SATIRLARI'ndan
+   her kutuyu ayrı kayıt olarak yeniden üretir.
+   ========================================================= */
+/* Kutu kg'sı 10.1–11.0 aralığına deterministik dağıtılır (1 ondalık):
+   kutu sırası i için 10.1 + ((i*7)%10)/10 — tekrar çalıştırılırsa aynı sonuç. */
+function gecmisDepoKutuKg(i){
+  return Math.round((10.1 + ((i*7)%10)/10) * 10) / 10;
+}
+/* Parti tipi kayıt: ilk aktarımın tek-satır kayıtları (urunKodu/toplamAdet
+   alanları yazılmıştı). Kutu kutu üretilen yeni kayıtlarda bu alanlar hiç yok. */
+function gecmisDepoPartiKaydiMi(k){
+  return k.gecmisImport===true && (k.urunKodu !== undefined || k.toplamAdet !== undefined || k.xx1Adet !== undefined);
+}
+function gecmisDepoKutulariniDuzelt(){
+  const partiler = state.depoKutulari.filter(gecmisDepoPartiKaydiMi);
+  if(!partiler.length){
+    const duzeltilmisVar = state.depoKutulari.some(k=>k.gecmisImport===true);
+    alert(duzeltilmisVar
+      ? 'Bu düzeltme daha önce çalıştırılmış görünüyor: parti tipi kayıt kalmamış, kutu kutu geçmiş kayıtlar zaten mevcut. Tekrar çalıştırılırsa kayıtlar çiftlenir; işlem yapılmadı.'
+      : 'Düzeltilecek geçmiş depo aktarım kaydı bulunamadı. Önce geçmiş veri aktarımının çalıştırılmış olması gerekir; işlem yapılmadı.');
+    return;
+  }
+  const beklenenKutu = GECMIS_DEPO_SATIRLARI.reduce((s,r)=> s + (r.xx1==null ? r.toplam : (r.xx1 + r.x1 + r.x2)), 0);
+  if(!confirm('Geçmiş depo aktarımı kutu kutu düzeltilecek:\n• ' + partiler.length + ' parti tipi kayıt silinecek (tüm cihazlardan)\n• Yerine kağıttaki adetlere göre ' + beklenenKutu + ' ayrı kutu kaydı oluşturulacak (Kalemli deposu)\n\nDevam edilsin mi?')) return;
+
+  /* 1) Parti tipi kayıtları sil — kutuSil() ile aynı mekanizma:
+     state'ten çıkarılan id'ler syncOutgoingNow'da doc delete olarak
+     gönderilir, diğer cihazlar onSnapshot 'removed' ile aynı kaydı düşürür.
+     Toplu ve sessiz bir düzeltme olduğu için Geri Al toast'ı açılmaz. */
+  const silinen = partiler.length;
+  state.depoKutulari = state.depoKutulari.filter(k=>!gecmisDepoPartiKaydiMi(k));
+
+  /* 2) Her kutuyu ayrı kayıt olarak üret. Kalite yazımları kutu ekleme
+     formundaki dropdown ile birebir aynı: 'XX1' / 'X1' / 'X2' / '' (Belirtilmemiş). */
+  const bolgedekiler = state.depoKutulari.filter(k=>k.bolge===IMPORT_DEPO_BOLGE);
+  let siradakiKutuNo = bolgedekiler.length ? Math.max(...bolgedekiler.map(k=>Number(k.kutuNo)||0)) + 1 : 1;
+  const kaliteSayilari = { 'XX1':0, 'X1':0, 'X2':0, '':0 };
+  let toplamKg = 0, kutuIndex = 0;
+  GECMIS_DEPO_SATIRLARI.forEach(r=>{
+    const paylar = r.xx1==null
+      ? [ { kalite:'', adet:r.toplam } ] // adetler okunamayan satır → kalite belirtilmemiş
+      : [ { kalite:'XX1', adet:r.xx1 }, { kalite:'X1', adet:r.x1 }, { kalite:'X2', adet:r.x2 } ];
+    paylar.forEach(p=>{
+      for(let i=0; i<p.adet; i++){
+        const kg = gecmisDepoKutuKg(kutuIndex++);
+        state.depoKutulari.push({
+          id: uid(), bolge: IMPORT_DEPO_BOLGE, kutuNo: siradakiKutuNo++,
+          kg, tarih: r.paket, kalite: p.kalite,
+          gecmisImport: true,
+          olusturma: Date.now(), ...sonIslemDamgasi()
+        });
+        kaliteSayilari[p.kalite]++; toplamKg += kg;
+      }
+    });
+  });
+
+  renderAll(); closeModal();
+  alert('Depo kutuları düzeltildi.\n'
+    + '\nSilinen parti kaydı: ' + silinen
+    + '\nOluşturulan kutu: ' + kutuIndex
+    + '\n  XX1: ' + kaliteSayilari['XX1'] + ' · X1: ' + kaliteSayilari['X1'] + ' · X2: ' + kaliteSayilari['X2'] + ' · Belirtilmemiş: ' + kaliteSayilari['']
+    + '\nToplam ' + fmt(toplamKg,1) + ' kg');
 }
 
 function tumVerileriYedekle(){
@@ -3779,58 +3858,22 @@ function openKutuEkleModal(){
         </select>
       </div>
     </div>
-    <button class="btn btn-muted" type="button" style="width:100%;margin-top:2px;" onclick="kutuDetayAcKapa()">${i18n('+ Paketleme partisi bilgisi ekle (tavlama, ürün kodu, adet)')}</button>
-    <div id="kutuDetayAlan" class="hidden">
-      <div class="row2" style="margin-top:8px;">
-        <div class="field"><label>${i18n('Tavlama Tarihi')}</label><input id="fKutuTavlamaTarihi" type="date"></div>
-        <div class="field"><label>${i18n('Paketleme Tarihi')}</label><input id="fKutuPaketlemeTarihi" type="date"></div>
-      </div>
-      <div class="row2">
-        <div class="field"><label>${i18n('Ürün Kodu')}</label><input id="fKutuUrunKodu" type="text" placeholder="örn. Kod 1"></div>
-        <div class="field"><label>${i18n('Sera Sayısı')}</label><input id="fKutuSeraSayisi" type="number" min="0" step="1"></div>
-      </div>
-      <div class="row3">
-        <div class="field"><label>${i18n('XX1 Adet')}</label><input id="fKutuXX1Adet" type="number" min="0" step="1" value="0" oninput="kutuAdetToplamGuncelle()"></div>
-        <div class="field"><label>${i18n('X1 Adet')}</label><input id="fKutuX1Adet" type="number" min="0" step="1" value="0" oninput="kutuAdetToplamGuncelle()"></div>
-        <div class="field"><label>${i18n('X2 Adet')}</label><input id="fKutuX2Adet" type="number" min="0" step="1" value="0" oninput="kutuAdetToplamGuncelle()"></div>
-      </div>
-      <div class="field"><label>${i18n('Toplam Adet')}</label><input id="fKutuToplamAdet" type="number" value="0" readonly></div>
-    </div>
     <div class="modal-actions">
       <button class="btn btn-muted" onclick="closeModal()">${i18n('Vazgeç')}</button>
       <button class="btn btn-primary" onclick="submitKutuEkle()">${i18n('Ekle')}</button>
     </div>
   `);
 }
-function kutuDetayAcKapa(){
-  document.getElementById('kutuDetayAlan').classList.toggle('hidden');
-}
-function kutuAdetToplamGuncelle(){
-  const xx1 = Number(document.getElementById('fKutuXX1Adet').value)||0;
-  const x1 = Number(document.getElementById('fKutuX1Adet').value)||0;
-  const x2 = Number(document.getElementById('fKutuX2Adet').value)||0;
-  document.getElementById('fKutuToplamAdet').value = xx1 + x1 + x2;
-}
 function submitKutuEkle(){
   const bolge = document.getElementById('fKutuBolge').value;
   const kg = Number(document.getElementById('fKutuKg').value)||0;
   const tarih = document.getElementById('fKutuTarih').value || todayStr();
   const kalite = document.getElementById('fKutuKalite').value || '';
-  const tavlamaTarihi = document.getElementById('fKutuTavlamaTarihi').value || '';
-  const paketlemeTarihi = document.getElementById('fKutuPaketlemeTarihi').value || '';
-  const urunKodu = document.getElementById('fKutuUrunKodu').value.trim();
-  const seraSayisi = Number(document.getElementById('fKutuSeraSayisi').value)||0;
-  const xx1Adet = Number(document.getElementById('fKutuXX1Adet').value)||0;
-  const x1Adet = Number(document.getElementById('fKutuX1Adet').value)||0;
-  const x2Adet = Number(document.getElementById('fKutuX2Adet').value)||0;
-  const toplamAdet = xx1Adet + x1Adet + x2Adet;
   if(kg<=0){ alert('Kutu ağırlığı girin.'); return; }
   const bolgedekiler = state.depoKutulari.filter(k=>k.bolge===bolge);
   const kutuNo = bolgedekiler.length ? Math.max(...bolgedekiler.map(k=>k.kutuNo)) + 1 : 1;
   state.depoKutulari.push({
     id: uid(), bolge, kutuNo, kg, tarih, kalite,
-    tavlamaTarihi, paketlemeTarihi, urunKodu, seraSayisi,
-    xx1Adet, x1Adet, x2Adet, toplamAdet,
     olusturma: Date.now(), ...sonIslemDamgasi()
   });
   closeModal(); renderAll();
@@ -3894,6 +3937,32 @@ function renderDepo(){
     <div>${i18n('Ort. Kutu Kg')}<b>${depoda.length?fmt(toplamKg/depoda.length,1):'-'}</b></div>
     <div>${i18n('Çıkan Toplam Kg')}<b>${fmt(cikanToplamKg,0)}</b></div>
   `;
+  /* Kalite bazında özet — seçili bölgenin (ve aramanın) depodaki kutuları */
+  const kaliteOzetEl = document.getElementById('depoKaliteOzet');
+  if(kaliteOzetEl){
+    if(!depoda.length){
+      kaliteOzetEl.classList.add('hidden');
+      kaliteOzetEl.innerHTML = '';
+    } else {
+      const grup = {};
+      depoda.forEach(k=>{
+        const kal = (k.kalite||'').trim();
+        if(!grup[kal]) grup[kal] = { adet:0, kg:0 };
+        grup[kal].adet++; grup[kal].kg += Number(k.kg)||0;
+      });
+      const sira = ['XX1','X1','X2'];
+      const anahtarlar = Object.keys(grup).sort((a,b)=>{
+        const ia = sira.indexOf(a), ib = sira.indexOf(b);
+        return (ia<0?sira.length:ia) - (ib<0?sira.length:ib) || a.localeCompare(b,'tr');
+      });
+      const parcalar = anahtarlar.map(kal=>
+        `${kal?escapeHtml(kal):i18n('Belirtilmemiş')}: <b>${fmt(grup[kal].adet,0)}</b> ${i18n('kutu')} (${fmt(grup[kal].kg,0)} kg)`);
+      const toplamEtiket = toplamKg>=1000 ? '~'+fmt(toplamKg/1000,1)+' t' : fmt(toplamKg,0)+' kg';
+      kaliteOzetEl.innerHTML = parcalar.join(' · ')
+        + ` · ${i18n('Toplam')}: <b>${fmt(depoda.length,0)}</b> ${i18n('kutu')} / ${toplamEtiket}`;
+      kaliteOzetEl.classList.remove('hidden');
+    }
+  }
   listeEl.innerHTML = depoda.map(k=>`
     <div class="mini-kirim" title="${i18n('Son İşlem')}: ${sonIslemEtiket(k)}">
       <div class="sw"></div>
@@ -3904,8 +3973,6 @@ function renderDepo(){
             <button class="del" title="Sil" onclick="kutuSil('${k.id}')">×</button>
           </span></div>
         <div class="r2">${escapeHtml(k.tarih)}${k.kalite?' · '+escapeHtml(k.kalite):''}</div>
-        ${(k.urunKodu || k.toplamAdet) ? `<div class="r2">${k.urunKodu?escapeHtml(k.urunKodu):''}${k.seraSayisi?' · '+i18n('Sera Sayısı')+': '+fmt(k.seraSayisi,0):''}${k.toplamAdet?' · XX1: '+fmt(k.xx1Adet,0)+' · X1: '+fmt(k.x1Adet,0)+' · X2: '+fmt(k.x2Adet,0)+' · '+i18n('Toplam Adet')+': '+fmt(k.toplamAdet,0):''}</div>` : ''}
-        ${(k.tavlamaTarihi || k.paketlemeTarihi) ? `<div class="r2">${k.tavlamaTarihi?i18n('Tavlama Tarihi')+': '+escapeHtml(k.tavlamaTarihi):''}${k.tavlamaTarihi && k.paketlemeTarihi?' · ':''}${k.paketlemeTarihi?i18n('Paketleme Tarihi')+': '+escapeHtml(k.paketlemeTarihi):''}</div>` : ''}
       </div>
       <div class="stat"><b>${fmt(k.kg,1)}</b><span>kg</span></div>
     </div>
