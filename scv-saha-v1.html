@@ -988,7 +988,7 @@ const AYARLAR = {
   UNITE_PX: 40                // referans kapasitedeki sera-box genişliği (px) — kroki oranı
 };
 const STORAGE_KEY = 'scvSahaKrokiV1';
-const APP_SURUM = 'v50'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
+const APP_SURUM = 'v51'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
 
 /* =========================================================
    HATA / DONMA GÜNLÜĞÜ — "bazen donuyor" şikayetini araştırmak için.
@@ -3117,7 +3117,7 @@ const IMPORT_DEPO_BOLGE = 'kalemli';
    (Tarlalarda kayıtlı yazım "PVH 2310" biçiminde olduğu için aynı standarda çevrilir.) */
 const GECMIS_IMPORT_CESIT_MAP = {
   'PuH2310':'PVH 2310', 'BsB6195':'BSB 6195', 'BsB6202':'BSB 6202', 'ITB6179':'ITB 6179',
-  'BsB2395':'BSB 2395', 'BsB2390':'BSB 2390', 'BuB2390':'BUB 2390'
+  'BsB2395':'BSB 2395', 'BsB2390':'BSB 2390'
 };
 
 /* Sera adının sonundaki "*" = yarım sera (200 dizi); işaretsiz sera 400 dizi. */
@@ -3144,7 +3144,7 @@ const GECMIS_KIRIM_SATIRLARI = [
   { no:20, kirim:'2026-07-15', dizim:'2026-07-17', cesit:'BsB2395', seralar:['B12','B11','B10','B9'] },
   { no:21, kirim:'2026-07-16', dizim:'2026-07-18', cesit:'BsB6202', seralar:['B8','B7','B6'] },
   { no:22, kirim:'2026-07-16', dizim:'2026-07-18', cesit:'PuH2310', seralar:['B5','B4','B3','B2','B1'] },
-  { no:23, kirim:'2026-07-16', dizim:'2026-07-19', cesit:'BuB2390', seralar:['A5','A6','A7','A8','A9','A10','A11','A12'] },
+  { no:23, kirim:'2026-07-16', dizim:'2026-07-19', cesit:'PuH2310', seralar:['A5','A6','A7','A8','A9','A10','A11','A12'] },
   { no:24, kirim:'2026-07-17', dizim:'2026-07-19', cesit:'BsB6195', seralar:['A13','A14','A15','A16'] },
   { no:25, kirim:'2026-07-17', dizim:'2026-07-20', cesit:'BsB6195', seralar:['A17','A18'] },
   { no:26, kirim:'2026-07-17', dizim:'2026-07-20', cesit:'BsB6202', seralar:['A19','A20','A21','A22','A23','A24','C3'] },
