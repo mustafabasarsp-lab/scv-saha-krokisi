@@ -1127,15 +1127,19 @@ const AYARLAR = {
   UNITE_PX: 40                // referans kapasitedeki sera-box genişliği (px) — kroki oranı
 };
 const STORAGE_KEY = 'scvSahaKrokiV1';
-const APP_SURUM = 'v57'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
+const APP_SURUM = 'v58'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
 
 /* =========================================================
    HATA / DONMA GÜNLÜĞÜ — "bazen donuyor" şikayetini araştırmak için.
    JS hatalarını, yakalanmamış promise red'lerini ve ana iş parçacığının
    uzun süre tepkisiz kaldığı anları (requestAnimationFrame aralığı
    anormal büyüdüğünde) cihazda localStorage'a kaydeder. Sekme arka
-   plandayken/rAF durduğunda yanlış "donma" kaydı oluşmasın diye
-   visibilitychange'de referans sıfırlanır.
+   plana alındığında/öne geldiğinde (iOS PWA askıya alma dahil) rAF
+   duraklayabildiğinden, bu geçişlerle ilgili HERHANGİ bir olay
+   (visibilitychange/pagehide/pageshow/blur/focus/freeze/resume)
+   yaşanmışsa bir sonraki kare süresi ne olursa olsun (60sn sınırı
+   olmaksızın) sessizce atlanır — yalnızca sayfa kesintisiz "visible"
+   kalırken oluşan gerçek uzun kareler loglanır.
    ========================================================= */
 const HATA_GUNLUGU_ANAHTAR = 'scvHataGunlugu';
 const HATA_GUNLUGU_MAX = 40;
@@ -1156,12 +1160,30 @@ window.addEventListener('unhandledrejection', e=>{
 });
 (function(){
   let sonKareZamani = performance.now();
-  document.addEventListener('visibilitychange', ()=>{ sonKareZamani = performance.now(); });
+  // Sayfa gizlenme/görünür olma, arka plana alınma/öne gelme ile ilgili
+  // olaylardan herhangi biri tetiklendiğinde bu bayrak işaretlenir; bir
+  // sonraki kare bu yüzden loglanmadan atlanır (süre sınırı aranmaz).
+  let gorunurlukDegisti = false;
+  const gorunurlukDegistiIsaretle = ()=>{ gorunurlukDegisti = true; };
+  document.addEventListener('visibilitychange', gorunurlukDegistiIsaretle);
+  document.addEventListener('freeze', gorunurlukDegistiIsaretle);
+  document.addEventListener('resume', gorunurlukDegistiIsaretle);
+  window.addEventListener('pagehide', gorunurlukDegistiIsaretle);
+  window.addEventListener('pageshow', gorunurlukDegistiIsaretle);
+  window.addEventListener('blur', gorunurlukDegistiIsaretle);
+  window.addEventListener('focus', gorunurlukDegistiIsaretle);
   function donmaGozlemcisi(zaman){
+    if(gorunurlukDegisti){
+      // Bu kare, arka plana alınma/öne gelme geçişinin hemen ardından
+      // geliyor olabilir; rAF bu süre boyunca duraklamış olabileceğinden
+      // aradaki fark gerçek bir arayüz donması değildir — sessizce atlanır.
+      gorunurlukDegisti = false;
+      sonKareZamani = zaman;
+      requestAnimationFrame(donmaGozlemcisi);
+      return;
+    }
     const fark = zaman - sonKareZamani;
-    // 60sn üstü fark muhtemelen bilgisayar/telefon uyku moduna geçti demektir,
-    // gerçek bir arayüz donması değil — günlüğü kirletmesin diye atlanıyor.
-    if(document.visibilityState==='visible' && fark > 2500 && fark < 60000){
+    if(document.visibilityState==='visible' && fark > 2500){
       hataKaydet('donma', `Ana iş parçacığı ~${Math.round(fark)}ms tepkisiz kaldı.`, 'sayfa: '+(document.querySelector('.page:not(.hidden)')?.id||'?'));
     }
     sonKareZamani = zaman;
