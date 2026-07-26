@@ -1179,7 +1179,7 @@ const AYARLAR = {
   UNITE_PX: 40                // referans kapasitedeki sera-box genişliği (px) — kroki oranı
 };
 const STORAGE_KEY = 'scvSahaKrokiV1';
-const APP_SURUM = 'v60'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
+const APP_SURUM = 'v61'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
 
 /* =========================================================
    HATA / DONMA GÜNLÜĞÜ — "bazen donuyor" şikayetini araştırmak için.
@@ -1445,6 +1445,25 @@ function stateNormalizeEt(){
     // eski kayıtlarda diziSayisi yoktu, sera dağılımından hesaplanıyordu — geriye dönük uyumluluk için bir kereliğine hesapla
     if(k.diziSayisi==null){
       k.diziSayisi = (k.seraDagilimi||[]).reduce((s,d)=>s+(Number(d.diziSayisi)||0),0);
+    }
+  });
+  yevmiyeSnapshotlariniOnar();
+}
+function yevmiyeSnapshotlariniOnar(){
+  // Kayıt oluşturulduğu anda oran ayarları henüz senkronlanmamış/ayarlanmamışsa
+  // snapshot tamamı-0 donar ve hakediş kalıcı 0 hesaplanır. Tamamı-0 snapshot
+  // "hiç alınamamış" sayılır ve güncel oranlarla onarılır; kısmen dolu snapshot'lara
+  // asla dokunulmaz (oran değişikliği geçmişi etkilemesin kuralı).
+  // NOT: YEVMIYE_ALANLARI sabiti dosyanın çok aşağısında const ile tanımlı ve bu
+  // fonksiyon sayfa yüklenirken ondan ÖNCE çalışıyor (TDZ) — bu yüzden yerel liste.
+  const alanlar = ['kirim','sulama','dizimAsim','sera','capa'];
+  const guncel = (state.odemeAyarlari||[])[0];
+  const guncelDolu = guncel && alanlar.some(f=>Number(guncel[f])>0);
+  (state.yevmiyeKayitlari||[]).forEach(y=>{
+    y.sayilar = y.sayilar || {};
+    y.yevmiyeler = y.yevmiyeler || {};
+    if(guncelDolu && alanlar.every(f=>!(Number(y.yevmiyeler[f])>0))){
+      alanlar.forEach(f=>{ y.yevmiyeler[f] = Number(guncel[f])||0; });
     }
   });
 }
@@ -5349,6 +5368,9 @@ function yevmiyeHucreGuncelle(tarih, bolge, dayibasiId, alan, deger){
     };
     state.yevmiyeKayitlari.push(kayit);
   }
+  // Emniyet kemeri: kayıt, oranlar henüz senkronlanmadan oluşturulduysa snapshot'ı
+  // tamamı-0 kalmıştır — güncel oranlar artık doluysa burada onarılır (idempotent).
+  yevmiyeSnapshotlariniOnar();
   kayit.sayilar[alan] = v;
   Object.assign(kayit, sonIslemDamgasi());
   const hepsiBos = YEVMIYE_ALANLARI.every(f=>!(Number(kayit.sayilar[f])>0));
@@ -5523,6 +5545,8 @@ function submitYevmiyeAyarlari(){
   Object.assign(guncelleme, sonIslemDamgasi());
   if(state.odemeAyarlari.length){ Object.assign(state.odemeAyarlari[0], guncelleme); }
   else { state.odemeAyarlari.push(guncelleme); }
+  // Oranlar girişlerden SONRA ayarlandıysa, snapshot'ı tamamı-0 donmuş kayıtlar hemen düzelsin
+  yevmiyeSnapshotlariniOnar();
   closeModal(); renderAll();
 }
 
