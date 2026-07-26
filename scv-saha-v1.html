@@ -565,6 +565,40 @@ body.has-fullscreen-panel{overflow:hidden;}
 .iklim-chart-svg{width:100%;display:block;}
 .iklim-grafik-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:2px 24px;align-items:start;}
 
+/* ---------- HAVA DURUMU (Open-Meteo, dış ortam) ---------- */
+.hava-serit{
+  display:flex;align-items:center;gap:5px;flex:0 0 auto;
+  background:var(--panel-2);border:1px solid var(--border);border-radius:20px;
+  padding:4px 11px;font-size:12px;font-weight:700;color:var(--green-900);
+  white-space:nowrap;line-height:1.5;
+}
+.hava-serit .hava-sep{color:var(--border);font-weight:400;}
+.hava-serit .hava-yas{font-weight:400;font-size:10.5px;color:var(--muted);}
+.iklim-sayfa-duzen{display:flex;flex-direction:column;gap:8px;min-height:0;}
+.iklim-sayfa-duzen > #iklimPanelBox{flex:1;}
+.hava-panel .panel-body{padding:8px 10px 10px;}
+.hava-simdi{display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
+.hava-simdi-ikon{font-size:34px;line-height:1;}
+.hava-simdi-derece{font-family:'Barlow Semi Condensed',sans-serif;font-weight:700;font-size:30px;color:var(--green-900);line-height:1;}
+.hava-simdi-metin{font-size:12px;color:var(--muted);}
+.hava-detay-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(96px,1fr));gap:6px 14px;flex:1;min-width:220px;}
+.hava-detay-grid div{font-size:11.5px;color:var(--muted);}
+.hava-detay-grid b{display:block;font-family:'Barlow Semi Condensed',sans-serif;font-size:16px;color:var(--green-900);font-weight:700;}
+.hava-saatlik-baslik{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.03em;margin:9px 0 3px;}
+.hava-saatlik{display:flex;gap:5px;overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:2px;}
+.hava-saat-kutu{
+  flex:0 0 auto;min-width:52px;text-align:center;
+  background:var(--panel-2);border:1px solid var(--border);border-radius:8px;padding:5px 4px;
+}
+.hava-saat-kutu .s{font-size:10.5px;color:var(--muted);font-weight:700;}
+.hava-saat-kutu .i{font-size:16px;line-height:1.3;}
+.hava-saat-kutu .d{font-size:12.5px;font-weight:800;color:var(--green-900);}
+.hava-saat-kutu .n{font-size:10px;color:var(--blue);}
+.hava-not{font-size:11.5px;color:var(--muted);}
+.hava-legend{font-size:11px;color:var(--muted);display:flex;gap:10px;flex-wrap:wrap;margin:2px 0 0;}
+.hava-legend i{display:inline-block;width:16px;height:0;border-top:2px solid currentColor;vertical-align:middle;margin-right:4px;}
+.hava-legend .dis{border-top-style:dashed;}
+
 /* ---------- İKLİM TAKİP: EXCEL-BENZERİ DÜZENLENEBİLİR TABLO ---------- */
 .iklim-table-wrap{max-height:360px;overflow:auto;border:1px solid var(--border);border-radius:8px;background:#fff;}
 .panel-fullscreen .iklim-table-wrap{max-height:none;}
@@ -693,6 +727,10 @@ body.has-fullscreen-panel{overflow:hidden;}
   .kdot{width:9px;height:9px;}
   #haritaMap{min-height:260px;}
   .iklim-table-wrap{max-height:220px;}
+  /* Hava şeridi dar ekranda tek satır kalsın, header'ı taşırmasın */
+  .hava-serit{font-size:11px;padding:3px 9px;gap:4px;max-width:100%;overflow:hidden;}
+  .hava-simdi-derece{font-size:26px;}
+  .hava-simdi-ikon{font-size:29px;}
   .harita-toolbar{gap:6px;}
   .harita-toolbar .btn{padding:6px 10px;font-size:12px;}
   .search-input{width:100%;flex:1 1 100%;order:5;}
@@ -760,6 +798,7 @@ body.has-fullscreen-panel{overflow:hidden;}
       <button class="tab-btn" id="tab_pageRapor" onclick="sayfaGecis('pageRapor')" data-i18n="📊 Genel Özet">📊 Genel Özet</button>
     </div>
     <div class="badges" id="badgesRow"></div>
+    <button class="hava-serit" id="havaSerit" onclick="sayfaGecis('pageIklim')" title="İklim Takip" data-i18n-title="İklim Takip">—</button>
     <div class="sync-status" id="syncStatus"><span class="dot"></span><span id="syncStatusText">Bağlanıyor…</span></div>
     <div class="header-actions">
       <button class="btn-csv" onclick="dilDegistir()">🌐 <span id="dilBtnText">EN</span></button>
@@ -970,6 +1009,17 @@ body.has-fullscreen-panel{overflow:hidden;}
 
   <!-- SAYFA: İKLİM TAKİP (SERA SICAKLIK/NEM) -->
   <div class="page hidden" id="pageIklim">
+    <div class="iklim-sayfa-duzen">
+
+    <!-- DIŞ ORTAM (Open-Meteo canlı hava durumu) -->
+    <div class="panel hava-panel" id="havaPanelBox" style="min-height:0;flex:0 0 auto;">
+      <div class="panel-head">
+        <h2 data-i18n="Dış Ortam — Kalemli">Dış Ortam — Kalemli</h2>
+        <button class="icon-btn ghost" onclick="havaVeriCek(true)" title="Yenile" data-i18n-title="Yenile">⟳</button>
+      </div>
+      <div class="panel-body" id="havaDetayBody"></div>
+    </div>
+
     <div class="panel" id="iklimPanelBox" style="min-height:0;">
       <div class="panel-head">
         <h2 data-i18n="İklim Takip">İklim Takip</h2>
@@ -987,6 +1037,8 @@ body.has-fullscreen-panel{overflow:hidden;}
           <div class="iklim-table-wrap" id="iklimListesi"></div>
         </div>
       </div>
+    </div>
+
     </div>
   </div>
 
@@ -1127,7 +1179,7 @@ const AYARLAR = {
   UNITE_PX: 40                // referans kapasitedeki sera-box genişliği (px) — kroki oranı
 };
 const STORAGE_KEY = 'scvSahaKrokiV1';
-const APP_SURUM = 'v58'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
+const APP_SURUM = 'v59'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
 
 /* =========================================================
    HATA / DONMA GÜNLÜĞÜ — "bazen donuyor" şikayetini araştırmak için.
@@ -1236,6 +1288,18 @@ const I18N_EN = {
   'Ort. Sıcaklık':'Avg. Temperature', 'Ort. Nem':'Avg. Humidity', 'Henüz sıcaklık/nem kaydı yok':'No temperature/humidity records yet',
   'Son Ölçüm':'Latest Reading',
   '(silinmiş sera)':'(deleted greenhouse)', 'Sıcaklık / Nem Grafiği':'Temperature / Humidity Chart', 'Son Kaç Kayıt':'How Many Recent Records',
+  /* Hava durumu (Open-Meteo — dış ortam) */
+  'Dış Ortam — Kalemli':'Outdoor — Kalemli', 'Dış Ortam':'Outdoor', '🌍 Dış Ortam':'🌍 Outdoor', 'Dış':'Out', 'Sera içi':'Indoor',
+  'Yenile':'Refresh', 'Sıcaklık':'Temperature', 'Hissedilen':'Feels Like', 'Nem':'Humidity', 'Rüzgar':'Wind', 'Yağış':'Precipitation',
+  'Saatlik Tahmin':'Hourly Forecast', 'Bugün':'Today', 'Yarın':'Tomorrow', 'km/s':'km/h',
+  'dk önce':'min ago', 'sa önce':'h ago', 'gün önce':'d ago',
+  'Hava durumu yükleniyor…':'Loading weather…', 'Hava verisi alınamadı':'Weather data unavailable',
+  'Dış ortam verisi yükleniyor…':'Loading outdoor data…', 'Dış ortam verisi alınamadı':'Could not load outdoor data',
+  'Dış ortam verisi kapalı':'Outdoor data off', 'Dış ortam (en yakın saat)':'Outdoor (nearest hour)',
+  'Bu tarihler için dış ortam verisi yok (yaklaşık 2 aydan eski)':'No outdoor data for these dates (older than about 2 months)',
+  'Kayıtlarda saat bilgisi olmadığı için dış ortam eşleştirilemedi':'Could not match outdoor data: records have no time of day',
+  'Açık':'Clear', 'Az bulutlu':'Partly cloudy', 'Bulutlu':'Cloudy', 'Sisli':'Foggy',
+  'Yağmurlu':'Rainy', 'Karlı':'Snowy', 'Sağanak':'Showers', 'Fırtına':'Thunderstorm',
   'SCV Saha Krokisi — Giriş':'SCV Field Layout — Login', 'Kullanıcı Adı':'Username', 'Şifre':'Password', 'Giriş Yap':'Log In',
   'Vazgeç':'Cancel', 'Kaydet':'Save', 'Ekle':'Add', 'Kapat':'Close', 'Düzenle':'Edit', 'Sil':'Delete',
   '↩ Geri Al':'↩ Undo', 'silindi.':'deleted.',
@@ -1785,6 +1849,7 @@ function renderAll(){
   document.getElementById('bugunTarih').textContent = new Date().toLocaleDateString('tr-TR');
   document.getElementById('appSurum').textContent = APP_SURUM;
   renderBadges();
+  renderHava(); // dil değişiminde de şerit/kart yeniden yazılsın
   renderSahaSayfasi();
   renderHaritalar();
   renderDepo();
@@ -4528,6 +4593,7 @@ function iklimTablosuSatirHtml(k){
 }
 function renderIklim(){
   if(sayfaGizliMi('pageIklim')) return;
+  renderHavaDetay(); // dış ortam kartı: tabloya odaklanılmış olsa bile güncellenebilir (input içermez)
   const ozetEl = document.getElementById('iklimOzet');
   const listeEl = document.getElementById('iklimListesi');
   if(!ozetEl || !listeEl) return;
@@ -4580,10 +4646,15 @@ function iklimYumusakYolD(pts){
   }
   return d.trim();
 }
-function iklimCizgiGrafikSvg(values, labels, color, birim, gradId){
+/* disValues: opsiyonel ikinci seri (dış ortam — her manuel kaydın en yakın saatine
+   denk gelen Open-Meteo değeri). Eşleşme bulunamayan noktalarda null olur; çizgi o
+   boşlukta kesilir, sıfır olarak çizilmez. */
+function iklimCizgiGrafikSvg(values, labels, color, birim, gradId, disValues){
   const W = 380, H = 260, padL = 24, padR = 10, padT = 14, padB = 22;
   const innerW = W - padL - padR, innerH = H - padT - padB;
-  const min = Math.min(...values), max = Math.max(...values);
+  const disVar = Array.isArray(disValues) && disValues.some(v=>v!=null);
+  const olcekDegerleri = disVar ? values.concat(disValues.filter(v=>v!=null)) : values;
+  const min = Math.min(...olcekDegerleri), max = Math.max(...olcekDegerleri);
   const range = (max - min) || 1;
   const yPad = range * 0.18;
   const yMin = min - yPad, yMax = max + yPad;
@@ -4627,6 +4698,26 @@ function iklimCizgiGrafikSvg(values, labels, color, birim, gradId){
     return `<text x="${x(i).toFixed(1)}" y="${(y(v)-7).toFixed(1)}" font-size="11" font-weight="700" fill="${color}" text-anchor="middle">${fmt(v,1)}</text>`;
   }).join('');
 
+  // Dış ortam serisi: kesikli çizgi + içi boş küçük noktalar (boşluklarda kesilir)
+  let disKatman = '';
+  if(disVar){
+    const disRenk = 'var(--muted)';
+    const segmentler = [];
+    let aktif = [];
+    disValues.forEach((v,i)=>{
+      if(v==null){ if(aktif.length>1) segmentler.push(aktif); aktif = []; return; }
+      aktif.push([x(i), y(v)]);
+    });
+    if(aktif.length>1) segmentler.push(aktif);
+    const disCizgiler = segmentler.map(seg=>
+      `<path d="${iklimYumusakYolD(seg)}" fill="none" stroke="${disRenk}" stroke-width="1.8" stroke-dasharray="5 4" stroke-linecap="round" stroke-linejoin="round" opacity=".85"/>`
+    ).join('');
+    const disNoktalar = disValues.map((v,i)=> v==null ? '' :
+      `<circle cx="${x(i).toFixed(1)}" cy="${y(v).toFixed(1)}" r="2.8" fill="#fff" stroke="${disRenk}" stroke-width="1.6"><title>${escapeHtml(labels[i]||'')} · ${escapeHtml(i18n('Dış'))}: ${fmt(v,1)}${birim}</title></circle>`
+    ).join('');
+    disKatman = disCizgiler + disNoktalar;
+  }
+
   return `<svg viewBox="0 0 ${W} ${H}" class="iklim-chart-svg">
     <defs>
       <linearGradient id="iklimGrad${gradId}" x1="0" y1="0" x2="0" y2="1">
@@ -4638,6 +4729,7 @@ function iklimCizgiGrafikSvg(values, labels, color, birim, gradId){
     <path d="${areaD}" fill="url(#iklimGrad${gradId})" stroke="none"/>
     ${avgLine}
     <path d="${lineD}" fill="none" stroke="${color}" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"/>
+    ${disKatman}
     ${points}
     ${directLabels}
     ${xLabels}
@@ -4651,12 +4743,16 @@ function openIklimGrafikModal(){
   openModal(`
     <h2>${i18n('Sıcaklık / Nem Grafiği')}</h2>
     <div class="row2">
-      <div class="field"><label>${i18n('Sera')}</label><select id="fIklimGrafikSera" onchange="renderIklimGrafik()">${opts}</select></div>
+      <div class="field"><label>${i18n('Sera')}</label><select id="fIklimGrafikSera" onchange="iklimGrafikSecimDegisti()">${opts}</select></div>
       <div class="field"><label>${i18n('Son Kaç Kayıt')}</label>
-        <select id="fIklimGrafikSayi" onchange="renderIklimGrafik()">
+        <select id="fIklimGrafikSayi" onchange="iklimGrafikSecimDegisti()">
           <option value="20">20</option><option value="40" selected>40</option><option value="100">100</option><option value="999999">${i18n('Tümü')}</option>
         </select>
       </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:2px 0 4px;">
+      <button class="btn btn-muted" id="btnHavaGrafik" onclick="havaGrafikAcKapa()" style="padding:7px 12px;font-size:12.5px;">${i18n('🌍 Dış Ortam')}</button>
+      <span class="hava-not" id="havaGrafikNot"></span>
     </div>
     <div class="iklim-grafik-grid">
       <div>
@@ -4672,26 +4768,398 @@ function openIklimGrafikModal(){
       <button class="btn btn-muted" onclick="closeModal()">${i18n('Kapat')}</button>
     </div>
   `, true, 'modal-iklim-grafik');
-  renderIklimGrafik();
+  havaGrafikBtnGuncelle();
+  if(havaGrafikAcik) havaGrafikVeriHazirlaVeCiz(); else renderIklimGrafik();
 }
-function renderIklimGrafik(){
+/* Grafikte gösterilecek kayıt listesi (sera + "son kaç kayıt" seçimine göre).
+   Hem çizim hem de dış ortam isteğinin past_days hesabı bunu kullanır. */
+function iklimGrafikListesi(){
   const seraSel = document.getElementById('fIklimGrafikSera');
   const sayiSel = document.getElementById('fIklimGrafikSayi');
+  if(!seraSel) return [];
+  const seraId = seraSel.value;
+  const sayi = Number(sayiSel && sayiSel.value) || 40;
+  const liste = state.iklimKayitlari.filter(k=>k.seraId===seraId);
+  liste.sort((a,b)=> (a.tarih+(a.saat||'')).localeCompare(b.tarih+(b.saat||'')));
+  return liste.slice(-sayi);
+}
+function iklimGrafikSecimDegisti(){
+  if(havaGrafikAcik) havaGrafikVeriHazirlaVeCiz();
+  else renderIklimGrafik();
+}
+function renderIklimGrafik(){
   const sicaklikEl = document.getElementById('iklimGrafikSicaklik');
   const nemEl = document.getElementById('iklimGrafikNem');
-  if(!seraSel || !sicaklikEl || !nemEl) return;
-  const seraId = seraSel.value;
-  const sayi = Number(sayiSel.value) || 40;
-  let liste = state.iklimKayitlari.filter(k=>k.seraId===seraId);
-  liste.sort((a,b)=> (a.tarih+(a.saat||'')).localeCompare(b.tarih+(b.saat||'')));
-  liste = liste.slice(-sayi);
+  if(!sicaklikEl || !nemEl) return;
+  const liste = iklimGrafikListesi();
   if(!liste.length){
     sicaklikEl.innerHTML = nemEl.innerHTML = `<div class="item">${i18n('Veri yok')}</div>`;
     return;
   }
   const etiketler = liste.map(k=>iklimKisaTarihSaat(k.tarih, k.saat));
-  sicaklikEl.innerHTML = iklimCizgiGrafikSvg(liste.map(k=>Number(k.sicaklik)||0), etiketler, 'var(--amber)', '°C', 'sic');
-  nemEl.innerHTML = iklimCizgiGrafikSvg(liste.map(k=>Number(k.nem)||0), etiketler, 'var(--blue)', '%', 'nem');
+  // Dış ortam serisi açıksa: her kaydın en yakın saatine denk gelen değerler
+  let disSic = null, disNem = null;
+  if(havaGrafikAcik && havaGecmisIndeks){
+    const eslesme = liste.map(k=>havaSaatlikDegerBul(k.tarih, k.saat));
+    disSic = eslesme.map(e=> e && e.sicaklik!=null ? Number(e.sicaklik) : null);
+    disNem = eslesme.map(e=> e && e.nem!=null ? Number(e.nem) : null);
+    if(!disSic.some(v=>v!=null)){
+      // Hiç eşleşme yoksa sebebi ayır: saat alanı boş kayıtlar mı (satır içi düzenleme
+      // boş saati kabul ediyor, aktarılan eski kayıtlarda alan hiç olmayabilir), yoksa
+      // tarihler dış ortam arşivinin dışında mı?
+      const saatliKayitVar = liste.some(k=>havaSaatAnahtari(k.tarih, k.saat));
+      havaGrafikNotYaz(i18n(saatliKayitVar
+        ? 'Bu tarihler için dış ortam verisi yok (yaklaşık 2 aydan eski)'
+        : 'Kayıtlarda saat bilgisi olmadığı için dış ortam eşleştirilemedi'));
+    } else {
+      havaGrafikNotYaz('');
+    }
+  }
+  const lgSic = disSic && disSic.some(v=>v!=null) ? iklimGrafikLegendHtml('var(--amber)') : '';
+  const lgNem = disNem && disNem.some(v=>v!=null) ? iklimGrafikLegendHtml('var(--blue)') : '';
+  sicaklikEl.innerHTML = lgSic + iklimCizgiGrafikSvg(liste.map(k=>Number(k.sicaklik)||0), etiketler, 'var(--amber)', '°C', 'sic', disSic);
+  nemEl.innerHTML = lgNem + iklimCizgiGrafikSvg(liste.map(k=>Number(k.nem)||0), etiketler, 'var(--blue)', '%', 'nem', disNem);
+}
+function iklimGrafikLegendHtml(renk){
+  return `<div class="hava-legend">
+    <span style="color:${renk}"><i></i>${escapeHtml(i18n('Sera içi'))}</span>
+    <span><i class="dis"></i>${escapeHtml(i18n('Dış Ortam'))}</span>
+  </div>`;
+}
+
+/* =========================================================
+   HAVA DURUMU (Open-Meteo — anahtarsız, CORS açık)
+   Konum sabit: Kalemli köyü, Şehzadeler/Manisa.
+   - Üst bardaki kompakt şerit her sekmede görünür (15 dk'da bir yenilenir).
+   - İklim Takip sekmesinde "Dış Ortam" kartı aynı yanıtı kullanır (ayrı istek yok).
+   - Grafikteki "Dış Ortam" karşılaştırması ayrı, geçmişe dönük (past_days) tek
+     bir istek atar ve yanıtı oturum boyunca bellekte tutar.
+   NOT: sw.js api.open-meteo.com isteklerini önbelleğe almaz (bayat hava olmasın).
+   ========================================================= */
+const HAVA_KONUM = { lat:38.7962, lon:27.4681, tz:'Europe/Istanbul' };
+const HAVA_CACHE_ANAHTAR = 'scvHavaDurumu';
+const HAVA_YENILEME_MS = 15*60*1000;
+/* Open-Meteo forecast uç noktasının past_days üst sınırı 92; ama pratikte arşiv
+   yaklaşık son 2 ayı kapsıyor, daha eski saatler null dönüyor (o noktalar grafikte
+   boş bırakılır). Kullanıcıya gösterilen mesaj bu yüzden "~2 ay" diyor. */
+const HAVA_GECMIS_MAX_GUN = 92;
+const HAVA_YONLER = {
+  tr:['K','KD','D','GD','G','GB','B','KB'],
+  en:['N','NE','E','SE','S','SW','W','NW']
+};
+
+let havaSonVeri = null;        // son başarılı yanıt (current + hourly, bugün+yarın)
+let havaSonZaman = 0;          // yanıtın alındığı an (ms)
+let havaBayat = false;         // true: ağdan alınamadı, kayıtlı (eski) veri gösteriliyor
+let havaIstekSuruyor = false;
+let havaGecmisVeri = null;     // grafik karşılaştırması için saatlik geçmiş yanıt
+let havaGecmisIndeks = null;   // { 'YYYY-MM-DDTHH:00': {sicaklik, nem} }
+let havaGecmisPastDays = 0;    // bellekteki geçmiş verinin kaç gün geriye gittiği
+let havaGecmisIstek = null;    // süren geçmiş isteği (aynı anda ikinci istek atılmasın)
+let havaGecmisIstekGun = 0;
+let havaGrafikAcik = false;    // grafikteki dış ortam serisi açık mı (oturum boyunca hatırlanır)
+
+function havaApiUrl(ekParams){
+  const p = new URLSearchParams(Object.assign({
+    latitude: HAVA_KONUM.lat,
+    longitude: HAVA_KONUM.lon,
+    timezone: HAVA_KONUM.tz
+  }, ekParams||{}));
+  return 'https://api.open-meteo.com/v1/forecast?' + p.toString();
+}
+function havaFetchJson(url, zamanAsimiMs){
+  const ctrl = ('AbortController' in window) ? new AbortController() : null;
+  const sayac = setTimeout(()=>{ if(ctrl) ctrl.abort(); }, zamanAsimiMs || 12000);
+  return fetch(url, { cache:'no-store', signal: ctrl ? ctrl.signal : undefined })
+    .then(r=>{ if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); })
+    .then(veri=>{ clearTimeout(sayac); return veri; })
+    .catch(err=>{ clearTimeout(sayac); throw err; });
+}
+function havaKoduIkon(kod){
+  // Number(null) ve Number('') 0 döndürdüğü için önce boş/geçersiz değerleri ele:
+  // kodu olmayan bir saat "açık ☀️" gibi görünmesin.
+  if(kod==null || String(kod).trim()==='' || isNaN(Number(kod))) return '🌡️';
+  const k = Number(kod);
+  if(k===0) return '☀️';
+  if(k===1 || k===2) return '🌤️';
+  if(k===3) return '☁️';
+  if(k===45 || k===48) return '🌫️';
+  if(k>=51 && k<=67) return '🌧️';
+  if((k>=71 && k<=77) || k===85 || k===86) return '🌨️';
+  if(k>=80 && k<=82) return '🌦️';
+  if(k>=95) return '⛈️';
+  return '🌡️';
+}
+function havaKoduMetin(kod){
+  if(kod==null || String(kod).trim()==='' || isNaN(Number(kod))) return '';
+  const k = Number(kod);
+  if(k===0) return i18n('Açık');
+  if(k===1 || k===2) return i18n('Az bulutlu');
+  if(k===3) return i18n('Bulutlu');
+  if(k===45 || k===48) return i18n('Sisli');
+  if(k>=51 && k<=67) return i18n('Yağmurlu');
+  if((k>=71 && k<=77) || k===85 || k===86) return i18n('Karlı');
+  if(k>=80 && k<=82) return i18n('Sağanak');
+  if(k>=95) return i18n('Fırtına');
+  return '';
+}
+function havaYonKisalt(derece){
+  const d = Number(derece);
+  if(derece==null || isNaN(d)) return '';
+  const dizi = HAVA_YONLER[currentLang==='en' ? 'en' : 'tr'];
+  return dizi[Math.round((((d % 360) + 360) % 360) / 45) % 8];
+}
+function havaYasEtiket(zaman){
+  if(!zaman) return '';
+  const dk = Math.max(1, Math.round((Date.now() - zaman) / 60000));
+  if(dk < 60) return dk + ' ' + i18n('dk önce');
+  const sa = Math.round(dk / 60);
+  if(sa < 24) return sa + ' ' + i18n('sa önce');
+  return Math.round(sa / 24) + ' ' + i18n('gün önce');
+}
+function havaKayittanYukle(){
+  if(havaSonVeri) return true;
+  try{
+    const ham = localStorage.getItem(HAVA_CACHE_ANAHTAR);
+    if(!ham) return false;
+    const kayit = JSON.parse(ham);
+    if(!kayit || !kayit.veri || !kayit.veri.current) return false;
+    havaSonVeri = kayit.veri;
+    havaSonZaman = Number(kayit.zaman) || 0;
+    havaBayat = true; // kayıttan geldi; taze yanıt gelince false'a döner
+    return true;
+  }catch(e){ return false; }
+}
+function havaVeriCek(elle){
+  if(havaIstekSuruyor) return Promise.resolve(null);
+  havaIstekSuruyor = true;
+  if(elle || !havaSonVeri) renderHava(); // elde veri yokken "yükleniyor" görünsün, "alınamadı" değil
+  const url = havaApiUrl({
+    current:'temperature_2m,relative_humidity_2m,apparent_temperature,precipitation,weather_code,wind_speed_10m,wind_direction_10m',
+    hourly:'temperature_2m,relative_humidity_2m,weather_code',
+    forecast_days:2
+  });
+  return havaFetchJson(url).then(veri=>{
+    if(!veri || !veri.current) throw new Error('beklenmeyen yanıt');
+    havaSonVeri = veri;
+    havaSonZaman = Date.now();
+    havaBayat = false;
+    try{ localStorage.setItem(HAVA_CACHE_ANAHTAR, JSON.stringify({ zaman: havaSonZaman, veri })); }catch(e){ /* kota dolu: sessizce yut */ }
+    havaIstekSuruyor = false;
+    renderHava();
+    return veri;
+  }).catch(()=>{
+    // Saha şebekesi zayıf olabilir: kayıtlı veri varsa onu yaşıyla göster, yoksa "—"
+    havaIstekSuruyor = false;
+    havaKayittanYukle();
+    if(havaSonVeri) havaBayat = true;
+    renderHava();
+    return null;
+  });
+}
+function renderHava(){
+  renderHavaSerit();
+  renderHavaDetay();
+}
+function renderHavaSerit(){
+  const el = document.getElementById('havaSerit');
+  if(!el) return;
+  const c = havaSonVeri && havaSonVeri.current;
+  if(!c){ el.textContent = '—'; return; }
+  const yasHtml = havaBayat && havaSonZaman
+    ? `<span class="hava-sep">·</span><span class="hava-yas">${escapeHtml(havaYasEtiket(havaSonZaman))}</span>`
+    : '';
+  el.innerHTML =
+    `<span>${havaKoduIkon(c.weather_code)}</span>` +
+    `<span>${fmt(c.temperature_2m,0)}°</span>` +
+    `<span class="hava-sep">·</span>` +
+    `<span>💧 %${fmt(c.relative_humidity_2m,0)}</span>` +
+    `<span class="hava-sep">·</span>` +
+    `<span>💨 ${fmt(c.wind_speed_10m,0)} ${escapeHtml(i18n('km/s'))} ${escapeHtml(havaYonKisalt(c.wind_direction_10m))}</span>` +
+    yasHtml;
+}
+function renderHavaDetay(){
+  const el = document.getElementById('havaDetayBody');
+  if(!el) return;
+  const c = havaSonVeri && havaSonVeri.current;
+  if(!c){
+    el.innerHTML = `<div class="hava-not">${escapeHtml(havaIstekSuruyor ? i18n('Hava durumu yükleniyor…') : i18n('Hava verisi alınamadı'))}</div>`;
+    return;
+  }
+  const durumMetin = havaKoduMetin(c.weather_code);
+  const yas = havaSonZaman ? havaYasEtiket(havaSonZaman) : '';
+  const altMetin = [durumMetin, yas].filter(Boolean).join(' · ');
+  // Saatlik şeritlerin yatay kaydırma konumunu koru: her Firestore snapshot'ında
+  // (renderAll → renderHava/renderIklim) şerit başa sarmasın.
+  const kaydirmalar = Array.prototype.map.call(el.querySelectorAll('.hava-saatlik'), s=>s.scrollLeft);
+  el.innerHTML = `
+    <div class="hava-simdi">
+      <div class="hava-simdi-ikon">${havaKoduIkon(c.weather_code)}</div>
+      <div>
+        <div class="hava-simdi-derece">${fmt(c.temperature_2m,1)}°C</div>
+        <div class="hava-simdi-metin">${escapeHtml(altMetin)}</div>
+      </div>
+      <div class="hava-detay-grid">
+        <div>${i18n('Hissedilen')}<b>${fmt(c.apparent_temperature,1)}°C</b></div>
+        <div>${i18n('Nem')}<b>%${fmt(c.relative_humidity_2m,0)}</b></div>
+        <div>${i18n('Rüzgar')}<b>${fmt(c.wind_speed_10m,0)} ${escapeHtml(i18n('km/s'))} ${escapeHtml(havaYonKisalt(c.wind_direction_10m))}</b></div>
+        <div>${i18n('Yağış')}<b>${fmt(c.precipitation,1)} mm</b></div>
+      </div>
+    </div>
+    ${havaSaatlikOzetHtml()}
+  `;
+  Array.prototype.forEach.call(el.querySelectorAll('.hava-saatlik'), (s,i)=>{
+    if(kaydirmalar[i]) s.scrollLeft = kaydirmalar[i];
+  });
+}
+/* Bugün (şu andan itibaren) ve yarın için 3 saatte bir kompakt tahmin şeridi */
+function havaSaatlikOzetHtml(){
+  const h = havaSonVeri && havaSonVeri.hourly;
+  if(!h || !h.time || !h.time.length) return '';
+  const bugun = todayStr();
+  const simdiSaat = new Date().getHours();
+  const gunler = [];
+  h.time.forEach((zaman, i)=>{
+    const gun = String(zaman).slice(0,10);
+    const saat = Number(String(zaman).slice(11,13));
+    if(isNaN(saat) || saat % 3 !== 0) return;
+    if(gun === bugun && saat < simdiSaat) return;
+    let grup = gunler.find(g=>g.gun===gun);
+    if(!grup){ grup = { gun, satirlar:[] }; gunler.push(grup); }
+    grup.satirlar.push({
+      saat,
+      sicaklik: h.temperature_2m ? h.temperature_2m[i] : null,
+      nem: h.relative_humidity_2m ? h.relative_humidity_2m[i] : null,
+      kod: h.weather_code ? h.weather_code[i] : null
+    });
+  });
+  if(!gunler.length) return '';
+  const yarin = (()=>{ const d = new Date(); d.setDate(d.getDate()+1);
+    return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); })();
+  const gunEtiket = gun => gun===bugun ? i18n('Bugün') : (gun===yarin ? i18n('Yarın') : gun.slice(8,10)+'.'+gun.slice(5,7));
+  return gunler.map(g=>`
+    <div class="hava-saatlik-baslik">${i18n('Saatlik Tahmin')} · ${escapeHtml(gunEtiket(g.gun))}</div>
+    <div class="hava-saatlik">
+      ${g.satirlar.map(s=>`
+        <div class="hava-saat-kutu">
+          <div class="s">${String(s.saat).padStart(2,'0')}:00</div>
+          <div class="i">${havaKoduIkon(s.kod)}</div>
+          <div class="d">${fmt(s.sicaklik,0)}°</div>
+          <div class="n">%${fmt(s.nem,0)}</div>
+        </div>`).join('')}
+    </div>
+  `).join('');
+}
+
+/* ---- Grafik karşılaştırması: manuel kaydın en yakın saatine denk gelen dış ortam ---- */
+function havaSaatAnahtari(tarih, saat){
+  const p = String(tarih||'').split('-');
+  if(p.length!==3) return null;
+  const sp = String(saat||'').split(':');
+  if(sp.length<2) return null;
+  const s = Number(sp[0]), d = Number(sp[1]);
+  if(isNaN(s) || isNaN(d)) return null;
+  const dt = new Date(Number(p[0]), Number(p[1])-1, Number(p[2]), s, 0, 0, 0);
+  if(isNaN(dt.getTime())) return null;
+  if(d >= 30) dt.setHours(dt.getHours()+1); // en yakın saate yuvarla (gece yarısını da doğru geçer)
+  const iki = n => String(n).padStart(2,'0');
+  return dt.getFullYear()+'-'+iki(dt.getMonth()+1)+'-'+iki(dt.getDate())+'T'+iki(dt.getHours())+':00';
+}
+function havaSaatlikDegerBul(tarih, saat){
+  if(!havaGecmisIndeks) return null;
+  const anahtar = havaSaatAnahtari(tarih, saat);
+  return anahtar ? (havaGecmisIndeks[anahtar] || null) : null;
+}
+function havaGecmisIndeksKur(veri){
+  havaGecmisIndeks = {};
+  const h = veri && veri.hourly;
+  if(!h || !h.time) return;
+  h.time.forEach((zaman, i)=>{
+    havaGecmisIndeks[String(zaman).slice(0,13)+':00'] = {
+      sicaklik: h.temperature_2m ? h.temperature_2m[i] : null,
+      nem: h.relative_humidity_2m ? h.relative_humidity_2m[i] : null
+    };
+  });
+}
+/* Grafikte gösterilen en eski kayda göre kaç gün geriye gidilmeli (en fazla 92) */
+function havaGecmisGerekliGun(liste){
+  let enEski = null;
+  (liste||[]).forEach(k=>{ if(k.tarih && (!enEski || k.tarih < enEski)) enEski = k.tarih; });
+  if(!enEski) return 1;
+  const bugun = new Date(todayStr()+'T00:00:00');
+  const eski = new Date(enEski+'T00:00:00');
+  if(isNaN(eski.getTime())) return 1;
+  const fark = Math.ceil((bugun - eski) / 86400000);
+  return Math.max(1, Math.min(HAVA_GECMIS_MAX_GUN, fark + 1));
+}
+/* Kullanıcı "Son Kaç Kayıt"ı büyütürse dar aralıklı bir istek uçarken ikinci ve daha
+   geniş bir istek başlayabilir. İkisi paralel uçtuğunda geç dönen DAR yanıt, önce
+   dönen GENİŞ veriyi eziyordu (grafikteki dolu noktalar kaybolup yanlış "veri yok"
+   notu çıkıyordu). Bu yüzden her yanıt state'e yazılmadan önce hâlâ güncel mi diye
+   bakılır: yalnızca elimizdekinden daha geniş bir yanıt kabul edilir, bayat olan
+   sessizce atılır. Uçuştaki istek referansı da yalnızca kendi isteğiyse temizlenir. */
+function havaGecmisCek(gerekliGun){
+  const gun = Math.max(1, Math.min(HAVA_GECMIS_MAX_GUN, gerekliGun||1));
+  if(havaGecmisVeri && havaGecmisPastDays >= gun) return Promise.resolve(havaGecmisVeri);
+  if(havaGecmisIstek && havaGecmisIstekGun >= gun) return havaGecmisIstek;
+  havaGecmisIstekGun = gun;
+  const istek = havaFetchJson(havaApiUrl({
+    hourly:'temperature_2m,relative_humidity_2m',
+    past_days:gun,
+    forecast_days:1
+  }), 20000).then(veri=>{
+    if(!veri || !veri.hourly) throw new Error('beklenmeyen yanıt');
+    if(havaGecmisIstek === istek) havaGecmisIstek = null;
+    if(gun > havaGecmisPastDays){ // bayat (daha dar) yanıt geniş veriyi ezmesin
+      havaGecmisVeri = veri;
+      havaGecmisPastDays = gun;
+      havaGecmisIndeksKur(veri);
+    }
+    return havaGecmisVeri || veri;
+  }).catch(err=>{ if(havaGecmisIstek === istek) havaGecmisIstek = null; throw err; });
+  havaGecmisIstek = istek;
+  return istek;
+}
+function havaGrafikNotYaz(metin){
+  const el = document.getElementById('havaGrafikNot');
+  if(el) el.textContent = metin || '';
+}
+function havaGrafikBtnGuncelle(){
+  const btn = document.getElementById('btnHavaGrafik');
+  if(!btn) return;
+  btn.classList.toggle('btn-primary', havaGrafikAcik);
+  btn.classList.toggle('btn-muted', !havaGrafikAcik);
+  btn.setAttribute('aria-pressed', havaGrafikAcik ? 'true' : 'false');
+}
+function havaGrafikAcKapa(){
+  havaGrafikAcik = !havaGrafikAcik;
+  havaGrafikBtnGuncelle();
+  if(!havaGrafikAcik){ havaGrafikNotYaz(''); renderIklimGrafik(); return; }
+  havaGrafikVeriHazirlaVeCiz();
+}
+/* Gerekirse geçmiş veriyi çeker (oturumda bir kez), sonra grafiği yeniden çizer.
+   Bellekte yeterli geçmiş varsa yeni istek atmaz. */
+function havaGrafikVeriHazirlaVeCiz(){
+  const gerekli = havaGecmisGerekliGun(iklimGrafikListesi());
+  if(havaGecmisVeri && havaGecmisPastDays >= gerekli){
+    havaGrafikNotYaz('');
+    renderIklimGrafik();
+    return;
+  }
+  renderIklimGrafik(); // sera serisi beklemeden çizilsin
+  havaGrafikNotYaz(i18n('Dış ortam verisi yükleniyor…'));
+  havaGecmisCek(gerekli)
+    .then(()=>{ havaGrafikNotYaz(''); renderIklimGrafik(); })
+    .catch(()=>{ havaGrafikNotYaz(i18n('Dış ortam verisi alınamadı')); });
+}
+function havaBaslat(){
+  havaKayittanYukle();
+  renderHava();
+  havaVeriCek();
+  setInterval(()=>havaVeriCek(), HAVA_YENILEME_MS);
+  document.addEventListener('visibilitychange', ()=>{
+    if(document.visibilityState==='visible' && Date.now() - havaSonZaman > HAVA_YENILEME_MS) havaVeriCek();
+  });
 }
 
 /* =========================================================
@@ -5296,6 +5764,7 @@ function bildirimKontrolEt(){
    ========================================================= */
 uygulaStatikDil();
 renderAll();
+havaBaslat();
 bildirimDurumGuncelle();
 if('Notification' in window && Notification.permission==='granted'){
   bildirimKontrolEt();

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'scv-saha-v1-cache-58';
+const CACHE_NAME = 'scv-saha-v1-cache-59';
 const CORE_ASSETS = [
   './scv-saha-v1.html',
   './manifest.json',
@@ -35,6 +35,9 @@ self.addEventListener('fetch', (event) => {
   const url = event.request.url;
   if (url.includes('googleapis.com') || url.includes('firebaseapp.com') || url.includes('firebaseio.com')) {
     return; // Firestore/Auth trafiğine dokunma - kendi ağ katmanını kullansın
+  }
+  if (url.includes('api.open-meteo.com')) {
+    return; // hava durumu: her zaman ağdan (network-only), asla önbelleğe alma - bayat hava gösterilmesin
   }
 
   // HTML sayfası (uygulamanın kendisi): önce internetten en güncelini çek,
