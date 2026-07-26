@@ -476,6 +476,11 @@ body.has-fullscreen-panel{overflow:hidden;}
   background:var(--green-100);border:1px solid var(--green-300);border-radius:6px;
   padding:7px 9px;font-size:12px;color:var(--green-900);margin:8px 0;
 }
+/* hint-box'ın uyarı (kırmızı) varyantı — dikkat çekmesi gereken durumlar için */
+.uyari-box{
+  background:#fbe4e1;border:1px solid var(--red);border-radius:6px;
+  padding:8px 10px;font-size:12.5px;font-weight:700;color:var(--red);margin:0 0 10px;
+}
 /* ---- Kırım Gir: 2 dokunuşluk akış (tarla kare seçimi + dizi sayacı) ---- */
 .step-eyebrow{font-size:11px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);margin-bottom:8px;}
 .tarla-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;max-height:340px;overflow-y:auto;padding:2px;}
@@ -653,6 +658,10 @@ body.has-fullscreen-panel{overflow:hidden;}
 .odeme-bakiye-row:hover{background:var(--green-100);}
 .odeme-kalan-uyari{color:var(--red);font-weight:800;}
 .odeme-kalan-ok{color:var(--green-700);font-weight:800;}
+/* Filtre dışında kalan yevmiye kayıtlarını haber veren bilgi satırı */
+.odeme-filtre-disi-ipucu{font-size:11.5px;color:var(--muted);margin:6px 2px 0;line-height:1.5;}
+.odeme-filtre-disi-ipucu b{color:var(--ink);}
+.odeme-filtre-disi-ipucu .ipucu-gelecek{color:var(--red);font-weight:700;}
 
 /* ---------- ÖDEMELER: YAZDIRILABİLİR EVRAK ---------- */
 #odemePrintSayfa{display:none;}
@@ -1097,6 +1106,8 @@ body.has-fullscreen-panel{overflow:hidden;}
               <tbody id="odemeBakiyeTbody"></tbody>
             </table>
           </div>
+          <!-- Seçili aralık/bölge dışında kalan yevmiye kayıtları varsa buraya bilgi satırı basılır -->
+          <div id="odemeBakiyeFiltreDisiIpucu"></div>
           <div class="field" style="margin-top:12px;">
             <label data-i18n="Ödeme Geçmişi">Ödeme Geçmişi</label>
             <div class="list-small" id="odemeGecmisListesi"></div>
@@ -1179,7 +1190,7 @@ const AYARLAR = {
   UNITE_PX: 40                // referans kapasitedeki sera-box genişliği (px) — kroki oranı
 };
 const STORAGE_KEY = 'scvSahaKrokiV1';
-const APP_SURUM = 'v61'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
+const APP_SURUM = 'v62'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
 
 /* =========================================================
    HATA / DONMA GÜNLÜĞÜ — "bazen donuyor" şikayetini araştırmak için.
@@ -1388,6 +1399,10 @@ const I18N_EN = {
   'Kırım':'Harvest', 'İmza':'Signature', 'Aktif':'Active', 'Pasif':'Inactive',
   'Henüz dayıbaşı eklenmedi':'No crew leaders added yet', 'Aktif dayıbaşı yok':'No active crew leaders',
   'Henüz ödeme kaydı yok':'No payment records yet',
+  'Dikkat: GELECEK tarihe giriş yapıyorsunuz':'Warning: you are entering data for a FUTURE date',
+  'Seçili aralığın/filtrenin dışında':'Outside the selected range/filter:',
+  'yevmiye kaydı var':'daily wage record(s)',
+  'tanesi gelecek tarihli':'of them future-dated',
 };
 function i18n(tr){ return currentLang==='en' ? (I18N_EN[tr] || tr) : tr; }
 function dilDegistir(){
@@ -1701,6 +1716,15 @@ function todayStr(){
   // gece 00:00-03:00 arasında "bugün"ü bir önceki gün gösteriyordu.
   const d = new Date();
   return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+}
+// YYYY-MM-DD → "26 Tem 2026" (EN'de "26 Jul 2026"). Uyarı metinlerinde ham ISO
+// tarih yerine okunur biçim göstermek için. Saat dilimi kayması olmasın diye
+// yerel gece yarısıyla parse edilir.
+function tarihUzunGoster(iso){
+  if(!iso || !/^\d{4}-\d{2}-\d{2}$/.test(iso)) return iso || '';
+  const d = new Date(iso+'T00:00:00');
+  if(isNaN(d)) return iso;
+  return d.toLocaleDateString(currentLang==='en'?'en-GB':'tr-TR', {day:'numeric', month:'short', year:'numeric'});
 }
 function mevcutKullaniciAdi(){
   const email = fbAuth.currentUser && fbAuth.currentUser.email;
@@ -5402,6 +5426,13 @@ function renderOdemeGunluk(){
     return { d, sayilar, satirToplam };
   });
 
+  // Tarih elle yanlışlıkla ileri alındığında (ör. yarın) girilen yevmiye, varsayılan
+  // "ayın 1'i → bugün" özet aralığına düşmediği için sessizce kaybolur. Bu yüzden
+  // gelecek tarihte çalışırken listenin en üstüne belirgin bir uyarı basılır.
+  const gelecekUyarisi = tarih > todayStr()
+    ? `<div class="uyari-box">⚠️ ${i18n('Dikkat: GELECEK tarihe giriş yapıyorsunuz')} (${escapeHtml(tarihUzunGoster(tarih))}). ${i18n('Bugün')}: ${escapeHtml(tarihUzunGoster(todayStr()))}.</div>`
+    : '';
+
   const girisHucre = (d, sayilar, f) => `<input type="number" inputmode="numeric" min="0" step="1" value="${sayilar[f]?sayilar[f]:''}" onchange="yevmiyeHucreGuncelle('${tarih}','${bolge}','${d.id}','${f}',this.value)">`;
 
   const tabloBasliklari = YEVMIYE_ALANLARI.map(f=>`<th class="num">${i18n(YEVMIYE_ETIKETLER[f])}${oranlar?`<span class="odeme-oran-ipucu">₺${fmt(oranlar[f]||0,0)}</span>`:''}</th>`).join('');
@@ -5432,6 +5463,7 @@ function renderOdemeGunluk(){
     </div>`).join('');
 
   wrap.innerHTML = `
+    ${gelecekUyarisi}
     <div class="odeme-table-wrap">
       <table class="iklim-table odeme-gunluk-table">
         <thead><tr>
@@ -5551,6 +5583,24 @@ function submitYevmiyeAyarlari(){
 }
 
 /* ---- Bakiye / Özet ---- */
+// Seçili tarih aralığı/bölge filtresinin DIŞINDA kalan yevmiye kayıtlarını özetleyen
+// bilgi satırı. Yanlış tarihe (özellikle gelecek tarihe) girilmiş bir kaydın varsayılan
+// "ayın 1'i → bugün" aralığına düşmeyip "hakediş 0" sanılmasını önler.
+function odemeFiltreDisiIpucuHtml(baslangic, bitis, bolge){
+  const disKayitlar = (state.yevmiyeKayitlari||[]).filter(y=>
+    (baslangic && y.tarih < baslangic) ||
+    (bitis && y.tarih > bitis) ||
+    (bolge && y.bolge !== bolge));
+  if(!disKayitlar.length) return '';
+  const bugun = todayStr();
+  const gelecekler = disKayitlar.filter(y=> y.tarih > bugun);
+  let ic = `ℹ️ ${i18n('Seçili aralığın/filtrenin dışında')} <b>${fmt(disKayitlar.length,0)}</b> ${i18n('yevmiye kaydı var')}`;
+  if(gelecekler.length){
+    const enIleri = gelecekler.reduce((m,y)=> y.tarih>m ? y.tarih : m, gelecekler[0].tarih);
+    ic += ` <span class="ipucu-gelecek">(⚠️ ${fmt(gelecekler.length,0)} ${i18n('tanesi gelecek tarihli')}: ${escapeHtml(tarihUzunGoster(enIleri))})</span>`;
+  }
+  return `<div class="odeme-filtre-disi-ipucu">${ic}</div>`;
+}
 function renderOdemeBakiye(){
   if(sayfaGizliMi('pageOdemeler')) return;
   const tbody = document.getElementById('odemeBakiyeTbody');
@@ -5578,6 +5628,9 @@ function renderOdemeBakiye(){
       </tr>`;
     }).join('') || `<tr><td colspan="4" class="iklim-table-empty">${i18n('Henüz dayıbaşı eklenmedi')}</td></tr>`;
   }
+  // Bilgi satırı salt-okunur; tablo odak koruması altına girmesine gerek yok.
+  const filtreDisiEl = document.getElementById('odemeBakiyeFiltreDisiIpucu');
+  if(filtreDisiEl) filtreDisiEl.innerHTML = odemeFiltreDisiIpucuHtml(odemeBakiyeBaslangic, odemeBakiyeBitis, odemeBakiyeBolge);
   renderOdemeGecmisListesi();
 }
 function openOdemeGirModal(dayibasiId){
