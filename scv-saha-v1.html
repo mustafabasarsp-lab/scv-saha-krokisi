@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
-<title>SCV Saha Krokisi</title>
+<title>SCV Saha</title>
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#167a4d">
 <meta name="mobile-web-app-capable" content="yes">
@@ -658,6 +658,13 @@ body.has-fullscreen-panel{overflow:hidden;}
 .odeme-bakiye-row:hover{background:var(--green-100);}
 .odeme-kalan-uyari{color:var(--red);font-weight:800;}
 .odeme-kalan-ok{color:var(--green-700);font-weight:800;}
+/* Bölge atanmamış (eski) dayıbaşı kayıtları: her iki bölgede de göründükleri için
+   listelerde küçük bir rozetle işaretlenir. */
+.dayibasi-bolgesiz{
+  display:inline-block;font-size:9px;font-weight:700;line-height:1;vertical-align:middle;
+  padding:2px 5px;border-radius:999px;background:#fdf1da;color:var(--amber);
+  border:1px solid var(--amber);text-transform:uppercase;letter-spacing:.03em;white-space:nowrap;
+}
 /* Filtre dışında kalan yevmiye kayıtlarını haber veren bilgi satırı */
 .odeme-filtre-disi-ipucu{font-size:11.5px;color:var(--muted);margin:6px 2px 0;line-height:1.5;}
 .odeme-filtre-disi-ipucu b{color:var(--ink);}
@@ -796,7 +803,7 @@ body.has-fullscreen-panel{overflow:hidden;}
 
   <!-- HEADER -->
   <div class="header">
-    <div class="brand">SCV Saha Krokisi<small><span data-i18n="Bugün:">Bugün:</span> <span id="bugunTarih"></span> · <span data-i18n="Sürüm">Sürüm</span> <span id="appSurum"></span> · Developed by Mustafa BAŞAR</small></div>
+    <div class="brand">SCV Saha<small><span data-i18n="Bugün:">Bugün:</span> <span id="bugunTarih"></span> · <span data-i18n="Sürüm">Sürüm</span> <span id="appSurum"></span> · Developed by Mustafa BAŞAR</small></div>
     <div class="page-tabs">
       <button class="tab-btn active" id="tab_pageSaha" onclick="sayfaGecis('pageSaha')" data-i18n="🌿 Saha Krokisi">🌿 Saha Krokisi</button>
       <button class="tab-btn" id="tab_pageHaritalar" onclick="sayfaGecis('pageHaritalar')" data-i18n="🗺️ Haritalar">🗺️ Haritalar</button>
@@ -1170,7 +1177,7 @@ body.has-fullscreen-panel{overflow:hidden;}
 
 <div class="overlay" id="loginOverlay">
   <div class="modal">
-    <h2 data-i18n="SCV Saha Krokisi — Giriş">SCV Saha Krokisi — Giriş</h2>
+    <h2 data-i18n="SCV Saha — Giriş">SCV Saha — Giriş</h2>
     <div class="field"><label data-i18n="Kullanıcı Adı">Kullanıcı Adı</label><input id="loginUser" type="text" placeholder="scv" autocapitalize="off" autocomplete="username"></div>
     <div class="field"><label data-i18n="Şifre">Şifre</label><input id="loginPass" type="password" autocomplete="current-password" onkeydown="if(event.key==='Enter')girisYap()"></div>
     <div id="loginError" style="color:var(--red);font-size:12px;margin-bottom:6px;"></div>
@@ -1190,7 +1197,7 @@ const AYARLAR = {
   UNITE_PX: 40                // referans kapasitedeki sera-box genişliği (px) — kroki oranı
 };
 const STORAGE_KEY = 'scvSahaKrokiV1';
-const APP_SURUM = 'v62'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
+const APP_SURUM = 'v63'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
 
 /* =========================================================
    HATA / DONMA GÜNLÜĞÜ — "bazen donuyor" şikayetini araştırmak için.
@@ -1312,7 +1319,7 @@ const I18N_EN = {
   'Kayıtlarda saat bilgisi olmadığı için dış ortam eşleştirilemedi':'Could not match outdoor data: records have no time of day',
   'Açık':'Clear', 'Az bulutlu':'Partly cloudy', 'Bulutlu':'Cloudy', 'Sisli':'Foggy',
   'Yağmurlu':'Rainy', 'Karlı':'Snowy', 'Sağanak':'Showers', 'Fırtına':'Thunderstorm',
-  'SCV Saha Krokisi — Giriş':'SCV Field Layout — Login', 'Kullanıcı Adı':'Username', 'Şifre':'Password', 'Giriş Yap':'Log In',
+  'SCV Saha — Giriş':'SCV Saha — Login', 'Kullanıcı Adı':'Username', 'Şifre':'Password', 'Giriş Yap':'Log In',
   'Vazgeç':'Cancel', 'Kaydet':'Save', 'Ekle':'Add', 'Kapat':'Close', 'Düzenle':'Edit', 'Sil':'Delete',
   '↩ Geri Al':'↩ Undo', 'silindi.':'deleted.',
   'Yeni Sera':'New Greenhouse', 'Serayı Düzenle':'Edit Greenhouse', 'Yeni Tarla':'New Field', 'Tarlayı Düzenle':'Edit Field',
@@ -1397,7 +1404,11 @@ const I18N_EN = {
   'Yazdır':'Print',
   'Yeni oranlar sadece bundan sonraki günlük kayıtlara uygulanır. Geçmiş kayıtlar etkilenmez.':'New rates apply only to future daily entries. Past records are not affected.',
   'Kırım':'Harvest', 'İmza':'Signature', 'Aktif':'Active', 'Pasif':'Inactive',
-  'Henüz dayıbaşı eklenmedi':'No crew leaders added yet', 'Aktif dayıbaşı yok':'No active crew leaders',
+  'Henüz dayıbaşı eklenmedi':'No crew leaders added yet', 'Bu bölgede aktif dayıbaşı yok':'No active crew leaders in this region',
+  'Bu bölgede dayıbaşı yok':'No crew leaders in this region',
+  'Bölgesiz (her ikisi)':'No region (both)', 'bölgesiz':'no region',
+  'Bu dayıbaşı bir bölgeye atanmadığı için her iki bölgede de görünüyor. Dayıbaşıları Yönet ekranından bölge seçebilirsiniz.':'This crew leader has no region assigned, so they appear in both regions. You can assign a region from Manage Crew Leaders.',
+  'Her dayıbaşı yalnızca atandığı bölgenin listelerinde görünür. "Bölgesiz" kalanlar (bölge alanı eklenmeden önceki eski kayıtlar) her iki bölgede de görünmeye devam eder.':'Each crew leader only appears in the lists of their assigned region. Those left without a region (records created before the region field existed) keep appearing in both regions.',
   'Henüz ödeme kaydı yok':'No payment records yet',
   'Dikkat: GELECEK tarihe giriş yapıyorsunuz':'Warning: you are entering data for a FUTURE date',
   'Seçili aralığın/filtrenin dışında':'Outside the selected range/filter:',
@@ -4714,12 +4725,28 @@ function iklimCizgiGrafikSvg(values, labels, color, birim, gradId, disValues){
     <text x="${padL-4}" y="${(y(v)+3).toFixed(1)}" font-size="10" fill="var(--muted)" text-anchor="end">${fmt(v,1)}</text>
   `).join('');
 
-  const labelStep = Math.max(1, Math.ceil(n/6));
-  const xLabels = values.map((v,i)=>{
-    if(i%labelStep!==0 && i!==n-1) return '';
-    const anchor = i===0 ? 'start' : (i===n-1 ? 'end' : 'middle');
-    return `<text x="${x(i).toFixed(1)}" y="${H-7}" font-size="10" fill="var(--muted)" text-anchor="${anchor}">${escapeHtml(labels[i]||'')}</text>`;
-  }).join('');
+  /* X ekseni etiketleri: nokta sayısından bağımsız olarak en fazla 6 adet, eşit
+     aralıklı ve ilk/son her zaman dahil. Kaç tanesinin sığdığı etiket metninin
+     tahmini genişliğinden hesaplanır ("22.07 11:01" gibi uzun etiketlerde 3-4'e
+     düşer), böylece 40-100 kayıtta da (ve dar mobil ekranda da) üst üste binmez.
+     Eski "her N. noktayı yaz" yaklaşımı son etiketi zorla eklediği için sondan
+     bir öncekiyle çakışıyordu. */
+  const etiketMetinGen = Math.max(1, ...labels.map(s=>String(s||'').length)) * 5.6;
+  // Her etiket noktasına ortalanır; ilk/son etiket SVG dışına taşmasın diye içeri kırpılır.
+  const etiketX = i => Math.max(etiketMetinGen/2 + 1, Math.min(W - etiketMetinGen/2 - 1, x(i)));
+  let etiketIdx = [0];
+  for(let adet = Math.max(1, Math.min(6, n)); adet >= 2; adet--){
+    const aday = [];
+    for(let j=0;j<adet;j++){
+      const q = Math.round(j*(n-1)/(adet-1));
+      if(aday.indexOf(q)<0) aday.push(q);
+    }
+    const sigiyor = aday.every((q,k)=> k===0 || etiketX(q) - etiketX(aday[k-1]) >= etiketMetinGen + 6);
+    if(sigiyor || adet===2){ etiketIdx = aday; break; }
+  }
+  const xLabels = etiketIdx.map(i=>
+    `<text x="${etiketX(i).toFixed(1)}" y="${H-7}" font-size="10" fill="var(--muted)" text-anchor="middle">${escapeHtml(labels[i]||'')}</text>`
+  ).join('');
 
   const lineD = iklimYumusakYolD(pts);
   const areaD = `${lineD} L${x(n-1).toFixed(1)} ${(padT+innerH).toFixed(1)} L${x(0).toFixed(1)} ${(padT+innerH).toFixed(1)} Z`;
@@ -4731,16 +4758,35 @@ function iklimCizgiGrafikSvg(values, labels, color, birim, gradId, disValues){
   let minI=0, maxI=0;
   values.forEach((v,i)=>{ if(v<values[minI]) minI=i; if(v>values[maxI]) maxI=i; });
 
+  /* Nokta sayısı arttıkça noktalar arası mesafe daralıyor; işaretçileri küçültmek
+     hem çizgiyi okunur tutuyor hem de kalıcı etiketlerin yerini açıyor. */
+  const nAralik = n>1 ? innerW/(n-1) : innerW;
+  const cokNokta = n > 14; // bu eşiğin üstünde kalıcı değer etiketleri yalnız min/max'ta kalır
   const points = values.map((v,i)=>{
     const isEdge = (i===minI || i===maxI) && n>1;
-    const r = isEdge ? 5 : 3.5;
+    const r = isEdge ? (cokNokta?4:5) : (cokNokta?2.4:3.5);
     return `<circle cx="${x(i).toFixed(1)}" cy="${y(v).toFixed(1)}" r="${r}" fill="${isEdge?'#fff':color}" stroke="${color}" stroke-width="${isEdge?2.5:0}"><title>${escapeHtml(labels[i]||'')}: ${fmt(v,1)}${birim}</title></circle>`;
   }).join('');
 
-  const directLabels = values.map((v,i)=>{
-    const isEdge = (i===minI || i===maxI) && n>1;
-    if(n>14 && !isEdge) return '';
-    return `<text x="${x(i).toFixed(1)}" y="${(y(v)-7).toFixed(1)}" font-size="11" font-weight="700" fill="${color}" text-anchor="middle">${fmt(v,1)}</text>`;
+  /* Kalıcı değer etiketleri: çok noktada (n>14) yalnızca min/max yazılır — diğer
+     değerler için "noktaya dokun" balonu var (modaldaki ipucu metni bunu söylüyor).
+     Az noktada bile etiketler birbirine veya sağdaki "Ort" yazısına girebildiği
+     için basit bir çakışma kontrolü yapılır; çakışan etiket çizilmez (değeri
+     noktaya dokununca yine görünür). Öncelik sırası: max, min, sonra soldan sağa. */
+  const ortMetinGen = ('Ort ' + fmt(avg,1)).length * 5.4;
+  const etiketKutulari = [{ x: W-padR-ortMetinGen/2, y: avgY-6, w: ortMetinGen, h: 12 }]; // sağdaki "Ort xx,x" yazısı
+  const etiketCakisiyor = (cx,cy,w,h)=> etiketKutulari.some(k=>
+    Math.abs(k.x-cx) < (k.w+w)/2 && Math.abs(k.y-cy) < (k.h+h)/2);
+  const etiketSirasi = [];
+  if(n>1){ etiketSirasi.push(maxI); if(minI!==maxI) etiketSirasi.push(minI); }
+  if(!cokNokta) values.forEach((v,i)=>{ if(etiketSirasi.indexOf(i)<0) etiketSirasi.push(i); });
+  const directLabels = etiketSirasi.map(i=>{
+    const metin = fmt(values[i],1);
+    const w = String(metin).length*6.4 + 3, h = 13;
+    const cx = x(i), cy = y(values[i]) - 11;
+    if(etiketCakisiyor(cx, cy, w, h)) return '';
+    etiketKutulari.push({x:cx, y:cy, w, h});
+    return `<text x="${cx.toFixed(1)}" y="${(y(values[i])-7).toFixed(1)}" font-size="11" font-weight="700" fill="${color}" text-anchor="middle">${metin}</text>`;
   }).join('');
 
   // Dış ortam serisi: kesikli çizgi + içi boş küçük noktalar (boşluklarda kesilir)
@@ -4758,22 +4804,26 @@ function iklimCizgiGrafikSvg(values, labels, color, birim, gradId, disValues){
       `<path d="${iklimYumusakYolD(seg)}" fill="none" stroke="${disRenk}" stroke-width="1.8" stroke-dasharray="5 4" stroke-linecap="round" stroke-linejoin="round" opacity=".85"/>`
     ).join('');
     const disNoktalar = disValues.map((v,i)=> v==null ? '' :
-      `<circle cx="${x(i).toFixed(1)}" cy="${y(v).toFixed(1)}" r="2.8" fill="#fff" stroke="${disRenk}" stroke-width="1.6"><title>${escapeHtml(labels[i]||'')} · ${escapeHtml(i18n('Dış'))}: ${fmt(v,1)}${birim}</title></circle>`
+      `<circle cx="${x(i).toFixed(1)}" cy="${y(v).toFixed(1)}" r="${cokNokta?2:2.8}" fill="#fff" stroke="${disRenk}" stroke-width="${cokNokta?1.3:1.6}"><title>${escapeHtml(labels[i]||'')} · ${escapeHtml(i18n('Dış'))}: ${fmt(v,1)}${birim}</title></circle>`
     ).join('');
     disKatman = disCizgiler + disNoktalar;
   }
 
   /* Dokunmatik değer okuma: sahada tek elle kullanıldığı için görünür noktalar küçük
-     kalsa da her noktanın üstüne ~22px çapında görünmez bir dokunma hedefi konur.
+     kalsa da her noktanın üstüne görünmez bir dokunma hedefi konur.
      Balon her nokta için önceden çizilmez (100+ kayıtta SVG'yi kat kat şişiriyordu);
      grafik başına tek bir boş balon katmanı var, dokunulan noktanın verisi data-*
      içinde taşınıp balon o an çiziliyor. Bu iki katman görünümü değiştirmez;
-     dış ortam kapalıyken çizgi/nokta çıktısı eskisiyle birebir aynıdır. */
+     dış ortam kapalıyken çizgi/nokta çıktısı eskisiyle birebir aynıdır.
+     Hedef yarıçapı noktalar arası mesafeyi aşmamalı: sabit 11 iken 40+ kayıtta
+     komşu hedefler noktanın kendi merkezini örtüyor ve dokunulan noktanın
+     yanındaki değer açılıyordu. */
+  const hedefR = Math.max(Math.min(4, nAralik*0.9), Math.min(11, nAralik*0.55));
   const dokunmaHedefleri = [];
   const noktaHedefiEkle = (i, deger, renk, disMi)=>{
     const zaman = labels[i] || '';
     const metin = (disMi ? i18n('Dış') + ' ' : '') + fmt(deger,1) + birim + (zaman ? ' · ' + zaman : '');
-    dokunmaHedefleri.push(`<circle cx="${x(i).toFixed(1)}" cy="${y(deger).toFixed(1)}" r="11" fill="transparent" style="cursor:pointer" data-g="${gradId}" data-x="${x(i).toFixed(1)}" data-y="${y(deger).toFixed(1)}" data-renk="${renk}" data-et="${escapeHtml(metin)}" onclick="event.stopPropagation();iklimGrafikEtiketAcKapa(this)"><title>${escapeHtml(metin)}</title></circle>`);
+    dokunmaHedefleri.push(`<circle cx="${x(i).toFixed(1)}" cy="${y(deger).toFixed(1)}" r="${hedefR.toFixed(1)}" fill="transparent" style="cursor:pointer" data-g="${gradId}" data-x="${x(i).toFixed(1)}" data-y="${y(deger).toFixed(1)}" data-renk="${renk}" data-et="${escapeHtml(metin)}" onclick="event.stopPropagation();iklimGrafikEtiketAcKapa(this)"><title>${escapeHtml(metin)}</title></circle>`);
   };
   if(disVar) disValues.forEach((v,i)=>{ if(v!=null) noktaHedefiEkle(i, v, 'var(--muted)', true); });
   values.forEach((v,i)=> noktaHedefiEkle(i, v, color, false)); // sera noktaları üstte: çakışmada onlar seçilsin
@@ -5288,6 +5338,9 @@ function havaBaslat(){
 const YEVMIYE_ALANLARI = ['kirim','sulama','dizimAsim','sera','capa'];
 const YEVMIYE_ETIKETLER = { kirim:'Kırım', sulama:'Sulama', dizimAsim:'Dizim-Asım', sera:'Sera K.', capa:'Çapa' };
 const YEVMIYE_BOS_SAYILAR = { kirim:0, sulama:0, dizimAsim:0, sera:0, capa:0 };
+const ODEME_BOLGELER = ['tekeliler','kalemli'];
+const ODEME_BOLGE_ADLARI = { tekeliler:'Tekeliler', kalemli:'Kalemli' };
+function odemeBolgeAdi(b){ return ODEME_BOLGE_ADLARI[b] || ''; }
 
 let odemeIcSekmeAktif = 'gunluk';
 let odemeBolgeAktif = 'tekeliler';
@@ -5299,8 +5352,40 @@ let odemeBakiyeBolge = '';
 function odemeAyarlariGetir(){
   return state.odemeAyarlari[0] || { kirim:0, sulama:0, dizimAsim:0, sera:0, capa:0 };
 }
-function odemeAktifDayibasilar(){
-  return state.dayibasilar.filter(d=>d.aktif!==false).sort((a,b)=>(a.ad||'').localeCompare(b.ad||'','tr'));
+/* ---- Dayıbaşı ↔ bölge ----
+   Dayıbaşı kayıtları artık bir bölgeye ('tekeliler' | 'kalemli') ait: Tekeliler
+   sekmesinde sadece Tekeliler dayıbaşıları, Kalemli'de sadece Kalemli'ninkiler
+   görünür.
+   GERİYE UYUMLULUK: bu alan eklenmeden önce girilmiş kayıtlarda `bolge` YOKTUR;
+   bunlar "bölgesiz" sayılır ve — veri kaybı olmasın diye — HER İKİ bölgede de
+   görünmeye devam eder. Listelerde küçük bir "bölgesiz" rozetiyle işaretlenir,
+   bölgeleri "Dayıbaşıları Yönet" ekranından atanabilir. Yevmiye/ödeme kayıtları
+   dayıbaşı id'sine bağlı olduğu için bölge atamak hiçbir geçmiş kaydı etkilemez. */
+function dayibasiBolgesiVar(d){ return !!d && ODEME_BOLGELER.indexOf(d.bolge)>=0; }
+function dayibasiBolgeUygun(d, bolge){ return !bolge || !dayibasiBolgesiVar(d) || d.bolge===bolge; }
+function dayibasiBolgesizRozet(d){
+  return dayibasiBolgesiVar(d) ? '' :
+    ` <span class="dayibasi-bolgesiz" title="${escapeHtml(i18n('Bu dayıbaşı bir bölgeye atanmadığı için her iki bölgede de görünüyor. Dayıbaşıları Yönet ekranından bölge seçebilirsiniz.'))}">${i18n('bölgesiz')}</span>`;
+}
+// Aynı isim farklı bölgelerde serbest; çakışma yalnızca ikisi aynı listede görünecekse.
+function dayibasiAdCakismasi(ad, bolge, haricId){
+  const norm = (ad||'').trim().toLocaleLowerCase('tr');
+  return state.dayibasilar.some(x=> x.id!==haricId
+    && (x.ad||'').trim().toLocaleLowerCase('tr')===norm
+    && (!bolge || !dayibasiBolgesiVar(x) || x.bolge===bolge));
+}
+/* Günlük giriş/evrakta gösterilecek dayıbaşılar: seçili bölgenin aktif dayıbaşıları
+   + (bölgesi başka olsa ya da pasife alınmış olsa bile) o gün o bölgede DOLU kaydı
+   bulunanlar. İkinci koşul olmazsa, bölge ataması sonrası eski bir kayıt tablodan
+   düşer ve genel toplam sessizce eksilirdi. */
+function odemeGunlukDayibasilar(tarih, bolge){
+  return state.dayibasilar
+    .filter(d=>{
+      if(d.aktif!==false && dayibasiBolgeUygun(d, bolge)) return true;
+      const y = state.yevmiyeKayitlari.find(x=>x.tarih===tarih && x.bolge===bolge && x.dayibasiId===d.id);
+      return !!(y && YEVMIYE_ALANLARI.some(f=>Number(y.sayilar[f])>0));
+    })
+    .sort((a,b)=>(a.ad||'').localeCompare(b.ad||'','tr'));
 }
 function odemeGunSnapshotOranlari(tarih, bolge){
   // Gün içindeki kayıtlar farklı oran snapshot'ları taşıyabilir (kayıtlar arasında
@@ -5412,7 +5497,7 @@ function renderOdemeGunluk(){
   if(wrap.contains(document.activeElement)) return; // kullanıcı bir hücrede yazarken listeyi yeniden çizme
   const tarih = odemeGunlukTarih;
   const bolge = odemeBolgeAktif;
-  const dayibasilar = odemeAktifDayibasilar();
+  const dayibasilar = odemeGunlukDayibasilar(tarih, bolge);
   const oranlar = odemeGunSnapshotOranlari(tarih, bolge);
   const kolonToplam = { ...YEVMIYE_BOS_SAYILAR };
   let genelToplam = 0;
@@ -5438,7 +5523,7 @@ function renderOdemeGunluk(){
   const tabloBasliklari = YEVMIYE_ALANLARI.map(f=>`<th class="num">${i18n(YEVMIYE_ETIKETLER[f])}${oranlar?`<span class="odeme-oran-ipucu">₺${fmt(oranlar[f]||0,0)}</span>`:''}</th>`).join('');
   const tabloSatirlari = satirVerileri.map(({d,sayilar,satirToplam})=>`
     <tr data-id="${d.id}">
-      <td>${escapeHtml(d.ad)}</td>
+      <td>${escapeHtml(d.ad)}${dayibasiBolgesizRozet(d)}</td>
       ${YEVMIYE_ALANLARI.map(f=>`<td class="num">${girisHucre(d,sayilar,f)}</td>`).join('')}
       <td class="num"><b>${fmt(satirToplam,0)}</b></td>
     </tr>`).join('');
@@ -5451,7 +5536,7 @@ function renderOdemeGunluk(){
 
   const kartlar = satirVerileri.map(({d,sayilar,satirToplam})=>`
     <div class="odeme-kart" data-id="${d.id}">
-      <div class="odeme-kart-ad">${escapeHtml(d.ad)}</div>
+      <div class="odeme-kart-ad">${escapeHtml(d.ad)}${dayibasiBolgesizRozet(d)}</div>
       <div class="odeme-mini-grid">
         ${YEVMIYE_ALANLARI.map(f=>`
           <div class="field">
@@ -5472,27 +5557,33 @@ function renderOdemeGunluk(){
           <th class="num">${i18n('Toplam')}</th>
         </tr></thead>
         <tbody>
-          ${tabloSatirlari || `<tr><td colspan="7" class="iklim-table-empty">${i18n('Aktif dayıbaşı yok')}</td></tr>`}
+          ${tabloSatirlari || `<tr><td colspan="7" class="iklim-table-empty">${i18n('Bu bölgede aktif dayıbaşı yok')}</td></tr>`}
           ${tabloGenelToplam}
         </tbody>
       </table>
     </div>
     <div class="odeme-card-list">
-      ${kartlar || `<div class="item">${i18n('Aktif dayıbaşı yok')}</div>`}
+      ${kartlar || `<div class="item">${i18n('Bu bölgede aktif dayıbaşı yok')}</div>`}
       ${satirVerileri.length ? `<div class="odeme-genel-toplam-sticky">${i18n('Genel Toplam')}: ${fmt(genelToplam,0)}</div>` : ''}
     </div>
   `;
 }
 
 /* ---- Dayıbaşı Yönetimi ---- */
+function dayibasiBolgeSecenekleri(secili){
+  return `<option value=""${!ODEME_BOLGELER.includes(secili)?' selected':''}>${i18n('Bölgesiz (her ikisi)')}</option>` +
+    ODEME_BOLGELER.map(b=>`<option value="${b}"${secili===b?' selected':''}>${odemeBolgeAdi(b)}</option>`).join('');
+}
 function openDayibasiYonetModal(){
   openModal(`
     <h2>${i18n('Dayıbaşıları Yönet')}</h2>
+    <div class="hint-box">${i18n('Her dayıbaşı yalnızca atandığı bölgenin listelerinde görünür. "Bölgesiz" kalanlar (bölge alanı eklenmeden önceki eski kayıtlar) her iki bölgede de görünmeye devam eder.')}</div>
     <div class="list-small" id="dayibasiYonetListe" style="max-height:260px;"></div>
     <div class="field" style="margin-top:10px;">
       <label>${i18n('Dayıbaşı Ekle')}</label>
-      <div style="display:flex;gap:8px;">
-        <input id="fDayibasiYeniAd" type="text" style="flex:1;" onkeydown="if(event.key==='Enter')submitDayibasiEkle()">
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <input id="fDayibasiYeniAd" type="text" style="flex:1;min-width:120px;" onkeydown="if(event.key==='Enter')submitDayibasiEkle()">
+        <select id="fDayibasiYeniBolge" style="flex:0 0 auto;">${dayibasiBolgeSecenekleri(odemeBolgeAktif)}</select>
         <button class="btn btn-primary" onclick="submitDayibasiEkle()">${i18n('Ekle')}</button>
       </div>
     </div>
@@ -5508,8 +5599,11 @@ function renderDayibasiYonetListe(){
   if(el.contains(document.activeElement)) return;
   const liste = [...state.dayibasilar].sort((a,b)=>(a.ad||'').localeCompare(b.ad||'','tr'));
   el.innerHTML = liste.map(d=>`
-    <div class="item" style="display:flex;align-items:center;gap:8px;">
-      <input type="text" value="${escapeHtml(d.ad)}" style="flex:1;border:1px solid var(--border);border-radius:5px;padding:4px 6px;" onchange="dayibasiAdGuncelle('${d.id}',this.value)">
+    <div class="item" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+      <input type="text" value="${escapeHtml(d.ad)}" style="flex:1;min-width:110px;border:1px solid var(--border);border-radius:5px;padding:4px 6px;" onchange="dayibasiAdGuncelle('${d.id}',this.value)">
+      <select style="flex:0 0 auto;border:1px solid var(--border);border-radius:5px;padding:4px 6px;font-size:11.5px;${dayibasiBolgesiVar(d)?'':'border-color:var(--amber);color:var(--amber);'}" onchange="dayibasiBolgeGuncelle('${d.id}',this.value)">
+        ${dayibasiBolgeSecenekleri(d.bolge)}
+      </select>
       <label style="display:flex;align-items:center;gap:4px;font-size:11px;white-space:nowrap;">
         <input type="checkbox" ${d.aktif!==false?'checked':''} onchange="dayibasiAktifDegistir('${d.id}',this.checked)">${i18n('Aktif')}
       </label>
@@ -5517,10 +5611,15 @@ function renderDayibasiYonetListe(){
 }
 function submitDayibasiEkle(){
   const input = document.getElementById('fDayibasiYeniAd');
+  const bolgeSel = document.getElementById('fDayibasiYeniBolge');
   const ad = input.value.trim();
+  // Yeni dayıbaşı varsayılan olarak o an açık olan bölge sekmesine atanır.
+  const bolge = bolgeSel && ODEME_BOLGELER.includes(bolgeSel.value) ? bolgeSel.value : '';
   if(!ad){ alert('Ad girin.'); return; }
-  if(adCakismaVarMi(state.dayibasilar, ad)){ alert('Bu isimde bir dayıbaşı zaten var.'); return; }
-  state.dayibasilar.push({ id: uid(), ad, aktif:true, ts: Date.now(), ...sonIslemDamgasi() });
+  if(dayibasiAdCakismasi(ad, bolge)){ alert('Bu isimde bir dayıbaşı zaten var.'); return; }
+  const yeni = { id: uid(), ad, aktif:true, ts: Date.now(), ...sonIslemDamgasi() };
+  if(bolge) yeni.bolge = bolge;
+  state.dayibasilar.push(yeni);
   input.value = '';
   renderDayibasiYonetListe();
   renderAll();
@@ -5530,9 +5629,29 @@ function dayibasiAdGuncelle(id, deger){
   if(!d) return;
   const ad = deger.trim();
   if(!ad){ renderAll(); return; }
-  if(adCakismaVarMi(state.dayibasilar, ad, id)){ alert('Bu isimde bir dayıbaşı zaten var.'); renderDayibasiYonetListe(); renderAll(); return; }
+  if(dayibasiAdCakismasi(ad, dayibasiBolgesiVar(d)?d.bolge:'', id)){ alert('Bu isimde bir dayıbaşı zaten var.'); renderDayibasiYonetListe(); renderAll(); return; }
   d.ad = ad;
   Object.assign(d, sonIslemDamgasi());
+  renderAll();
+}
+/* Bölge ataması yalnızca dayıbaşının hangi listelerde görüneceğini değiştirir;
+   yevmiye/ödeme kayıtları dayıbaşı id'sine bağlı olduğu için hiçbir geçmiş kayıt
+   ve hiçbir snapshot oran etkilenmez. */
+function dayibasiBolgeGuncelle(id, deger){
+  const d = state.dayibasilar.find(x=>x.id===id);
+  if(!d) return;
+  const bolge = ODEME_BOLGELER.includes(deger) ? deger : '';
+  // Liste render'ı "odak içerideyse çizme" korumalı; seçim sonrası odak hâlâ bu
+  // select'te olduğu için önce bırakılır, yoksa satır güncellenmeden kalır.
+  if(document.activeElement && document.activeElement.blur) document.activeElement.blur();
+  if(dayibasiAdCakismasi(d.ad, bolge, id)){
+    alert('Bu bölgede aynı isimde bir dayıbaşı zaten var.');
+    renderDayibasiYonetListe();
+    return;
+  }
+  if(bolge) d.bolge = bolge; else delete d.bolge;
+  Object.assign(d, sonIslemDamgasi());
+  renderDayibasiYonetListe();
   renderAll();
 }
 function dayibasiAktifDegistir(id, checked){
@@ -5615,18 +5734,21 @@ function renderOdemeBakiye(){
   if(bolgeInput && document.activeElement!==bolgeInput) bolgeInput.value = odemeBakiyeBolge;
   if(!tbody.contains(document.activeElement)){
     const baslangic = odemeBakiyeBaslangic, bitis = odemeBakiyeBitis, bolge = odemeBakiyeBolge;
-    const tumDayibasilar = [...state.dayibasilar].sort((a,b)=>(a.ad||'').localeCompare(b.ad||'','tr'));
+    // Bölge filtresi seçiliyse sadece o bölgenin (ve bölgesiz) dayıbaşıları listelenir.
+    const tumDayibasilar = state.dayibasilar
+      .filter(d=>dayibasiBolgeUygun(d, bolge))
+      .sort((a,b)=>(a.ad||'').localeCompare(b.ad||'','tr'));
     tbody.innerHTML = tumDayibasilar.map(d=>{
       const hakedis = odemeHakedisToplam(d.id, baslangic, bitis, bolge||null);
       const odenen = odemeOdenenToplam(d.id, baslangic, bitis);
       const kalan = odemeKalanGenel(d.id);
       return `<tr class="odeme-bakiye-row" onclick="openOdemeGirModal('${d.id}')">
-        <td>${escapeHtml(d.ad)}${d.aktif===false?' <span style="color:var(--muted);font-size:10px;">('+i18n('Pasif')+')</span>':''}</td>
+        <td>${escapeHtml(d.ad)}${bolge?dayibasiBolgesizRozet(d):''}${d.aktif===false?' <span style="color:var(--muted);font-size:10px;">('+i18n('Pasif')+')</span>':''}</td>
         <td class="num">${fmt(hakedis,0)}</td>
         <td class="num">${fmt(odenen,0)}</td>
         <td class="num ${kalan>0?'odeme-kalan-uyari':'odeme-kalan-ok'}"><b>${fmt(kalan,0)}</b></td>
       </tr>`;
-    }).join('') || `<tr><td colspan="4" class="iklim-table-empty">${i18n('Henüz dayıbaşı eklenmedi')}</td></tr>`;
+    }).join('') || `<tr><td colspan="4" class="iklim-table-empty">${i18n(bolge ? 'Bu bölgede dayıbaşı yok' : 'Henüz dayıbaşı eklenmedi')}</td></tr>`;
   }
   // Bilgi satırı salt-okunur; tablo odak koruması altına girmesine gerek yok.
   const filtreDisiEl = document.getElementById('odemeBakiyeFiltreDisiIpucu');
@@ -5685,10 +5807,12 @@ function odemeYazdir(){
   const bolgeAdBuyuk = bolge==='kalemli' ? 'KALEMLİ' : 'TEKELİLER';
   const tp = (tarih||'').split('-');
   const tarihGoster = tp.length===3 ? `${tp[2]}.${tp[1]}.${tp[0]}` : (tarih||'');
-  const guncelDayibasilar = state.dayibasilar.filter(d=>{
+  // Evrak, ekrandaki günlük giriş tablosuyla birebir aynı dayıbaşı kümesinden
+  // beslenir (sadece o gün/bölgede dolu satırı olanlar yazdırılır).
+  const guncelDayibasilar = odemeGunlukDayibasilar(tarih, bolge).filter(d=>{
     const y = state.yevmiyeKayitlari.find(x=>x.tarih===tarih && x.bolge===bolge && x.dayibasiId===d.id);
     return y && YEVMIYE_ALANLARI.some(f=>Number(y.sayilar[f])>0);
-  }).sort((a,b)=>(a.ad||'').localeCompare(b.ad||'','tr'));
+  });
   let genelToplam = 0;
   const satirlar = guncelDayibasilar.map(d=>{
     const y = state.yevmiyeKayitlari.find(x=>x.tarih===tarih && x.bolge===bolge && x.dayibasiId===d.id);
