@@ -1197,7 +1197,7 @@ const AYARLAR = {
   UNITE_PX: 40                // referans kapasitedeki sera-box genişliği (px) — kroki oranı
 };
 const STORAGE_KEY = 'scvSahaKrokiV1';
-const APP_SURUM = 'v63'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
+const APP_SURUM = 'v64'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
 
 /* =========================================================
    HATA / DONMA GÜNLÜĞÜ — "bazen donuyor" şikayetini araştırmak için.
@@ -3487,6 +3487,10 @@ function openVeriYonetimiModal(){
         <button class="btn" onclick="gecmisDepoKutulariniDuzelt()">📦 Depo Kutularını Düzelt (Tek Seferlik)</button>
       </div>
       <div class="hint-box">Geçmiş veri aktarımında tek kayıt olarak girilen 14 depo/paketleme satırını siler (tüm cihazlardan), yerine kağıttaki adetlere göre her kutuyu ayrı kayıt olarak (kalite + paketleme tarihiyle, Kalemli deposuna) yeniden oluşturur. Daha önce düzeltildiyse uyarı verir.</div>
+      <div class="modal-actions" style="justify-content:flex-start;flex-wrap:wrap;margin-top:8px;">
+        <button class="btn" onclick="gecmisDeltaOnizlemeAc()">🔧 Geçmiş Veri Düzeltme (Önizleme)</button>
+      </div>
+      <div class="hint-box">Kağıt defterin yeniden okunmasıyla ortaya çıkan aktarım hatalarını (A41→B41, satır 22'nin B3/B2/B1 yerine A1–A4 olması, deneme seraları satırının yol açtığı sütun kayması, karalanmış çeşit hücrelerinin koddan çözülmesi) düzeltir. <b>Önce önizleme açılır</b>; onaylamadan cihazda da Firestore'da da hiçbir şey değişmez. Zaten uygulanmış veya elle değiştirilmiş kayıtlara dokunmaz.</div>
     </div>
     <div class="field">
       <label>🪲 Hata / Donma Günlüğü</label>
@@ -3889,6 +3893,545 @@ function gecmisDepoKutulariniDuzelt(){
     + '\nOluşturulan kutu: ' + kutuIndex
     + '\n  XX1: ' + kaliteSayilari['XX1'] + ' · X1: ' + kaliteSayilari['X1'] + ' · X2: ' + kaliteSayilari['X2'] + ' · Belirtilmemiş: ' + kaliteSayilari['']
     + '\nToplam ' + fmt(toplamKg,1) + ' kg');
+}
+
+/* =========================================================
+   TEK SEFERLİK: GEÇMİŞ VERİ DELTA DÜZELTMESİ (ÖNİZLEMELİ)
+   v50'de aktarılan geçmiş kırım/dizim kayıtlarında, kağıt defterin yeniden
+   transkripsiyonuyla ortaya çıkan okuma/sütun-kayması hataları düzeltilir.
+
+   AKIŞ İKİ ADIMLIDIR — onaysız hiçbir şey yazılmaz:
+     1) gecmisDeltaOnizlemeAc() → state'in KOPYASI üzerinde çalıştırır, madde
+        madde ne olacağını gösterir. Firestore'a tek bir bayt gitmez.
+     2) gecmisDeltaOnayla()     → aynı işlemi GERÇEK state üzerinde çalıştırır;
+        değişiklikler mevcut senkron yolundan (renderAll → saveState →
+        pushStateToFirestore → syncOutgoingNow, 450'lik batch parçalama dahil)
+        Firestore'a taşınır.
+
+   Yeni koleksiyon açılmaz, belge silinmez, hiçbir kayıt id'si değişmez —
+   yalnızca var olan kirimlar/seralar belgeleri güncellenir. Böylece
+   firestore.rules'daki "request.resource.data.id == docId" koşulu korunur.
+
+   İKİNCİ ÇALIŞTIRMA KORUMASI: her madde CANLI state ile karşılaştırılır.
+   Kayıt beklenen ÖNCEKİ halindeyse "uygulanacak", beklenen SONRAKİ halindeyse
+   "zaten uygulanmış", ikisi de değilse (elle düzenlenmiş olabilir)
+   "bulunamadı/farklı — atlanacak" sayılır. Körlemesine yazma yapılmaz.
+   ========================================================= */
+const GECMIS_DELTA_SURUM = 'delta-1';
+const GECMIS_DELTA_ANAHTAR = 'scvGecmisDeltaUygulandi';
+
+/* Defterde çeşit adının yanındaki parantezli rakam sabit bir koddur. Çeşit
+   hücresi karalanmış/okunamaz olduğunda KOD esas alınır (kullanıcı kararı). */
+const GECMIS_DELTA_CESIT_KODU = { 1:'PVH 2310', 2:'BSB 6195', 3:'BSB 6202', 4:'ITB 6179' };
+
+/* Kağıtta olduğu halde uygulamaya AKTARILMAYACAK satır (kullanıcı kararı). */
+const GECMIS_DELTA_ATLANAN_SATIRLAR = [
+  'Sayfa ②, satır 26 — 17.07 kırım / 20.07 dizim, BSB 6202 (3), "80 cm · 90 cm · 3×100 cm" deneme seraları. '
+  + 'Bu seralar uygulamada kayıtlı değil ve dizi sayıları kağıtta yazmıyor; kullanıcı kararıyla AKTARILMIYOR. '
+  + 'Ancak bu satırın eski aktarımda atlanmasından doğan SÜTUN KAYMASININ düzeltmeleri (aşağıdaki 26 ve 27 numaralı satır maddeleri) yine de uygulanır.'
+];
+
+const GECMIS_DELTA_C4_C15 = ['C4','C5','C6','C7','C8','C9','C10','C11','C12','C13','C14','C15'];
+
+/* Her madde: kağıttaki bir satırın düzeltmesi.
+     once / sonra → kaydı CANLI state'te bulmak ve "zaten uygulanmış mı"
+                    ayrımını yapmak için imza (kırım tarihi + çeşit + sera adları kümesi).
+     islemler     → sırayla uygulanacak atomik işlemler. Bir maddenin işlemlerinden
+                    biri bile ön koşulu sağlamazsa O MADDE bütünüyle atlanır. */
+const GECMIS_DELTA_MADDELERI = [
+  {
+    id:'s10', kaynak:'sayfa ①, satır 10',
+    baslik:'Satır 10 — "A41" aslında B41 (yarım sera, 200 dizi)',
+    aciklama:'A serisi A37\'de bitiyor; kağıtta B41 yazıyor. Eski aktarım A41 diye sera bulamadığı için bu 200 diziyi hiçbir seraya işleyememiş: kayıt 1.000 dizi görünürken seralara yalnızca 800 dizi dağıtılmış.',
+    once:  { tarih:'2026-07-07', cesit:'PVH 2310', seralar:['A36','A37'] },
+    sonra: { seralar:['A36','A37','B41'] },
+    islemler:[
+      { tip:'dizimEkle', sera:'B41', dizi:200, dizimTarihi:'2026-07-08', oncekiDonem:'yok' }
+    ]
+  },
+  {
+    id:'s18', kaynak:'sayfa ①, satır 18',
+    baslik:'Satır 18 — çeşit koddan çözüldü: (1) = PVH 2310',
+    aciklama:'Çeşit hücresi defalarca üst üste yazılıp karalanmış, okunmuyor. Yanındaki sabit kod (1). Eski aktarım "BSB 2395" varsaymıştı.',
+    kodNotu:'(1) → PVH 2310',
+    once:  { tarih:'2026-07-15', cesit:'BSB 2395', seralar:['B19','B18','B17','B16'] },
+    sonra: { cesit:'PVH 2310' },
+    islemler:[ { tip:'kirimAlan', alanlar:{ cesit:'PVH 2310' } } ]
+  },
+  {
+    id:'s19', kaynak:'sayfa ①, satır 19',
+    baslik:'Satır 19 — çeşit koddan çözüldü: (1) = PVH 2310',
+    aciklama:'Çeşit hücresi karalanmış. Sabit kod (1). Eski aktarım "BSB 2390" varsaymıştı.',
+    kodNotu:'(1) → PVH 2310',
+    once:  { tarih:'2026-07-15', cesit:'BSB 2390', seralar:['B15','B14','B13'] },
+    sonra: { cesit:'PVH 2310' },
+    islemler:[ { tip:'kirimAlan', alanlar:{ cesit:'PVH 2310' } } ]
+  },
+  {
+    id:'s20', kaynak:'sayfa ①, satır 20',
+    baslik:'Satır 20 — çeşit koddan çözüldü: (2) = BSB 6195',
+    aciklama:'Metin "BSB 2395" gibi okunuyor ama yanındaki sabit kod (2). Kullanıcı kararı gereği kod esas alınır.',
+    kodNotu:'(2) → BSB 6195',
+    once:  { tarih:'2026-07-15', cesit:'BSB 2395', seralar:['B12','B11','B10','B9'] },
+    sonra: { cesit:'BSB 6195' },
+    islemler:[ { tip:'kirimAlan', alanlar:{ cesit:'BSB 6195' } } ]
+  },
+  {
+    id:'s22', kaynak:'sayfa ①, satır 22',
+    baslik:'Satır 22 — B3/B2/B1 değil, A1–A4 (2. tur dolum)',
+    aciklama:'Kağıtta B5, B4, A1, A2, A3, A4 yazıyor. Eski aktarım B3/B2/B1\'i yanlışlıkla doldurmuş; A1–A4\'ün 2. tur dolumunu ise hiç kaydetmemiş. B3\'ün gerçek dolumu 20.07\'de (satır 27).',
+    once:  { tarih:'2026-07-16', cesit:'PVH 2310', seralar:['B5','B4','B3','B2','B1'] },
+    sonra: { seralar:['B5','B4','A1','A2','A3','A4'] },
+    islemler:[
+      { tip:'dizimSil', sera:'B1', dizimTarihi:'2026-07-18', bosDonemiSil:true },
+      { tip:'dizimSil', sera:'B2', dizimTarihi:'2026-07-18', bosDonemiSil:true },
+      { tip:'dizimSil', sera:'B3', dizimTarihi:'2026-07-18', bosDonemiSil:true },
+      { tip:'dizimEkle', sera:'A1', dizi:400, dizimTarihi:'2026-07-18', oncekiDonem:'kapat', beklenenGiris:'2026-07-01' },
+      { tip:'dizimEkle', sera:'A2', dizi:400, dizimTarihi:'2026-07-18', oncekiDonem:'kapat', beklenenGiris:'2026-07-01' },
+      { tip:'dizimEkle', sera:'A3', dizi:400, dizimTarihi:'2026-07-18', oncekiDonem:'kapat', beklenenGiris:'2026-07-01' },
+      { tip:'dizimEkle', sera:'A4', dizi:400, dizimTarihi:'2026-07-18', oncekiDonem:'kapat', beklenenGiris:'2026-07-02' },
+      { tip:'kirimAlan', alanlar:{ diziSayisi:2400 } }
+    ]
+  },
+  {
+    id:'s23', kaynak:'sayfa ①, satır 23',
+    baslik:'Satır 23 — v51\'de kabul edilen çeşit düzeltmesi canlı veriye hiç işlenmemiş',
+    aciklama:'v51 sürümünde bu satırın çeşidi "BUB 2390" → PVH 2310 (kod 1) olarak düzeltilmiş, ancak yalnızca aktarım sabiti değişmiş; aktarım zaten çalışmış olduğu için CANLI kayıt eski çeşitle kalmış olabilir. Kayıt hâlihazırda PVH 2310 ise bu madde "zaten uygulanmış" görünür ve dokunulmaz.',
+    kodNotu:'(1) → PVH 2310',
+    once:  { tarih:'2026-07-16', cesit:'BUB 2390', seralar:['A5','A6','A7','A8','A9','A10','A11','A12'] },
+    sonra: { cesit:'PVH 2310' },
+    islemler:[ { tip:'kirimAlan', alanlar:{ cesit:'PVH 2310' } } ]
+  },
+  {
+    id:'s26', kaynak:'sayfa ②, satır 27 (eski aktarımda 26. satır)',
+    baslik:'Satır 26→27 kayması — PVH 2310, kırım 18.07, B3 eklendi',
+    aciklama:'Deneme seraları satırı atlandığı için sera listesi bir üst satıra kaymış. Kağıda göre bu sera listesi 18.07 kırımı / 20.07 dizimi olan PVH 2310 (1) satırına ait ve listede B3 de var. 18.07 ile eşleşen tarla yok, bu yüzden tarla bağı boşalır.',
+    kodNotu:'(1) → PVH 2310',
+    once:  { tarih:'2026-07-17', cesit:'BSB 6202', seralar:['A19','A20','A21','A22','A23','A24','C3'] },
+    sonra: { tarih:'2026-07-18', cesit:'PVH 2310', seralar:['A19','A20','A21','A22','A23','A24','B3','C3'] },
+    islemler:[
+      { tip:'kirimAlan', tarlaYenidenEsle:true, alanlar:{ tarih:'2026-07-18', cesit:'PVH 2310', ortDiziKg:3.67, soldurmaGunSayisi:2, diziSayisi:3200 } },
+      { tip:'dizimEkle', sera:'B3', dizi:400, dizimTarihi:'2026-07-20', oncekiDonem:'yok' }
+    ]
+  },
+  {
+    id:'s27', kaynak:'sayfa ②, satır 28 (eski aktarımda 27. satır)',
+    baslik:'Satır 27→28 kayması — C4–C15 kırımı 20.07, dizimi 21.07',
+    aciklama:'Aynı kaymanın tarih tarafı. Kağıtta bu satırın kırımı 20.07, dizimi 21.07 (soldurma 1 gün). Yeni kırım tarihi K19 ve K25 tarlalarının 2. kırımıyla eşleşiyor, eski kayıtta hiç tarla bağı yoktu.',
+    once:  { tarih:'2026-07-18', cesit:'PVH 2310', seralar:GECMIS_DELTA_C4_C15 },
+    sonra: { tarih:'2026-07-20' },
+    islemler:[
+      { tip:'kirimAlan', tarlaYenidenEsle:true, alanlar:{ tarih:'2026-07-20', ortDiziKg:3.68, soldurmaGunSayisi:1 } },
+      { tip:'dizimTarihiKaydir', eski:'2026-07-20', yeni:'2026-07-21' }
+    ]
+  }
+];
+
+/* ---- Saf yardımcılar (Node ile ayrıca test edilebilir) ---- */
+function gecmisDeltaKumeEsit(a, b){
+  const A = (a||[]).map(x=>String(x).trim().toUpperCase()).sort();
+  const B = (b||[]).map(x=>String(x).trim().toUpperCase()).sort();
+  return A.length===B.length && A.every((v,i)=>v===B[i]);
+}
+function gecmisDeltaSeraBul(ctx, ad){
+  const hedef = String(ad).trim().toUpperCase();
+  return ctx.seralar.find(s=>(s.ad||'').trim().toUpperCase()===hedef) || null;
+}
+function gecmisDeltaAktifDonem(sera){ return ((sera && sera.donemler) || []).find(d=>d.aktif) || null; }
+function gecmisDeltaSeraAdlari(ctx, k){
+  return (k.seraDagilimi||[]).map(d=>{
+    const s = ctx.seralar.find(x=>x.id===d.seraId);
+    return s ? (s.ad||'').trim().toUpperCase() : '(silinmiş sera)';
+  });
+}
+function gecmisDeltaDagilimToplam(k){
+  return (k.seraDagilimi||[]).reduce((s,d)=>s+(Number(d.diziSayisi)||0), 0);
+}
+/* Sera adlarını insanın beklediği sırada dizer: A2 < A10 (düz sıralamada tersi olurdu). */
+function gecmisDeltaSeraSirala(adlar){
+  return (adlar||[]).slice().sort((a,b)=>{
+    const pa = String(a).match(/^([A-Za-zÇĞİÖŞÜçğıöşü]*)(\d*)/), pb = String(b).match(/^([A-Za-zÇĞİÖŞÜçğıöşü]*)(\d*)/);
+    if(pa[1]!==pb[1]) return pa[1].localeCompare(pb[1], 'tr');
+    return (Number(pa[2])||0) - (Number(pb[2])||0);
+  });
+}
+/* İmza eşleşmesi: geçmiş aktarım işaretli + kırım tarihi + çeşit + sera adları kümesi. */
+function gecmisDeltaKirimBul(ctx, imza){
+  return ctx.kirimlar.find(k=>
+    k.gecmisImport===true
+    && k.tarih===imza.tarih
+    && (imza.cesit==null || (k.cesit||'')===imza.cesit)
+    && gecmisDeltaKumeEsit(gecmisDeltaSeraAdlari(ctx, k), imza.seralar)
+  ) || null;
+}
+function gecmisDeltaSonraImza(m){ return Object.assign({}, m.once, m.sonra); }
+
+/* ---- İşlem ön koşulları: sağlanmazsa madde atlanır (körlemesine yazma yok) ---- */
+function gecmisDeltaOnKontrol(ctx, k, op){
+  if(op.tip==='dizimEkle'){
+    const sera = gecmisDeltaSeraBul(ctx, op.sera);
+    if(!sera) return op.sera + ' adlı sera kayıtlı değil';
+    const d = gecmisDeltaAktifDonem(sera);
+    if(op.oncekiDonem==='kapat'){
+      if(!d) return op.sera + ' serasında kapatılacak açık dönem yok';
+      if(op.beklenenGiris && d.girisTarihi!==op.beklenenGiris){
+        return op.sera + ' açık döneminin dizim tarihi ' + (d.girisTarihi||'-') + ', beklenen ' + op.beklenenGiris;
+      }
+    } else if(d){
+      return op.sera + ' serasında zaten açık bir dönem var (dizim ' + (d.girisTarihi||'-') + ')';
+    }
+    return null;
+  }
+  if(op.tip==='dizimSil'){
+    const sera = gecmisDeltaSeraBul(ctx, op.sera);
+    if(!sera) return op.sera + ' adlı sera kayıtlı değil';
+    const dag = (k.seraDagilimi||[]).find(x=>x.seraId===sera.id && x.dizimTarihi===op.dizimTarihi);
+    if(!dag) return op.sera + ' serasına ' + op.dizimTarihi + ' tarihli dizim kaydı bulunamadı';
+    return null;
+  }
+  if(op.tip==='dizimTarihiKaydir'){
+    if(!(k.seraDagilimi||[]).some(x=>x.dizimTarihi===op.eski)) return op.eski + ' tarihli dizim kaydı bulunamadı';
+    return null;
+  }
+  return null;
+}
+
+/* ---- İşlem uygulayıcıları (ctx = önizlemede state KOPYASI, onayda GERÇEK state) ---- */
+function gecmisDeltaKirimAlanUygula(ctx, k, op, sonuc, kayit){
+  const alanlar = Object.assign({}, op.alanlar);
+  if(op.tarlaYenidenEsle){
+    const yeniTarih = alanlar.tarih || k.tarih;
+    const esler = GECMIS_TARLA_KIRIMLARI
+      .filter(t=>t.k1===yeniTarih || t.k2===yeniTarih)
+      .map(t=>({ kod:t.kod, kirimNo: t.k1===yeniTarih ? 1 : 2, tarla: gecmisImportTarlaBulKodla(t.kod) }))
+      .filter(e=>e.tarla);
+    const tarlaIds = esler.map(e=>e.tarla.id);
+    const nolar = [...new Set(esler.map(e=>e.kirimNo))];
+    alanlar.tarlaIds = tarlaIds;
+    alanlar.tarlaId  = tarlaIds.length===1 ? tarlaIds[0] : null;
+    alanlar.kirimNo  = (tarlaIds.length && nolar.length===1) ? nolar[0] : null;
+  }
+  Object.keys(alanlar).forEach(alan=>{
+    if(JSON.stringify(k[alan]) === JSON.stringify(alanlar[alan])) return;
+    kayit.farklar.push({ alan, eski:k[alan], yeni:alanlar[alan] });
+  });
+  Object.assign(k, alanlar);
+  /* Seraya zaten dizilmiş kayıtlardaki TÜREVLENMİŞ bilgiler (kg, çeşit, kırım
+     tarihi, tarla) — kirimDuzenleKaydet() ile aynı mantık. */
+  ctx.seralar.forEach(sera=>{
+    (sera.donemler||[]).forEach(donem=>{
+      const kaynaklar = donem.kaynaklar||[];
+      const dokunuldu = kaynaklar.some(kn=>kn.kirimId===k.id);
+      if(!dokunuldu) return;
+      kaynaklar.forEach(kn=>{
+        if(kn.kirimId!==k.id) return;
+        kn.diziKg  = (Number(kn.dizi)||0) * (Number(k.ortDiziKg)||0);
+        kn.tarih   = k.tarih;
+        kn.cesit   = k.cesit;
+        kn.tarlaId = k.tarlaId || null;
+        kn.tarlaIds = kirimTarlaIdListesi(k);
+      });
+      // Dönemin TÜM kaynağı bu kırımsa dönemin çeşidi de düzelir
+      if(kaynaklar.every(kn=>kn.kirimId===k.id) && donem.cesit !== (k.cesit||'')){
+        sonuc.donemler.push({ maddeId:kayit.id, tip:'cesit',
+          metin: (sera.ad||'?') + ' — dönem çeşidi "' + (donem.cesit||'-') + '" → "' + (k.cesit||'-') + '"' });
+        donem.cesit = k.cesit||'';
+      }
+      sonuc.dokunulanSera.add(sera.id);
+    });
+  });
+}
+function gecmisDeltaDizimEkleUygula(ctx, k, op, sonuc, kayit){
+  const sera = gecmisDeltaSeraBul(ctx, op.sera);
+  let donem = gecmisDeltaAktifDonem(sera);
+  if(op.oncekiDonem==='kapat' && donem){
+    donem.aktif = false;
+    donem.bitis = new Date(op.dizimTarihi+'T12:00:00').getTime();
+    sonuc.donemler.push({ maddeId:kayit.id, tip:'kapat',
+      metin: sera.ad + ' — önceki dönem (dizim ' + (donem.girisTarihi||'-') + ') ' + op.dizimTarihi + ' tarihinde KAPATILACAK' });
+    donem = null;
+  }
+  if(!donem){
+    donem = { id: uid(), tur:'', cesit: k.cesit||'', girisTarihi: op.dizimTarihi, brandaRengi:'beyaz',
+              acilmaGunu:0, kapaliGunSayisi:0, sulananGunSayisi:0, dolu:0, kaynaklar:[],
+              aktif:true, baslangic:Date.now(), bitis:null };
+    sera.donemler = sera.donemler || [];
+    sera.donemler.push(donem);
+    sonuc.donemler.push({ maddeId:kayit.id, tip:'yeniDonem',
+      metin: sera.ad + ' — YENİ dönem açılacak (dizim ' + op.dizimTarihi + ', çeşit ' + (k.cesit||'-') + ')' });
+  }
+  const dizimId = uid();
+  k.seraDagilimi = k.seraDagilimi || [];
+  k.seraDagilimi.push({ id:dizimId, seraId:sera.id, diziSayisi:op.dizi, dizimTarihi:op.dizimTarihi });
+  donem.dolu = (Number(donem.dolu)||0) + op.dizi;
+  donem.kaynaklar = donem.kaynaklar || [];
+  donem.kaynaklar.push({ dizimId, tarlaId:k.tarlaId||null, tarlaIds:kirimTarlaIdListesi(k), kirimId:k.id,
+                         dizi:op.dizi, diziKg: op.dizi*(Number(k.ortDiziKg)||0),
+                         tarih:k.tarih, dizimTarihi:op.dizimTarihi, cesit:k.cesit||'' });
+  sonuc.eklemeler.push({ maddeId:kayit.id, sera:sera.ad, dizi:op.dizi, dizimTarihi:op.dizimTarihi,
+    metin: sera.ad + ' ← ' + fmt(op.dizi,0) + ' dizi (dizim ' + op.dizimTarihi + ')'
+           + (op.dizi===200 ? ' · yarım sera' : '') });
+  sonuc.dokunulanSera.add(sera.id);
+}
+function gecmisDeltaDizimSilUygula(ctx, k, op, sonuc, kayit){
+  const sera = gecmisDeltaSeraBul(ctx, op.sera);
+  const dag = (k.seraDagilimi||[]).find(x=>x.seraId===sera.id && x.dizimTarihi===op.dizimTarihi);
+  const hedefDonem = (sera.donemler||[]).find(d=>(d.kaynaklar||[]).some(kn=>kn.dizimId===dag.id)) || null;
+  if(hedefDonem){
+    const kalan = [];
+    (hedefDonem.kaynaklar||[]).forEach(kn=>{
+      if(kn.dizimId===dag.id) hedefDonem.dolu = Math.max(0, (Number(hedefDonem.dolu)||0) - (Number(kn.dizi)||0));
+      else kalan.push(kn);
+    });
+    hedefDonem.kaynaklar = kalan;
+  }
+  k.seraDagilimi = k.seraDagilimi.filter(x=>x.id!==dag.id);
+  let donemSilindi = false;
+  if(op.bosDonemiSil && hedefDonem && !(hedefDonem.kaynaklar||[]).length && !(Number(hedefDonem.dolu)>0)){
+    sera.donemler = (sera.donemler||[]).filter(d=>d!==hedefDonem);
+    donemSilindi = true;
+  }
+  sonuc.silmeler.push({ maddeId:kayit.id, sera:sera.ad, dizi:Number(dag.diziSayisi)||0, dizimTarihi:op.dizimTarihi,
+    metin: sera.ad + ' — ' + op.dizimTarihi + ' tarihli ' + fmt(Number(dag.diziSayisi)||0,0) + ' dizilik dolum SİLİNECEK'
+           + (donemSilindi ? ' (dönem tamamen boşaldığı için dönem de kaldırılacak)'
+                           : (hedefDonem ? ' (dönemde başka kaynak kaldığı için dönem korunacak)' : '')) });
+  sonuc.dokunulanSera.add(sera.id);
+}
+function gecmisDeltaDizimTarihiKaydirUygula(ctx, k, op, sonuc, kayit){
+  let say = 0;
+  (k.seraDagilimi||[]).forEach(d=>{ if(d.dizimTarihi===op.eski){ d.dizimTarihi = op.yeni; say++; } });
+  const kaydirilanSeralar = [];
+  ctx.seralar.forEach(sera=>{
+    (sera.donemler||[]).forEach(donem=>{
+      let dokunuldu = false;
+      (donem.kaynaklar||[]).forEach(kn=>{
+        if(kn.kirimId===k.id && kn.dizimTarihi===op.eski){ kn.dizimTarihi = op.yeni; dokunuldu = true; }
+      });
+      if(!dokunuldu) return;
+      sonuc.dokunulanSera.add(sera.id);
+      // Dönemin tek kaynağı bu kırımsa dönemin giriş (dizim) tarihi de taşınır
+      if(donem.girisTarihi===op.eski && (donem.kaynaklar||[]).every(kn=>kn.kirimId===k.id)){
+        donem.girisTarihi = op.yeni;
+        kaydirilanSeralar.push(sera.ad);
+      }
+    });
+  });
+  kayit.farklar.push({ alan:'dizimTarihi', eski:op.eski, yeni:op.yeni });
+  sonuc.donemler.push({ maddeId:kayit.id, tip:'kaydir',
+    metin: fmt(say,0) + ' dizim kaydının dizim tarihi ' + op.eski + ' → ' + op.yeni
+           + (kaydirilanSeralar.length ? ' · dönem giriş tarihi taşınacak seralar: ' + kaydirilanSeralar.join(', ') : '') });
+}
+function gecmisDeltaOpUygula(ctx, k, op, sonuc, kayit){
+  if(op.tip==='kirimAlan')          return gecmisDeltaKirimAlanUygula(ctx, k, op, sonuc, kayit);
+  if(op.tip==='dizimEkle')          return gecmisDeltaDizimEkleUygula(ctx, k, op, sonuc, kayit);
+  if(op.tip==='dizimSil')           return gecmisDeltaDizimSilUygula(ctx, k, op, sonuc, kayit);
+  if(op.tip==='dizimTarihiKaydir')  return gecmisDeltaDizimTarihiKaydirUygula(ctx, k, op, sonuc, kayit);
+}
+
+/* ---- Çekirdek: maddeleri sırayla ctx üzerinde çalıştırır ve raporu döndürür.
+       Önizleme ile onay AYNI fonksiyonu kullanır; tek fark ctx'in kopya olması. ---- */
+function gecmisDeltaIsle(ctx){
+  const sonuc = { maddeler:[], eklemeler:[], silmeler:[], donemler:[],
+                  dokunulanKirim:new Set(), dokunulanSera:new Set(),
+                  hazir:0, uygulanmis:0, atlanan:0 };
+  GECMIS_DELTA_MADDELERI.forEach(m=>{
+    const kayit = { id:m.id, kaynak:m.kaynak, baslik:m.baslik, aciklama:m.aciklama,
+                    kodNotu:m.kodNotu||null, farklar:[], durum:'', durumNot:'' };
+    const k = gecmisDeltaKirimBul(ctx, m.once);
+    if(!k){
+      if(gecmisDeltaKirimBul(ctx, gecmisDeltaSonraImza(m))){
+        kayit.durum = 'uygulanmis';
+        kayit.durumNot = 'Kayıt zaten beklenen son haliyle duruyor — bu madde daha önce uygulanmış, tekrar yazılmayacak.';
+        sonuc.uygulanmis++;
+      } else {
+        kayit.durum = 'atlanacak';
+        kayit.durumNot = 'Beklenen kayıt bulunamadı ya da içeriği farklı (elle düzenlenmiş olabilir) — güvenlik için bu madde ATLANACAK.';
+        sonuc.atlanan++;
+      }
+      sonuc.maddeler.push(kayit); return;
+    }
+    const engeller = [];
+    m.islemler.forEach(op=>{ const hata = gecmisDeltaOnKontrol(ctx, k, op); if(hata) engeller.push(hata); });
+    if(engeller.length){
+      kayit.durum = 'atlanacak';
+      kayit.durumNot = 'Ön koşul sağlanmadı → ' + engeller.join(' · ') + '. Bu madde ATLANACAK.';
+      sonuc.atlanan++; sonuc.maddeler.push(kayit); return;
+    }
+    kayit.durum = 'hazir'; sonuc.hazir++;
+    kayit.kirimId = k.id;
+    const onceSeralar = gecmisDeltaSeraAdlari(ctx, k);
+    const onceDagilim = gecmisDeltaDagilimToplam(k);
+    m.islemler.forEach(op=>gecmisDeltaOpUygula(ctx, k, op, sonuc, kayit));
+    const sonraSeralar = gecmisDeltaSeraAdlari(ctx, k);
+    const sonraDagilim = gecmisDeltaDagilimToplam(k);
+    if(!gecmisDeltaKumeEsit(onceSeralar, sonraSeralar)){
+      kayit.farklar.push({ alan:'seraListesi', eski:gecmisDeltaSeraSirala(onceSeralar).join(', '), yeni:gecmisDeltaSeraSirala(sonraSeralar).join(', ') });
+    }
+    if(onceDagilim!==sonraDagilim) kayit.farklar.push({ alan:'dagilimToplam', eski:onceDagilim, yeni:sonraDagilim });
+    sonuc.dokunulanKirim.add(k.id);
+    sonuc.maddeler.push(kayit);
+  });
+  return sonuc;
+}
+
+/* ---- Görüntüleme yardımcıları ---- */
+const GECMIS_DELTA_ALAN_ETIKET = {
+  tarih:'Kırım tarihi', cesit:'Çeşit', ortDiziKg:'Ort. dizi ağırlığı (kg)',
+  soldurmaGunSayisi:'Soldurma (gün)', diziSayisi:'Dizi sayısı (kayıt)',
+  tarlaIds:'Bağlı tarlalar', tarlaId:'Ana tarla', kirimNo:'Kırım no',
+  seraListesi:'Seralar', dagilimToplam:'Seralara dağıtılan dizi', dizimTarihi:'Dizim tarihi'
+};
+function gecmisDeltaTarlaAdlari(ids){
+  if(!ids || !ids.length) return '(yok)';
+  return ids.map(id=>{ const t = state.tarlalar.find(x=>x.id===id); return t ? t.ad : '(bilinmeyen)'; }).join(', ');
+}
+function gecmisDeltaDegerMetni(alan, v){
+  if(alan==='tarlaIds') return gecmisDeltaTarlaAdlari(v);
+  if(alan==='tarlaId')  return v ? gecmisDeltaTarlaAdlari([v]) : '(yok)';
+  if(alan==='kirimNo')  return v ? (v + '. kırım') : '(belirtilmemiş)';
+  if(v==null || v==='') return '(boş)';
+  if(alan==='diziSayisi' || alan==='dagilimToplam') return fmt(Number(v),0) + ' dizi';
+  return String(v);
+}
+
+/* ---- İkinci çalıştırma bayrağı (cihaz yerel; asıl koruma canlı state karşılaştırması) ---- */
+function gecmisDeltaBayrakOku(){
+  try{ const h = JSON.parse(localStorage.getItem(GECMIS_DELTA_ANAHTAR)||'null'); return (h && h.surum===GECMIS_DELTA_SURUM) ? h : null; }
+  catch(e){ return null; }
+}
+function gecmisDeltaBayrakYaz(sonuc){
+  try{
+    localStorage.setItem(GECMIS_DELTA_ANAHTAR, JSON.stringify({
+      surum: GECMIS_DELTA_SURUM, zaman: Date.now(),
+      uygulanan: sonuc.hazir, kullanici: mevcutKullaniciAdi()
+    }));
+  }catch(e){ /* kota dolu: sessizce yut, canlı state karşılaştırması yine korur */ }
+}
+
+/* ---- ÖNİZLEME EKRANI ---- */
+function gecmisDeltaOnizlemeAc(){
+  const kopyaCtx = {
+    kirimlar: JSON.parse(JSON.stringify(state.kirimlar||[])),
+    seralar:  JSON.parse(JSON.stringify(state.seralar||[]))
+  };
+  const s = gecmisDeltaIsle(kopyaCtx);
+  const bayrak = gecmisDeltaBayrakOku();
+
+  const rozet = d => d==='hazir'      ? '<span style="background:var(--green-700);color:#fff;border-radius:4px;padding:1px 6px;font-size:10.5px;font-weight:800;">UYGULANACAK</span>'
+                   : d==='uygulanmis' ? '<span style="background:var(--blue);color:#fff;border-radius:4px;padding:1px 6px;font-size:10.5px;font-weight:800;">ZATEN UYGULANMIŞ</span>'
+                                      : '<span style="background:var(--red);color:#fff;border-radius:4px;padding:1px 6px;font-size:10.5px;font-weight:800;">ATLANACAK</span>';
+  const kutu = ic => '<div style="border:1px solid var(--border);border-radius:8px;padding:8px 10px;margin:6px 0;background:var(--panel);">' + ic + '</div>';
+  const baslikCizgi = t => '<div style="font-size:11.5px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:var(--green-900);margin:14px 0 2px;border-bottom:2px solid var(--green-300);padding-bottom:3px;">' + t + '</div>';
+  const bos = t => '<div style="font-size:12px;color:var(--muted);padding:6px 2px;">' + t + '</div>';
+
+  /* (a) Eklenecek kırım kayıtları — kağıttaki tek yeni satır kullanıcı kararıyla atlandı */
+  let html = baslikCizgi('a) Eklenecek Kırım Kayıtları')
+    + bos('Yok. Kağıtta eski aktarımda hiç bulunmayan TEK satır deneme seraları satırıdır ve kullanıcı kararıyla aktarılmıyor (bkz. e — Notlar).');
+
+  /* (b) Düzeltilecek kayıtlar */
+  html += baslikCizgi('b) Düzeltilecek Kayıtlar (' + s.maddeler.length + ' madde)');
+  s.maddeler.forEach(m=>{
+    let ic = '<div style="display:flex;gap:8px;align-items:flex-start;justify-content:space-between;">'
+      + '<b style="font-size:13px;color:var(--green-900);">' + escapeHtml(m.baslik) + '</b>' + rozet(m.durum) + '</div>'
+      + '<div style="font-size:10.5px;color:var(--muted);margin:2px 0 4px;">Kaynak: ' + escapeHtml(m.kaynak)
+      + (m.kodNotu ? ' · <b style="color:var(--tobacco-deep);">koddan çözüldü: ' + escapeHtml(m.kodNotu) + '</b>' : '') + '</div>'
+      + '<div style="font-size:12px;margin-bottom:4px;">' + escapeHtml(m.aciklama) + '</div>';
+    if(m.durum==='hazir' && m.farklar.length){
+      ic += '<table style="width:100%;border-collapse:collapse;font-size:11.5px;">'
+        + m.farklar.map(f=>'<tr>'
+            + '<td style="padding:2px 6px 2px 0;color:var(--muted);white-space:nowrap;vertical-align:top;">' + escapeHtml(GECMIS_DELTA_ALAN_ETIKET[f.alan]||f.alan) + '</td>'
+            + '<td style="padding:2px 4px;text-decoration:line-through;color:var(--red);vertical-align:top;">' + escapeHtml(gecmisDeltaDegerMetni(f.alan, f.eski)) + '</td>'
+            + '<td style="padding:2px 4px;color:var(--muted);vertical-align:top;">→</td>'
+            + '<td style="padding:2px 0;font-weight:700;color:var(--green-900);vertical-align:top;">' + escapeHtml(gecmisDeltaDegerMetni(f.alan, f.yeni)) + '</td>'
+          + '</tr>').join('')
+        + '</table>';
+    } else if(m.durum==='hazir'){
+      ic += '<div style="font-size:11.5px;color:var(--muted);">Kayıt alanları değişmiyor; yalnızca sera dolumu tarafında düzeltme var.</div>';
+    } else {
+      ic += '<div style="font-size:11.5px;color:' + (m.durum==='uygulanmis'?'var(--blue)':'var(--red)') + ';font-weight:700;">' + escapeHtml(m.durumNot) + '</div>';
+    }
+    html += kutu(ic);
+  });
+
+  /* (c) Silinecek yanlış sera dolumları */
+  html += baslikCizgi('c) Silinecek Yanlış Sera Dolumları (' + s.silmeler.length + ')');
+  html += s.silmeler.length
+    ? kutu(s.silmeler.map(x=>'<div style="font-size:12px;padding:1px 0;">🗑️ ' + escapeHtml(x.metin) + '</div>').join(''))
+    : bos('Silinecek dolum yok (ilgili madde atlandı ya da daha önce uygulanmış).');
+
+  /* (d) Sera dönemleri */
+  const donemSatirlari = s.donemler.map(x=>'<div style="font-size:12px;padding:1px 0;">'
+      + (x.tip==='kapat'?'🔒 ':x.tip==='yeniDonem'?'🆕 ':x.tip==='kaydir'?'📅 ':'🏷️ ')
+      + escapeHtml(x.metin) + '</div>')
+    .concat(s.eklemeler.map(x=>'<div style="font-size:12px;padding:1px 0;">➕ ' + escapeHtml(x.metin) + '</div>'));
+  html += baslikCizgi('d) Kapatılacak / Taşınacak / Yeni Açılacak Sera Dönemleri (' + donemSatirlari.length + ')');
+  html += donemSatirlari.length ? kutu(donemSatirlari.join('')) : bos('Sera dönemlerinde değişiklik yok.');
+
+  /* (e) Notlar */
+  let notlar = GECMIS_DELTA_ATLANAN_SATIRLAR.map(t=>'<div style="font-size:12px;padding:3px 0;">⏭️ ' + escapeHtml(t) + '</div>').join('');
+  const kodlu = s.maddeler.filter(m=>m.kodNotu);
+  notlar += '<div style="font-size:12px;padding:3px 0;">🔢 Çeşit kodu tablosu (kullanıcı kararı, esas alınan): '
+    + Object.keys(GECMIS_DELTA_CESIT_KODU).map(n=>'(' + n + ')=' + GECMIS_DELTA_CESIT_KODU[n]).join(' · ') + '</div>';
+  if(kodlu.length){
+    notlar += '<div style="font-size:12px;padding:3px 0;">🔢 Çeşidi <b>koddan çözülen</b> satırlar: '
+      + kodlu.map(m=>escapeHtml(m.kaynak) + ' → ' + escapeHtml(m.kodNotu) + ' [' + (m.durum==='hazir'?'uygulanacak':m.durum==='uygulanmis'?'zaten uygulanmış':'atlanacak') + ']').join(' · ') + '</div>';
+  }
+  notlar += '<div style="font-size:12px;padding:3px 0;">⚖️ Ort. dizi ağırlığı, mevcut kuralla (3,50 kg @ 29.06 → 3,70 kg @ 22.07 doğrusal) yeniden hesaplandı; sabitler değişmedi.</div>';
+  notlar += '<div style="font-size:12px;padding:3px 0;">🔐 Yalnızca var olan kırım ve sera belgeleri güncellenir; yeni koleksiyon açılmaz, kayıt id\'leri değişmez.</div>';
+  html += baslikCizgi('e) Notlar') + kutu(notlar);
+
+  const ozet = '<b>' + s.hazir + '</b> madde uygulanacak · <b>' + s.uygulanmis + '</b> zaten uygulanmış · <b>' + s.atlanan + '</b> atlanacak'
+    + ' · dokunulacak kayıt: ' + s.dokunulanKirim.size + ' kırım, ' + s.dokunulanSera.size + ' sera';
+
+  openModal(`
+    <h2>🔧 Geçmiş Veri Düzeltme — Önizleme</h2>
+    <div class="hint-box">Bu ekran yalnızca <b>gösterir</b>. Aşağıdaki "Onayla ve Uygula" düğmesine basmadıkça cihazda da Firestore'da da hiçbir şey değişmez. Onaydan sonra değişiklikler her zamanki senkron yolundan sahadaki herkese gider.</div>
+    ${bayrak ? '<div class="uyari-box">Bu düzeltme bu cihazda daha önce ' + new Date(bayrak.zaman).toLocaleString('tr-TR') + ' tarihinde çalıştırılmış (' + escapeHtml(String(bayrak.uygulanan)) + ' madde). Aşağıdaki durumlar canlı veriye göre yeniden hesaplandı; zaten uygulanmış maddeler tekrar yazılmaz.</div>' : ''}
+    <div style="max-height:52vh;overflow-y:auto;padding-right:4px;">${html}</div>
+    <div class="hint-box" style="margin-top:10px;">${ozet}</div>
+    <div class="modal-actions">
+      <button class="btn btn-muted" onclick="closeModal()">Vazgeç</button>
+      <button class="btn btn-primary" ${s.hazir?'':'disabled style="opacity:.5;"'} onclick="gecmisDeltaOnayla()">✅ Onayla ve Uygula (${s.hazir})</button>
+    </div>
+  `, true);
+}
+
+/* ---- ONAY: aynı işlemi GERÇEK state üzerinde çalıştırır ---- */
+function gecmisDeltaOnayla(){
+  const onizleme = gecmisDeltaIsle({
+    kirimlar: JSON.parse(JSON.stringify(state.kirimlar||[])),
+    seralar:  JSON.parse(JSON.stringify(state.seralar||[]))
+  });
+  if(!onizleme.hazir){ alert('Uygulanacak madde kalmadı; işlem yapılmadı.'); return; }
+  if(!confirm('Önizlemedeki ' + onizleme.hazir + ' madde şimdi uygulanacak ve mevcut senkronizasyonla sahadaki tüm cihazlara gidecek.\n\n'
+    + '• Zaten uygulanmış ' + onizleme.uygulanmis + ' madde tekrar yazılmayacak\n'
+    + '• Beklenen halinde bulunmayan ' + onizleme.atlanan + ' madde atlanacak\n\n'
+    + 'Devam edilsin mi?')) return;
+
+  const s = gecmisDeltaIsle({ kirimlar: state.kirimlar, seralar: state.seralar });
+  const damga = sonIslemDamgasi();
+  s.dokunulanKirim.forEach(id=>{
+    const k = state.kirimlar.find(x=>x.id===id);
+    if(k) Object.assign(k, { gecmisImport:true }, damga);
+  });
+  s.dokunulanSera.forEach(id=>{
+    const sr = state.seralar.find(x=>x.id===id);
+    if(sr) Object.assign(sr, damga);
+  });
+  gecmisDeltaBayrakYaz(s);
+
+  renderAll(); // → saveState() → pushStateToFirestore() → syncOutgoingNow()
+  closeModal();
+  alert('Geçmiş veri düzeltmesi uygulandı.\n'
+    + '\nUygulanan madde: ' + s.hazir
+    + '\nZaten uygulanmış (dokunulmadı): ' + s.uygulanmis
+    + '\nAtlanan (bulunamadı/farklı): ' + s.atlanan
+    + '\nGüncellenen kırım kaydı: ' + s.dokunulanKirim.size
+    + '\nGüncellenen sera: ' + s.dokunulanSera.size
+    + '\nEklenen sera dolumu: ' + s.eklemeler.length
+    + '\nSilinen sera dolumu: ' + s.silmeler.length
+    + '\nSera dönemi işlemi: ' + s.donemler.length
+    + '\n\nDeğişiklikler senkronizasyonla tüm cihazlara gönderiliyor.');
 }
 
 function tumVerileriYedekle(){
