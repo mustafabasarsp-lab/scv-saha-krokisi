@@ -619,6 +619,16 @@ body.has-fullscreen-panel{overflow:hidden;}
   width:100%;border:1px solid transparent;background:transparent;border-radius:5px;
   padding:5px 5px;font-size:12px;font-family:inherit;color:var(--ink);
 }
+/* Tarih/saat hücreleri normalde düğme (ucuz metin), dokununca gerçek girdi olur;
+   ikisinin yüksekliği eşit tutulur ki geçişte satır zıplamasın. */
+.iklim-cell-btn{
+  display:block;width:100%;border:1px solid transparent;background:transparent;border-radius:5px;
+  padding:5px 5px;font-size:12px;font-family:inherit;line-height:1.35;color:var(--ink);
+  text-align:left;cursor:pointer;-webkit-appearance:none;
+}
+.iklim-cell-btn,.iklim-table input[type=date],.iklim-table input[type=time]{min-height:28px;}
+.iklim-cell-btn:hover{border-color:var(--border);}
+.iklim-cell-btn:focus{outline:none;border-color:var(--green-500);background:#fff;box-shadow:0 0 0 2px var(--green-100);}
 .iklim-table input:hover,.iklim-table select:hover{border-color:var(--border);}
 .iklim-table input:focus,.iklim-table select:focus{outline:none;border-color:var(--green-500);background:#fff;box-shadow:0 0 0 2px var(--green-100);}
 .iklim-table input[type=number]{text-align:right;font-weight:700;}
@@ -1197,7 +1207,7 @@ const AYARLAR = {
   UNITE_PX: 40                // referans kapasitedeki sera-box genişliği (px) — kroki oranı
 };
 const STORAGE_KEY = 'scvSahaKrokiV1';
-const APP_SURUM = 'v66'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
+const APP_SURUM = 'v67'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
 
 /* =========================================================
    HATA / DONMA GÜNLÜĞÜ — "bazen donuyor" şikayetini araştırmak için.
@@ -5236,13 +5246,47 @@ function iklimSeraSelectDoldur(sel){
   if(secili) sel.value = secili;
   sel.dataset.dolu = '1';
 }
+/* Tablo hücresi için ucuz tarih metni: Intl kullanılmaz (satır başına maliyet
+   olmasın), ISO dizesi düz dilimlenir; beklenmedik biçimde ham değer gösterilir. */
+function iklimTarihMetni(iso){
+  const s = String(iso==null?'':iso);
+  if(!s) return '—';
+  const p = s.slice(0,10).split('-');
+  if(p.length===3 && p[0].length===4 && p[1].length===2 && p[2].length===2) return p[2]+'.'+p[1]+'.'+p[0];
+  return s;
+}
+/* Tarih/saat hücreleri düğme olarak çizilir; native date/time girdisi iOS'ta
+   satır başına pahalı bir shadow-DOM widget'ı kurduğundan yalnızca dokunulan
+   hücrede oluşturulur (bkz. iklimTarihSaatDuzenle). */
+function iklimTarihSaatHucreHtml(k, alan){
+  const metin = alan==='tarih' ? iklimTarihMetni(k.tarih) : (k.saat || '—');
+  const etiket = alan==='tarih' ? i18n('Tarih') : i18n('Saat');
+  return `<td><button type="button" class="iklim-cell-btn" aria-label="${escapeHtml(etiket+': '+metin)}" onclick="iklimTarihSaatDuzenle(this,'${k.id}','${alan}')">${escapeHtml(metin)}</button></td>`;
+}
+function iklimTarihSaatDuzenle(btn, id, alan){
+  if(alan!=='tarih' && alan!=='saat') return;
+  const td = btn && btn.parentNode;
+  if(!td) return;
+  const k = state.iklimKayitlari.find(x=>x.id===id);
+  const tip = alan==='tarih' ? 'date' : 'time';
+  td.innerHTML = `<input type="${tip}" value="${escapeHtml((k&&k[alan])||'')}" onchange="iklimHucreGuncelle('${id}','${alan}',this.value)" onblur="iklimTarihSaatDuzenlemeBitir()">`;
+  const inp = td.firstElementChild;
+  if(!inp) return;
+  inp.focus();
+  if(inp.showPicker) try{ inp.showPicker(); }catch(e){} // takvim tek dokunuşta açılsın; desteklenmeyen tarayıcıda focus yeterli
+}
+/* blur anında document.activeElement henüz güncellenmemiş olabilir; renderIklim'in
+   "tabloda odak var" koruması çizimi aksi halde atlar, o yüzden bir tur beklenir. */
+function iklimTarihSaatDuzenlemeBitir(){
+  setTimeout(()=>renderIklim(),0);
+}
 function iklimTablosuSatirHtml(k){
   const sera = seraBul(k.seraId);
   const seraOpts = `<option value="${escapeHtml(k.seraId||'')}" selected>${escapeHtml(sera?sera.ad:i18n('(silinmiş sera)'))}</option>`;
   return `
     <tr data-id="${k.id}" title="${i18n('Son İşlem')}: ${sonIslemEtiket(k)}">
-      <td><input type="date" value="${escapeHtml(k.tarih||'')}" onchange="iklimHucreGuncelle('${k.id}','tarih',this.value)"></td>
-      <td><input type="time" value="${escapeHtml(k.saat||'')}" onchange="iklimHucreGuncelle('${k.id}','saat',this.value)"></td>
+      ${iklimTarihSaatHucreHtml(k,'tarih')}
+      ${iklimTarihSaatHucreHtml(k,'saat')}
       <td><select onfocus="iklimSeraSelectDoldur(this)" onmousedown="iklimSeraSelectDoldur(this)" onchange="iklimHucreGuncelle('${k.id}','seraId',this.value)">${seraOpts}</select></td>
       <td class="num"><input class="${iklimSicaklikSinifi(k.sicaklik)}" type="number" step="0.1" value="${k.sicaklik??''}" onchange="iklimHucreGuncelle('${k.id}','sicaklik',this.value,true)"></td>
       <td class="num"><input class="${iklimNemSinifi(k.nem)}" type="number" step="1" min="0" max="100" value="${k.nem??''}" onchange="iklimHucreGuncelle('${k.id}','nem',this.value,true)"></td>
