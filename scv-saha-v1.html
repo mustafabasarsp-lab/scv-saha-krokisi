@@ -232,6 +232,10 @@ input[type=number],.num,td,th,.badge b,.quickstats b{font-variant-numeric:tabula
   color:var(--muted);
   letter-spacing:0;
 }
+/* Marka işareti: ad + kırım sırası şeridi. Şerit uygulamanın her yerinde
+   tekrar eden imza; burada da kimliğin taşıyıcısı. */
+.brand-ad{display:inline-flex;align-items:center;gap:9px;}
+.brand-ad .kirim-serit i{width:7px;height:12px;}
 /* Yatay kayan şeritler: kaydırma çubuğu gizli, dokunmayla sürüklenir. */
 .header .page-tabs,.badges{
   display:flex;
@@ -562,8 +566,34 @@ body.has-fullscreen-panel{overflow:hidden;}
 }
 .tarla-box .sub{font-size:9px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .tarla-box .kirim-row{display:flex;align-items:center;gap:2px;margin-top:auto;flex-wrap:wrap;}
-.kdot{width:6px;height:6px;border-radius:50%;background:var(--green-700);display:inline-block;flex:0 0 auto;}
-.kdot.empty{background:transparent;border:1px solid var(--muted);}
+/* KIRIM SIRASI GÖSTERGESİ — uygulamanın imzası.
+   Altı nokta, altı kırım. Dolu noktalar kendi kırımlarının tonunu taşır
+   (aşağıdan yukarı koyulaşan yaprak), boş olanlar sadece yer tutar. */
+/* Tarla kutusunun zemini de doluluğa göre yeşilleştiği için açık tonlu ilk
+   kırımlar zeminde kayboluyordu; ince kontur her zeminde sınırı korur. */
+.kdot{
+  width:7px;height:7px;border-radius:50%;display:inline-block;flex:0 0 auto;
+  box-shadow:inset 0 0 0 1px rgba(0,0,0,.16);
+}
+.kdot-1{background:var(--kirim-1);}
+.kdot-2{background:var(--kirim-2);}
+.kdot-3{background:var(--kirim-3);}
+.kdot-4{background:var(--kirim-4);}
+.kdot-5{background:var(--kirim-5);}
+.kdot-6{background:var(--kirim-6);}
+.kdot.empty{background:transparent;box-shadow:inset 0 0 0 1px var(--border-strong);}
+/* Aynı skala, şerit biçiminde: marka işareti ve bölüm ayraçlarında kullanılır. */
+.kirim-serit{
+  display:inline-flex;border-radius:var(--r-pill);overflow:hidden;flex:0 0 auto;
+  vertical-align:middle;
+}
+.kirim-serit i{display:block;width:9px;height:5px;}
+.kirim-serit i:nth-child(1){background:var(--kirim-1);}
+.kirim-serit i:nth-child(2){background:var(--kirim-2);}
+.kirim-serit i:nth-child(3){background:var(--kirim-3);}
+.kirim-serit i:nth-child(4){background:var(--kirim-4);}
+.kirim-serit i:nth-child(5){background:var(--kirim-5);}
+.kirim-serit i:nth-child(6){background:var(--kirim-6);}
 .phi-badge{
   position:absolute;top:3px;right:3px;
   background:var(--red);color:var(--on-accent);font-size:8px;font-weight:700;
@@ -724,7 +754,8 @@ body.has-fullscreen-panel{overflow:hidden;}
 .ilac-row input{padding:6px 7px;}
 .zararli-row{display:grid;grid-template-columns:1fr 110px 90px 30px;gap:6px;margin-bottom:6px;align-items:center;}
 .zararli-row input,.zararli-row select{padding:6px 7px;}
-.detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px 14px;margin:10px 0;}
+/* Sabit iki sütun geniş ekranda seyrek, dar ekranda sıkışıktı; alana göre uyar. */
+.detail-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(148px,1fr));gap:var(--sp-2) var(--sp-4);margin:var(--sp-3) 0;}
 .detail-grid div{font-size:12px;}
 .detail-grid b{display:block;font-size:17px;color:var(--green-900);}
 .list-small{max-height:140px;overflow-y:auto;border:1px solid var(--border);border-radius:6px;padding:6px;background:var(--panel-2);}
@@ -1035,7 +1066,10 @@ body.has-fullscreen-panel{overflow:hidden;}
          rozetleri kendi satırlarına indi; hepsi tek flex kutusundayken başlık
          ekranın yarısını yiyordu. -->
     <div class="header-ust">
-      <div class="brand">SCV Saha<small><span data-i18n="Bugün:">Bugün:</span> <span id="bugunTarih"></span> · <span data-i18n="Sürüm">Sürüm</span> <span id="appSurum"></span> · Developed by Mustafa BAŞAR</small></div>
+      <div class="brand">
+        <span class="brand-ad">SCV Saha<span class="kirim-serit" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></span></span>
+        <small><span data-i18n="Bugün:">Bugün:</span> <span id="bugunTarih"></span> · <span data-i18n="Sürüm">Sürüm</span> <span id="appSurum"></span> · Developed by Mustafa BAŞAR</small>
+      </div>
       <div class="header-sag">
         <button class="hava-serit" id="havaSerit" onclick="sayfaGecis('pageIklim')" title="İklim Takip" data-i18n-title="İklim Takip">—</button>
         <div class="sync-status" id="syncStatus"><span class="dot"></span><span id="syncStatusText">Bağlanıyor…</span></div>
@@ -1432,7 +1466,7 @@ const AYARLAR = {
   UNITE_PX: 40                // referans kapasitedeki sera-box genişliği (px) — kroki oranı
 };
 const STORAGE_KEY = 'scvSahaKrokiV1';
-const APP_SURUM = 'v69'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
+const APP_SURUM = 'v70'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
 
 /* =========================================================
    HATA / DONMA GÜNLÜĞÜ — "bazen donuyor" şikayetini araştırmak için.
@@ -2441,9 +2475,12 @@ function renderTarlalar(){
     const stats = tarlaStats(t.id);
     const phi = tarlaPhiDurum(t);
     const zararli = tarlaZararliDurum(t);
+    // Her nokta kendi kırımının tonunu taşır: tütünde kırım yukarı çıktıkça
+    // yaprak koyulaşır, gösterge de öyle. Böylece tarlanın kaçıncı kırımda
+    // olduğu sayı okumadan, tek bakışta anlaşılır.
     let dots = '';
     for(let i=1;i<=6;i++){
-      dots += `<span class="kdot ${i<=stats.maxKirimNo?'':'empty'}"></span>`;
+      dots += `<span class="kdot kdot-${i} ${i<=stats.maxKirimNo?'':'empty'}" title="${i}. ${i18n('kırım')}"></span>`;
     }
     return `<div class="tarla-box" onclick="openTarlaDetay('${t.id}')">
       ${phi ? `<div class="phi-badge">${phi.kalanGun}g</div>` : ''}
@@ -6916,7 +6953,10 @@ function renderRapor(){
     kirimKg[k.kirimNo] = (kirimKg[k.kirimNo]||0) + tr.toplamKg;
   });
   const kirimNolari = Object.keys(kirimKg).map(Number).sort((a,b)=>a-b);
-  const kirimShades = ['#dff0dd','#b9dfb6','#8fca8c','#4c8f52','#0a7a4f','#00543c'];
+  // Sabit renk listesi değil, ortak kırım skalası belirteçleri: aynı tonlar
+  // tarla kutularındaki noktalarda ve marka şeridinde de kullanılıyor, ayrıca
+  // koyu temada birlikte değişiyorlar.
+  const kirimShades = ['var(--kirim-1)','var(--kirim-2)','var(--kirim-3)','var(--kirim-4)','var(--kirim-5)','var(--kirim-6)'];
   const kirimEl = document.getElementById('raporKirimChart');
   if(kirimEl) kirimEl.innerHTML = barChartHtml(kirimNolari.map((no,idx)=>({
     label: no+'. '+i18n('kırım'), value: kirimKg[no], color: kirimShades[Math.min(idx,kirimShades.length-1)]
