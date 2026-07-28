@@ -1144,6 +1144,97 @@ body.has-fullscreen-panel{overflow:hidden;}
     margin:-16px;border-radius:0;
   }
 }
+
+/* ---------- YARDIMCI SINIFLAR ---------- */
+/* Esnek satır ve hizalama yapıları */
+.satir-ortali-dar{display:flex;align-items:center;gap:6px;}
+.satir-ortali-genis{display:flex;align-items:center;gap:14px;flex-wrap:wrap;}
+.satir-ortali-dar-sarmali{display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
+.satir-ortali-aralikli{display:flex;align-items:center;gap:var(--sp-2);flex-wrap:wrap;}
+.satir-aralikli-sarmali{display:flex;gap:var(--sp-2);flex-wrap:wrap;}
+.satir-sarmali{flex-wrap:wrap;}
+.satir-sarmali-aralikli{flex-wrap:wrap;gap:var(--sp-2);}
+.dikey-icerik-daralabilir{display:flex;flex-direction:column;min-height:0;}
+.eylem-ortali{justify-content:center;}
+.eylem-sola-sarmali{justify-content:flex-start;flex-wrap:wrap;}
+.saga-yasla{float:right;}
+.satir-iki-yanli{display:flex;justify-content:space-between;align-items:center;gap:var(--sp-2);}
+.esnemez{flex:0 0 auto;}
+.alan-esnek{flex:1;min-width:120px;}
+
+/* Boşluk, genişlik ve taşma yardımcıları */
+.icerik-daralabilir{min-height:0;}
+.icerik-daralabilir-sabit{min-height:0;flex:0 0 auto;}
+.ust-bosluk-10{margin-top:10px;}
+.ust-bosluk-3{margin-top:var(--sp-3);}
+.ust-bosluk-minik{margin-top:2px;}
+.ust-bosluk-6{margin-top:6px;}
+.ust-bosluk-2{margin-top:var(--sp-2);}
+.alt-bosluk-2{margin-bottom:var(--sp-2);}
+.alt-bosluk-6{margin-bottom:6px;}
+.alt-bosluk-minik{margin:0 0 var(--sp-1);}
+.ozet-liste-sinirli{margin-top:var(--sp-2);max-height:220px;}
+.liste-yukseklik-sinirli{max-height:260px;}
+.panel-baslik-sikistirilmis{margin:-8px -10px var(--sp-1) -10px;}
+.tam-genislik{width:100%;}
+.izgara-tam-satir{grid-column:1/-1;}
+
+/* Metin, etiket ve durum renkleri */
+.giris-hata-metni{color:var(--red);font-size:12px;margin-bottom:6px;}
+.metin-kehribar{color:var(--amber);}
+label.etiket-normal{text-transform:none;}
+label.etiket-normal-kucuk{text-transform:none;font-size:12.5px;}
+.metin-pasif{color:var(--muted);font-size:10px;}
+.olcum-alt-metni{display:block;font-size:10.5px;color:var(--muted);font-weight:400;}
+.metin-rengi-miras{color:inherit;}
+
+/* Lejant renkleri ve etkileşim işaretleri */
+.doluluk-bos{background:var(--empty);}
+.doluluk-az{background:var(--green-100);}
+.doluluk-orta{background:var(--green-300);}
+.doluluk-yuksek{background:var(--amber);}
+.doluluk-dolu{background:var(--red);}
+.tiklanabilir{cursor:pointer;}
+
+/* Düğme, form ve bağlantı yapıları */
+.kare-ikon-dugmesi{width:36px;height:36px;font-size:16px;flex-shrink:0;}
+.dugme-cok-kucuk{padding:1px 6px;font-size:10.5px;}
+.dugme-kucuk{padding:7px 14px;font-size:12.5px;}
+.dugme-dar{padding:7px var(--sp-3);font-size:12.5px;}
+textarea.hata-gunlugu-alani{width:100%;height:260px;font-family:monospace;font-size:11.5px;padding:var(--sp-2);border:1px solid var(--border);border-radius:6px;background:var(--panel);color:var(--ink);}
+.harita-baglanti{text-decoration:none;display:inline-flex;align-items:center;}
+.liste-devam-alani{text-align:center;padding:10px 0;}
+.grafik-secim-satiri{display:flex;align-items:center;gap:var(--sp-2);flex-wrap:wrap;margin:2px 0 var(--sp-1);}
+input.dayibasi-ad-alani{flex:1;min-width:110px;border:1px solid var(--border);border-radius:5px;padding:var(--sp-1) 6px;}
+.secim-etiketi{display:flex;align-items:center;gap:var(--sp-1);font-size:11px;white-space:nowrap;}
+.sade-sil-dugmesi{border:none;background:transparent;color:var(--muted);font-size:15px;}
+
+/* Geçmiş veri düzeltme penceresinin yapıları */
+.gecmis-rozet{color:var(--on-accent);border-radius:4px;padding:1px 6px;font-size:10.5px;font-weight:800;}
+.gecmis-rozet-uygulanacak{background:var(--green-700);}
+.gecmis-rozet-uygulanmis{background:var(--blue);}
+.gecmis-rozet-atlanacak{background:var(--red);}
+.gecmis-kayit-kutusu{border:1px solid var(--border);border-radius:var(--r-sm);padding:var(--sp-2) 10px;margin:6px 0;background:var(--panel);}
+.gecmis-bolum-basligi{font-size:11.5px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:var(--green-900);margin:14px 0 2px;border-bottom:2px solid var(--green-300);padding-bottom:3px;}
+.gecmis-bos-metin{font-size:12px;color:var(--muted);padding:6px 2px;}
+.gecmis-kayit-basligi{display:flex;gap:var(--sp-2);align-items:flex-start;justify-content:space-between;}
+.gecmis-kayit-adi{font-size:13px;color:var(--green-900);}
+.gecmis-kaynak-metni{font-size:10.5px;color:var(--muted);margin:2px 0 var(--sp-1);}
+.gecmis-kod-notu{color:var(--tobacco-deep);}
+.gecmis-aciklama{font-size:12px;margin-bottom:var(--sp-1);}
+.gecmis-degisim-tablosu{width:100%;border-collapse:collapse;font-size:11.5px;}
+.gecmis-alan-adi{padding:2px 6px 2px 0;color:var(--muted);white-space:nowrap;vertical-align:top;}
+.gecmis-eski-deger{padding:2px var(--sp-1);text-decoration:line-through;color:var(--red);vertical-align:top;}
+.gecmis-ok{padding:2px var(--sp-1);color:var(--muted);vertical-align:top;}
+.gecmis-yeni-deger{padding:2px 0;font-weight:700;color:var(--green-900);vertical-align:top;}
+.gecmis-sabit-not{font-size:11.5px;color:var(--muted);}
+.gecmis-durum-notu{font-size:11.5px;font-weight:700;}
+.gecmis-durum-uygulanmis{color:var(--blue);}
+.gecmis-durum-atlanan{color:var(--red);}
+.gecmis-kisa-satir{font-size:12px;padding:1px 0;}
+.gecmis-not-satiri{font-size:12px;padding:3px 0;}
+.gecmis-icerik-kaydirmali{max-height:52vh;overflow-y:auto;padding-right:var(--sp-1);}
+.gecmis-onay-dugmesi:disabled{opacity:.5;}
 </style>
 </head>
 <body>
@@ -1201,7 +1292,7 @@ body.has-fullscreen-panel{overflow:hidden;}
     <div class="panel" id="dizimPanelBox">
       <div class="panel-head">
         <h2 data-i18n="Dizim Alanı">Dizim Alanı</h2>
-        <div style="display:flex;align-items:center;gap:6px;">
+        <div class="satir-ortali-dar">
           <button class="icon-btn ghost" onclick="panelTamEkranAc('dizimPanelBox')" title="Tam Ekran" data-i18n-title="Tam Ekran">⤢</button>
           <button class="icon-btn fullscreen-close" onclick="panelTamEkranKapat('dizimPanelBox')" title="Tam Ekranı Kapat" data-i18n-title="Tam Ekranı Kapat">×</button>
         </div>
@@ -1236,7 +1327,7 @@ body.has-fullscreen-panel{overflow:hidden;}
             </div>
           </div>
           <div class="detail-grid" id="toplamIstatistikSonuc"></div>
-          <div class="list-small" id="toplamIstatistikListe" style="margin-top:8px;max-height:220px;"></div>
+          <div class="list-small ozet-liste-sinirli" id="toplamIstatistikListe"></div>
         </div>
       </div>
     </div>
@@ -1249,11 +1340,11 @@ body.has-fullscreen-panel{overflow:hidden;}
           <h1>🌿 SCV</h1>
           <div class="sub" data-i18n="Üstten görünüm kroki paneli">Üstten görünüm kroki paneli</div>
           <div class="legend">
-            <div class="lg"><span class="sw" style="background:#e5e7e0"></span><span data-i18n="Boş">Boş</span></div>
-            <div class="lg"><span class="sw" style="background:var(--green-100)"></span>%1-50</div>
-            <div class="lg"><span class="sw" style="background:var(--green-300)"></span>%51-85</div>
-            <div class="lg"><span class="sw" style="background:var(--amber)"></span>%86-99</div>
-            <div class="lg"><span class="sw" style="background:var(--red)"></span>%100+</div>
+            <div class="lg"><span class="sw doluluk-bos"></span><span data-i18n="Boş">Boş</span></div>
+            <div class="lg"><span class="sw doluluk-az"></span>%1-50</div>
+            <div class="lg"><span class="sw doluluk-orta"></span>%51-85</div>
+            <div class="lg"><span class="sw doluluk-yuksek"></span>%86-99</div>
+            <div class="lg"><span class="sw doluluk-dolu"></span>%100+</div>
           </div>
           <div class="quickstats">
             <div><b id="qsTarla">0</b><span data-i18n="Tarla">Tarla</span></div>
@@ -1280,7 +1371,7 @@ body.has-fullscreen-panel{overflow:hidden;}
           </div>
           <button class="tab-btn tab-btn-ikon" id="seraTermometreFiltreBtn" onclick="seraTermometreFiltreToggle()" title="Sadece Termometreli" data-i18n-title="Sadece Termometreli" aria-label="Sadece Termometreli">🌡️</button>
         </div>
-        <div style="display:flex;align-items:center;gap:6px;">
+        <div class="satir-ortali-dar">
           <button class="icon-btn ghost" onclick="panelTamEkranAc('seraPanelBox')" title="Tam Ekran" data-i18n-title="Tam Ekran">⤢</button>
           <button class="icon-btn fullscreen-close" onclick="panelTamEkranKapat('seraPanelBox')" title="Tam Ekranı Kapat" data-i18n-title="Tam Ekranı Kapat">×</button>
           <button class="icon-btn" onclick="openSeraEkleModalAktifBolgeIle()">+</button>
@@ -1295,7 +1386,7 @@ body.has-fullscreen-panel{overflow:hidden;}
 
   <!-- ALT: TARLALAR -->
   <div class="bottom-panel" id="tarlalarPanelBox">
-    <div class="panel-head" style="margin:-8px -10px 4px -10px;">
+    <div class="panel-head panel-baslik-sikistirilmis">
       <h2 data-i18n="Tarlalar">Tarlalar</h2>
       <div class="panel-head-left">
         <input type="search" id="tarlaAramaInput" class="search-input" placeholder="Tarla ara…" data-i18n-placeholder="Tarla ara…" oninput="renderTarlalar()">
@@ -1305,7 +1396,7 @@ body.has-fullscreen-panel{overflow:hidden;}
           <button class="tab-btn" id="tarlaBolgeTab_kalemli" onclick="tarlaBolgeSekmeGecis('kalemli')">Kalemli</button>
         </div>
       </div>
-      <div style="display:flex;align-items:center;gap:6px;">
+      <div class="satir-ortali-dar">
         <button class="icon-btn ghost" onclick="panelTamEkranAc('tarlalarPanelBox')" title="Tam Ekran" data-i18n-title="Tam Ekran">⤢</button>
         <button class="icon-btn fullscreen-close" onclick="panelTamEkranKapat('tarlalarPanelBox')" title="Tam Ekranı Kapat" data-i18n-title="Tam Ekranı Kapat">×</button>
         <button class="icon-btn" onclick="openTarlaEkleModalAktifBolgeIle()">+</button>
@@ -1317,11 +1408,11 @@ body.has-fullscreen-panel{overflow:hidden;}
 
   <!-- SAYFA: HARİTALAR -->
   <div class="page hidden" id="pageHaritalar">
-    <div class="panel" style="min-height:0;">
+    <div class="panel icerik-daralabilir">
       <div class="panel-head">
         <h2 data-i18n="Haritalar">Haritalar</h2>
       </div>
-      <div class="panel-body" style="display:flex;flex-direction:column;min-height:0;">
+      <div class="panel-body dikey-icerik-daralabilir">
         <div class="harita-toolbar">
           <button class="btn" id="haritaPinModBtn" onclick="haritaPinModuDegistir()" data-i18n="📍 Pin Ekleme Modu">📍 Pin Ekleme Modu</button>
           <button class="btn btn-primary" onclick="haritaKonumumlaPinEkle()" data-i18n="🛰️ Buradayım (GPS ile Pin Ekle)">🛰️ Buradayım (GPS ile Pin Ekle)</button>
@@ -1338,9 +1429,9 @@ body.has-fullscreen-panel{overflow:hidden;}
 
   <!-- SAYFA: DEPO -->
   <div class="page hidden" id="pageDepo">
-    <div class="panel" style="min-height:0;">
+    <div class="panel icerik-daralabilir">
       <div class="panel-head">
-        <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
+        <div class="satir-ortali-genis">
           <h2 data-i18n="Depo">Depo</h2>
           <div class="page-tabs bolge-tabs" id="depoBolgeTabs">
             <button class="tab-btn active" id="depoBolgeTab_tekeliler" onclick="depoBolgeSekmeGecis('tekeliler')">Tekeliler</button>
@@ -1350,14 +1441,14 @@ body.has-fullscreen-panel{overflow:hidden;}
         <button class="icon-btn" onclick="openKutuEkleModal()">+</button>
       </div>
       <div class="panel-body">
-        <input type="search" id="depoAramaInput" class="search-input" placeholder="Kutu no, tarih veya kalite ara…" data-i18n-placeholder="Kutu no, tarih veya kalite ara…" oninput="renderDepo()" style="margin-bottom:8px;">
+        <input type="search" id="depoAramaInput" class="search-input alt-bosluk-2" placeholder="Kutu no, tarih veya kalite ara…" data-i18n-placeholder="Kutu no, tarih veya kalite ara…" oninput="renderDepo()">
         <div class="detail-grid" id="depoOzet"></div>
-        <div class="field" style="margin-top:10px;">
+        <div class="field ust-bosluk-10">
           <label data-i18n="Kutular">Kutular</label>
-          <div class="hint-box hidden" id="depoKaliteOzet" style="margin-bottom:6px;"></div>
+          <div class="hint-box hidden alt-bosluk-6" id="depoKaliteOzet"></div>
           <div class="list-small" id="depoKutuListesi"></div>
         </div>
-        <div class="field" style="margin-top:10px;">
+        <div class="field ust-bosluk-10">
           <label data-i18n="Çıkış Geçmişi">Çıkış Geçmişi</label>
           <div class="list-small" id="depoCikisListesi"></div>
         </div>
@@ -1367,15 +1458,15 @@ body.has-fullscreen-panel{overflow:hidden;}
 
   <!-- SAYFA: SULAMA TAKİP -->
   <div class="page hidden" id="pageSulama">
-    <div class="panel" style="min-height:0;">
+    <div class="panel icerik-daralabilir">
       <div class="panel-head">
         <h2 data-i18n="Sulama Takip">Sulama Takip</h2>
         <button class="icon-btn" onclick="openSulamaEkleModal()">+</button>
       </div>
       <div class="panel-body">
-        <input type="search" id="sulamaAramaInput" class="search-input" placeholder="Tarla veya tarih ara…" data-i18n-placeholder="Tarla veya tarih ara…" oninput="renderSulama()" style="margin-bottom:8px;">
+        <input type="search" id="sulamaAramaInput" class="search-input alt-bosluk-2" placeholder="Tarla veya tarih ara…" data-i18n-placeholder="Tarla veya tarih ara…" oninput="renderSulama()">
         <div class="detail-grid" id="sulamaOzet"></div>
-        <div class="field" style="margin-top:10px;">
+        <div class="field ust-bosluk-10">
           <label data-i18n="Sulama Kayıtları">Sulama Kayıtları</label>
           <div class="list-small" id="sulamaListesi"></div>
         </div>
@@ -1388,7 +1479,7 @@ body.has-fullscreen-panel{overflow:hidden;}
     <div class="iklim-sayfa-duzen">
 
     <!-- DIŞ ORTAM (Open-Meteo canlı hava durumu) -->
-    <div class="panel hava-panel" id="havaPanelBox" style="min-height:0;flex:0 0 auto;">
+    <div class="panel hava-panel icerik-daralabilir-sabit" id="havaPanelBox">
       <div class="panel-head">
         <h2 data-i18n="Dış Ortam — Kalemli">Dış Ortam — Kalemli</h2>
         <button class="icon-btn ghost" onclick="havaVeriCek(true)" title="Yenile" data-i18n-title="Yenile">⟳</button>
@@ -1396,10 +1487,10 @@ body.has-fullscreen-panel{overflow:hidden;}
       <div class="panel-body" id="havaDetayBody"></div>
     </div>
 
-    <div class="panel" id="iklimPanelBox" style="min-height:0;">
+    <div class="panel icerik-daralabilir" id="iklimPanelBox">
       <div class="panel-head">
         <h2 data-i18n="İklim Takip">İklim Takip</h2>
-        <div style="display:flex;align-items:center;gap:6px;">
+        <div class="satir-ortali-dar">
           <button class="btn" onclick="openIklimGrafikModal()" data-i18n="📈 Grafik">📈 Grafik</button>
           <button class="icon-btn" onclick="openIklimEkleModal()">+</button>
           <button class="icon-btn ghost" onclick="panelTamEkranAc('iklimPanelBox')" title="Tam Ekran" data-i18n-title="Tam Ekran">⤢</button>
@@ -1408,7 +1499,7 @@ body.has-fullscreen-panel{overflow:hidden;}
       </div>
       <div class="panel-body">
         <div class="detail-grid" id="iklimOzet"></div>
-        <div class="field" style="margin-top:10px;">
+        <div class="field ust-bosluk-10">
           <label data-i18n="Sıcaklık/Nem Kayıtları">Sıcaklık/Nem Kayıtları</label>
           <div class="iklim-table-wrap" id="iklimListesi"></div>
         </div>
@@ -1420,16 +1511,16 @@ body.has-fullscreen-panel{overflow:hidden;}
 
   <!-- SAYFA: ÖDEMELER -->
   <div class="page hidden" id="pageOdemeler">
-    <div class="panel" style="min-height:0;">
-      <div class="panel-head" style="flex-wrap:wrap;gap:8px;">
-        <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
+    <div class="panel icerik-daralabilir">
+      <div class="panel-head satir-sarmali-aralikli">
+        <div class="satir-ortali-genis">
           <h2 data-i18n="💰 Ödemeler">💰 Ödemeler</h2>
           <div class="page-tabs" id="odemeIcSekmeTabs">
             <button class="tab-btn active" id="odemeTab_gunluk" onclick="odemeSekmeGecis('gunluk')" data-i18n="Günlük Giriş">Günlük Giriş</button>
             <button class="tab-btn" id="odemeTab_bakiye" onclick="odemeSekmeGecis('bakiye')" data-i18n="Bakiye / Özet">Bakiye / Özet</button>
           </div>
         </div>
-        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+        <div class="satir-ortali-dar-sarmali">
           <button class="btn" onclick="openDayibasiYonetModal()">⚙ <span data-i18n="Dayıbaşıları Yönet">Dayıbaşıları Yönet</span></button>
           <button class="btn" onclick="openYevmiyeAyarlariModal()">⚙ <span data-i18n="Yövmiye Ayarları">Yövmiye Ayarları</span></button>
         </div>
@@ -1475,7 +1566,7 @@ body.has-fullscreen-panel{overflow:hidden;}
           </div>
           <!-- Seçili aralık/bölge dışında kalan yevmiye kayıtları varsa buraya bilgi satırı basılır -->
           <div id="odemeBakiyeFiltreDisiIpucu"></div>
-          <div class="field" style="margin-top:12px;">
+          <div class="field ust-bosluk-3">
             <label data-i18n="Ödeme Geçmişi">Ödeme Geçmişi</label>
             <div class="list-small" id="odemeGecmisListesi"></div>
           </div>
@@ -1487,13 +1578,13 @@ body.has-fullscreen-panel{overflow:hidden;}
 
   <!-- SAYFA: GENEL ÖZET / RAPOR -->
   <div class="page hidden" id="pageRapor">
-    <div class="panel" style="min-height:0;">
+    <div class="panel icerik-daralabilir">
       <div class="panel-head">
         <h2 data-i18n="Genel Özet">Genel Özet</h2>
       </div>
       <div class="panel-body">
         <div class="detail-grid" id="raporOzet"></div>
-        <div class="field" style="margin-top:12px;">
+        <div class="field ust-bosluk-3">
           <label data-i18n="Bölgeye Göre Gerçekleşen Hasat (kg)">Bölgeye Göre Gerçekleşen Hasat (kg)</label>
           <div class="bar-chart" id="raporBolgeChart"></div>
         </div>
@@ -1540,8 +1631,8 @@ body.has-fullscreen-panel{overflow:hidden;}
     <h2 data-i18n="SCV Saha — Giriş">SCV Saha — Giriş</h2>
     <div class="field"><label data-i18n="Kullanıcı Adı">Kullanıcı Adı</label><input id="loginUser" type="text" placeholder="scv" autocapitalize="off" autocomplete="username"></div>
     <div class="field"><label data-i18n="Şifre">Şifre</label><input id="loginPass" type="password" autocomplete="current-password" onkeydown="if(event.key==='Enter')girisYap()"></div>
-    <div id="loginError" style="color:var(--red);font-size:12px;margin-bottom:6px;"></div>
-    <div class="modal-actions" style="justify-content:center;">
+    <div id="loginError" class="giris-hata-metni"></div>
+    <div class="modal-actions eylem-ortali">
       <button class="btn btn-primary" onclick="girisYap()" data-i18n="Giriş Yap">Giriş Yap</button>
     </div>
   </div>
@@ -1557,7 +1648,7 @@ const AYARLAR = {
   UNITE_PX: 40                // referans kapasitedeki sera-box genişliği (px) — kroki oranı
 };
 const STORAGE_KEY = 'scvSahaKrokiV1';
-const APP_SURUM = 'v75'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
+const APP_SURUM = 'v76'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
 
 /* =========================================================
    HATA / DONMA GÜNLÜĞÜ — "bazen donuyor" şikayetini araştırmak için.
@@ -2454,7 +2545,7 @@ function renderBekleyenKirimlar(){
         <div class="r2">${escapeHtml(k.tarih)} · ${kirimNoEtiket(k)}</div>
       </div>
       <div class="stat"><b>${fmt(tr.kalanDizi,0)}</b><span>dizi</span></div>
-      <button class="icon-btn" style="width:36px;height:36px;font-size:16px;flex-shrink:0;" onclick="openKirimDizimModal('${k.id}')" title="${i18n('Seraya Dağıt')}">›</button>
+      <button class="icon-btn kare-ikon-dugmesi" onclick="openKirimDizimModal('${k.id}')" title="${i18n('Seraya Dağıt')}">›</button>
     </div>`;
   }).join('');
 }
@@ -2863,18 +2954,18 @@ function openSeraDetay(id){
     <div class="field">
       <label>${i18n('Güncel Dönem (düzenlenebilir)')}</label>
       ${donemFormFieldsHtml(d)}
-      <button class="btn btn-primary" style="margin-top:2px;" onclick="submitDonemGuncelle('${s.id}')">${i18n('Dönem Bilgilerini Kaydet')}</button>
+      <button class="btn btn-primary ust-bosluk-minik" onclick="submitDonemGuncelle('${s.id}')">${i18n('Dönem Bilgilerini Kaydet')}</button>
     </div>
     <div class="field">
       <label>${i18n('Dizilen Tütünler (Güncel Dönem)')}</label>
-      <div class="list-small" style="max-height:260px;">${kaynakSatirlariHtml || `<div class="item">${i18n('Henüz kayıt yok')}</div>`}</div>
+      <div class="list-small liste-yukseklik-sinirli">${kaynakSatirlariHtml || `<div class="item">${i18n('Henüz kayıt yok')}</div>`}</div>
     </div>
   ` : `
     <div class="hint-box">Aktif dönem yok. Kırım eklendiğinde otomatik başlar, ya da burada elle başlatabilirsiniz.</div>
     <div class="field">
       <label>${i18n('Yeni Dönem Başlat')}</label>
       ${donemFormFieldsHtml()}
-      <button class="btn btn-primary" style="margin-top:2px;" onclick="submitDonemBaslat('${s.id}')">${i18n('Dönem Başlat')}</button>
+      <button class="btn btn-primary ust-bosluk-minik" onclick="submitDonemBaslat('${s.id}')">${i18n('Dönem Başlat')}</button>
     </div>
   `;
   openModal(`
@@ -3140,11 +3231,11 @@ function openTarlaDetay(id){
   const tarlaKirimlari = state.kirimlar.filter(k=>k.tarlaId===t.id).sort((a,b)=>b.tarih.localeCompare(a.tarih));
   const kirimListHtml = tarlaKirimlari.map(k=>{
     const tr = kirimTurev(k);
-    const bekleyenNot = tr.kalanDizi>0 ? ` <span style="color:var(--amber);">(${fmt(tr.kalanDizi,0)} dizi ${i18n('bekliyor')})</span>` : '';
+    const bekleyenNot = tr.kalanDizi>0 ? ` <span class="metin-kehribar">(${fmt(tr.kalanDizi,0)} dizi ${i18n('bekliyor')})</span>` : '';
     return `<div class="item">${escapeHtml(k.tarih)} — ${kirimNoEtiket(k)} · ${fmt(tr.diziSayisi,0)} dizi · ${fmt(tr.toplamKg,0)} kg → ${escapeHtml(seraDagilimiEtiket(k.seraDagilimi))}${bekleyenNot}
-      <span style="float:right;">
-        <button class="btn btn-muted" style="padding:1px 6px;font-size:10.5px;" onclick="openKirimDuzenleModal('${k.id}','${t.id}')">✎</button>
-        <button class="btn btn-muted" style="padding:1px 6px;font-size:10.5px;" onclick="kirimSil('${k.id}');openTarlaDetay('${t.id}')">×</button>
+      <span class="saga-yasla">
+        <button class="btn btn-muted dugme-cok-kucuk" onclick="openKirimDuzenleModal('${k.id}','${t.id}')">✎</button>
+        <button class="btn btn-muted dugme-cok-kucuk" onclick="kirimSil('${k.id}');openTarlaDetay('${t.id}')">×</button>
       </span></div>`;
   }).join('') || `<div class="item">${i18n('Henüz kırım kaydı yok')}</div>`;
   openModal(`
@@ -3167,22 +3258,22 @@ function openTarlaDetay(id){
     <div class="field">
       <label>${i18n('İlaç Geçmişi & PHI Durumu')}</label>
       <div class="list-small">${ilacHtml}</div>
-      <button class="btn btn-muted" style="margin-top:6px;" onclick="openIlacHizliEkleModal('${t.id}')">${i18n('+ İlaç Ekle')}</button>
+      <button class="btn btn-muted ust-bosluk-6" onclick="openIlacHizliEkleModal('${t.id}')">${i18n('+ İlaç Ekle')}</button>
     </div>
     <div class="field">
       <label>${i18n('Zararlı Geçmişi')}</label>
       <div class="list-small">${zararliHtml}</div>
-      <button class="btn btn-muted" style="margin-top:6px;" onclick="openZararliHizliEkleModal('${t.id}')">${i18n('+ Zararlı Ekle')}</button>
+      <button class="btn btn-muted ust-bosluk-6" onclick="openZararliHizliEkleModal('${t.id}')">${i18n('+ Zararlı Ekle')}</button>
     </div>
     <div class="field">
       <label>${i18n('Gübre Geçmişi')}</label>
       <div class="list-small">${gubreHtml}</div>
-      <button class="btn btn-muted" style="margin-top:6px;" onclick="openGubreHizliEkleModal('${t.id}')">${i18n('+ Gübre Ekle')}</button>
+      <button class="btn btn-muted ust-bosluk-6" onclick="openGubreHizliEkleModal('${t.id}')">${i18n('+ Gübre Ekle')}</button>
     </div>
     <div class="field">
       <label>${i18n('Kırımlar (Hasat Kayıtları)')}</label>
       <div class="list-small">${kirimListHtml}</div>
-      <button class="btn btn-primary" style="margin-top:6px;" onclick="openKirimModal('${t.id}')">${i18n('+ Yeni Kırım Ekle')}</button>
+      <button class="btn btn-primary ust-bosluk-6" onclick="openKirimModal('${t.id}')">${i18n('+ Yeni Kırım Ekle')}</button>
     </div>
     <div class="modal-actions">
       <button class="btn btn-muted" onclick="closeModal()">${i18n('Kapat')}</button>
@@ -3380,15 +3471,15 @@ function kirimAdim2Ac(){
       <div class="field"><label>${i18n('Dizim Tarihi')}</label><input id="k2DizimTarih" type="date" value="${todayStr()}"></div>
     </div>
     <div id="kirimSeraBolumu">${kirimSeraBolumuHtml()}</div>
-    <button class="btn btn-muted" type="button" style="width:100%;margin-top:8px;" onclick="kirimDetayAcKapa()">${i18n('+ Detaylı bilgi ekle (işçi, yevmiye, kayıp)')}</button>
+    <button class="btn btn-muted tam-genislik ust-bosluk-2" type="button" onclick="kirimDetayAcKapa()">${i18n('+ Detaylı bilgi ekle (işçi, yevmiye, kayıp)')}</button>
     <div id="kirimDetayAlan" class="hidden">
-      <div class="row3" style="margin-top:8px;">
+      <div class="row3 ust-bosluk-2">
         <div class="field"><label>${i18n('İşçi Sayısı')}</label><input id="k2Isci" type="number" min="0" step="1"></div>
         <div class="field"><label>${i18n('Yevmiye (₺)')}</label><input id="k2Yevmiye" type="number" min="0" step="1"></div>
         <div class="field"><label>${i18n('Kayıp/Çürük Dizi (opsiyonel)')}</label><input id="k2Kayip" type="number" min="0" step="1"></div>
       </div>
       <div class="row2">
-        <div class="check-row"><input type="checkbox" id="k2AltYas"><label for="k2AltYas" style="text-transform:none;font-size:12.5px;">${i18n('18 yaş altı çalışan yok')}</label></div>
+        <div class="check-row"><input type="checkbox" id="k2AltYas"><label for="k2AltYas" class="etiket-normal-kucuk">${i18n('18 yaş altı çalışan yok')}</label></div>
         <div class="field"><label>${i18n('Çalışma Saati')}</label><input id="k2CalismaSaati" type="number" min="0" step="0.5"></div>
       </div>
       <div class="field"><label>${i18n('Soldurma Süresi (gün)')}</label><input id="k2Soldurma" type="number" min="0" step="1"></div>
@@ -3419,8 +3510,8 @@ function kirimEkTarlaAlaniHtml(){
     </button>`).join('')}</div>` : `<div class="item">${i18n('Eklenecek başka tarla yok')}</div>`;
   return `
     ${chipsHtml}
-    <button class="btn btn-muted" type="button" style="width:100%;" onclick="kirimEkTarlaPanelToggle()">${i18n('+ Tarla Ekle (aynı gün ikinci tarla)')}</button>
-    <div class="${kirimEkTarlaPanelAcik?'':'hidden'}" style="margin-top:8px;">${tilesHtml}</div>`;
+    <button class="btn btn-muted tam-genislik" type="button" onclick="kirimEkTarlaPanelToggle()">${i18n('+ Tarla Ekle (aynı gün ikinci tarla)')}</button>
+    <div class="${kirimEkTarlaPanelAcik?'':'hidden'} ust-bosluk-2">${tilesHtml}</div>`;
 }
 function kirimEkTarlaAlaniGuncelle(){
   const el = document.getElementById('kirimEkTarlaAlan');
@@ -3465,7 +3556,7 @@ function kirimYarimaYuvarla(n){
 function kirimSeraTilesHtml(){
   let liste = seralarSirali();
   if(kirimSeraBolgeAktif!=='tumu') liste = liste.filter(s=>s.bolge===kirimSeraBolgeAktif);
-  if(!liste.length) return `<div class="item" style="grid-column:1/-1;">${i18n('Bu bölgede sera yok.')}</div>`;
+  if(!liste.length) return `<div class="item izgara-tam-satir">${i18n('Bu bölgede sera yok.')}</div>`;
   return liste.map(s=>{
     const sira = kirimAkisSeraSecimleri.findIndex(x=>x.seraId===s.id);
     const secim = sira>=0 ? kirimAkisSeraSecimleri[sira] : null;
@@ -3497,8 +3588,8 @@ function kirimSeraOzetHtml(){
 function kirimSeraBolumuHtml(){
   const tabBtn = (b,etiket)=>`<button class="tab-btn${kirimSeraBolgeAktif===b?' active':''}" type="button" onclick="kirimSeraBolgeSec('${b}')">${etiket}</button>`;
   return `
-    <div class="step-eyebrow" style="margin-top:12px;">${i18n('Hangi seralar? (dokun: tam → yarım → kaldır)')}</div>
-    <div class="page-tabs bolge-tabs" style="margin-bottom:8px;">
+    <div class="step-eyebrow ust-bosluk-3">${i18n('Hangi seralar? (dokun: tam → yarım → kaldır)')}</div>
+    <div class="page-tabs bolge-tabs alt-bosluk-2">
       ${tabBtn('tumu', i18n('Tümü'))}${tabBtn('tekeliler','Tekeliler')}${tabBtn('kalemli','Kalemli')}
     </div>
     <div class="tarla-grid" id="kirimSeraGrid">${kirimSeraTilesHtml()}</div>
@@ -3608,7 +3699,7 @@ function openKirimDuzenleModal(kirimId, returnTarlaId){
   const seciliTarlaIds = kirimTarlaIdListesi(k);
   const cesitler = [...new Set(state.tarlalar.map(t=>t.cesit).filter(Boolean))].sort();
   const cesitDatalistHtml = cesitler.map(c=>`<option value="${escapeHtml(c)}">`).join('');
-  const tarlaChkHtml = [...state.tarlalar].sort((a,b)=>(a.ad||'').localeCompare(b.ad||'','tr',{numeric:true})).map(t=>`<div class="check-row"><input type="checkbox" class="kdTarlaChk" value="${t.id}" id="kdTarla_${t.id}" ${seciliTarlaIds.includes(t.id)?'checked':''}><label for="kdTarla_${t.id}" style="text-transform:none;">${escapeHtml(t.ad)}</label></div>`).join('') || `<div class="item">${i18n('Henüz tarla eklenmedi')}</div>`;
+  const tarlaChkHtml = [...state.tarlalar].sort((a,b)=>(a.ad||'').localeCompare(b.ad||'','tr',{numeric:true})).map(t=>`<div class="check-row"><input type="checkbox" class="kdTarlaChk" value="${t.id}" id="kdTarla_${t.id}" ${seciliTarlaIds.includes(t.id)?'checked':''}><label for="kdTarla_${t.id}" class="etiket-normal">${escapeHtml(t.ad)}</label></div>`).join('') || `<div class="item">${i18n('Henüz tarla eklenmedi')}</div>`;
   openModal(`
     <h2>${i18n('Kırım Kaydını Düzenle')}</h2>
     <div class="row2">
@@ -3632,7 +3723,7 @@ function openKirimDuzenleModal(kirimId, returnTarlaId){
       <div class="field"><label>${i18n('Kayıp/Çürük Dizi (opsiyonel)')}</label><input id="kdKayip" type="number" min="0" step="1" value="${k.kayipDizi||0}"></div>
     </div>
     <div class="row2">
-      <div class="check-row"><input type="checkbox" id="kdAltYas" ${k.altYasYok?'checked':''}><label for="kdAltYas" style="text-transform:none;font-size:12.5px;">${i18n('18 yaş altı çalışan yok')}</label></div>
+      <div class="check-row"><input type="checkbox" id="kdAltYas" ${k.altYasYok?'checked':''}><label for="kdAltYas" class="etiket-normal-kucuk">${i18n('18 yaş altı çalışan yok')}</label></div>
       <div class="field"><label>${i18n('Çalışma Saati')}</label><input id="kdCalismaSaati" type="number" min="0" step="0.5" value="${k.calismaSaati||0}"></div>
     </div>
     <div class="field"><label>${i18n('Soldurma Süresi (gün)')}</label><input id="kdSoldurma" type="number" min="0" step="1" value="${k.soldurmaGunSayisi??''}"></div>
@@ -3769,9 +3860,9 @@ function openSeraDizimModal(seraId){
   }).join('');
   const cesitler = [...new Set(state.tarlalar.map(t=>t.cesit).filter(Boolean))].sort();
   const cesitDatalistHtml = cesitler.map(c=>`<option value="${escapeHtml(c)}">`).join('');
-  const tarlaChkHtml = [...state.tarlalar].sort((a,b)=>(a.ad||'').localeCompare(b.ad||'','tr',{numeric:true})).map(t=>`<div class="check-row"><input type="checkbox" class="dizimYeniTarlaChk" value="${t.id}" id="dizimYeniTarla_${t.id}"><label for="dizimYeniTarla_${t.id}" style="text-transform:none;">${escapeHtml(t.ad)}</label></div>`).join('') || `<div class="item">${i18n('Henüz tarla eklenmedi')}</div>`;
+  const tarlaChkHtml = [...state.tarlalar].sort((a,b)=>(a.ad||'').localeCompare(b.ad||'','tr',{numeric:true})).map(t=>`<div class="check-row"><input type="checkbox" class="dizimYeniTarlaChk" value="${t.id}" id="dizimYeniTarla_${t.id}"><label for="dizimYeniTarla_${t.id}" class="etiket-normal">${escapeHtml(t.ad)}</label></div>`).join('') || `<div class="item">${i18n('Henüz tarla eklenmedi')}</div>`;
   const tabBarHtml = bekleyen.length ? `
-    <div class="row2" style="margin-bottom:8px;">
+    <div class="row2 alt-bosluk-2">
       <button class="btn ${seraDizimSekme==='bekleyen'?'btn-primary':''}" type="button" id="dizimTabBtnBekleyen" onclick="seraDizimSekmeSec('bekleyen')">${i18n('Bekleyen Kırımdan Seç')}</button>
       <button class="btn ${seraDizimSekme==='yeni'?'btn-primary':''}" type="button" id="dizimTabBtnYeni" onclick="seraDizimSekmeSec('yeni')">${i18n('Yeni Giriş')}</button>
     </div>` : '';
@@ -3917,7 +4008,7 @@ function openVeriYonetimiModal(){
     <h2>${i18n('Veri Yönetimi')}</h2>
     <div class="field">
       <label>${i18n('Senkronizasyon / Yedek (JSON — en hızlı ve eksiksiz format)')}</label>
-      <div class="modal-actions" style="justify-content:flex-start;flex-wrap:wrap;">
+      <div class="modal-actions eylem-sola-sarmali">
         <button class="btn btn-primary" onclick="tumVerileriYedekle()">${i18n('📥 Tüm Verileri Yedekle (.json)')}</button>
         <button class="btn" onclick="yedekDosyaSec()">${i18n('📤 Yedekten Geri Yükle (.json)')}</button>
       </div>
@@ -3925,33 +4016,33 @@ function openVeriYonetimiModal(){
     </div>
     <div class="field">
       <label>${i18n('Rapor (dışa aktarım — geri yüklenemez)')}</label>
-      <div class="modal-actions" style="justify-content:flex-start;flex-wrap:wrap;">
+      <div class="modal-actions eylem-sola-sarmali">
         <button class="btn" onclick="excelDisaAktar()">${i18n('📊 Excel Raporu (.xlsx)')}</button>
         <button class="btn" onclick="csvDisaAktar()">${i18n('⭳ Kırım Kayıtları (.csv)')}</button>
       </div>
     </div>
     <div class="field">
       <label>${i18n('Tek Seferlik Güncellemeler')}</label>
-      <div class="modal-actions" style="justify-content:flex-start;flex-wrap:wrap;">
+      <div class="modal-actions eylem-sola-sarmali">
         <button class="btn" onclick="kalemliFideBilgileriniGuncelle()">🌱 Kalemli Fide Defteri Verilerini Uygula (2026-07)</button>
       </div>
       <div class="hint-box">Kalemli bölgesindeki K1-K26 tarlalarının dekar, çeşit ve Viyol/Yer Ocağı fide bilgilerini el yazısı defterden okunan güncel verilerle günceller. Sadece adı K1-K26 olan ve zaten var olan tarlaları günceller, yeni tarla eklemez.</div>
-      <div class="modal-actions" style="justify-content:flex-start;flex-wrap:wrap;margin-top:8px;">
+      <div class="modal-actions eylem-sola-sarmali ust-bosluk-2">
         <button class="btn" onclick="kalemliSeralariTopluKur()">🏠 Kalemli B/C/D/E Seralarını Toplu Kur</button>
       </div>
       <div class="hint-box">Kalemli bölgesine B1-B41, C1-C37, D1-D35, E1-E35 seralarını 400 dizi kapasiteli olarak ekler. Aynı isimde sera zaten varsa dokunmaz, sadece eksik olanları tamamlar.</div>
-      <div class="modal-actions" style="justify-content:flex-start;flex-wrap:wrap;margin-top:8px;">
+      <div class="modal-actions eylem-sola-sarmali ust-bosluk-2">
         <button class="btn" onclick="gecmisDepoKutulariniDuzelt()">📦 Depo Kutularını Düzelt (Tek Seferlik)</button>
       </div>
       <div class="hint-box">Geçmiş veri aktarımında tek kayıt olarak girilen 14 depo/paketleme satırını siler (tüm cihazlardan), yerine kağıttaki adetlere göre her kutuyu ayrı kayıt olarak (kalite + paketleme tarihiyle, Kalemli deposuna) yeniden oluşturur. Daha önce düzeltildiyse uyarı verir.</div>
-      <div class="modal-actions" style="justify-content:flex-start;flex-wrap:wrap;margin-top:8px;">
+      <div class="modal-actions eylem-sola-sarmali ust-bosluk-2">
         <button class="btn" onclick="gecmisDeltaOnizlemeAc()">🔧 Geçmiş Veri Düzeltme (Önizleme)</button>
       </div>
       <div class="hint-box">Kağıt defterin yeniden okunmasıyla ortaya çıkan aktarım hatalarını (A41→B41, satır 22'nin B3/B2/B1 yerine A1–A4 olması, deneme seraları satırının yol açtığı sütun kayması, karalanmış çeşit hücrelerinin koddan çözülmesi) düzeltir. <b>Önce önizleme açılır</b>; onaylamadan cihazda da Firestore'da da hiçbir şey değişmez. Zaten uygulanmış veya elle değiştirilmiş kayıtlara dokunmaz.</div>
     </div>
     <div class="field">
       <label>🪲 Hata / Donma Günlüğü</label>
-      <div class="modal-actions" style="justify-content:flex-start;flex-wrap:wrap;">
+      <div class="modal-actions eylem-sola-sarmali">
         <button class="btn" onclick="openHataGunluguModal()">Günlüğü Göster (${hataGunluguOku().length})</button>
       </div>
       <div class="hint-box">Uygulama donduğunda/hata verdiğinde cihazda otomatik kaydediliyor. Bir donma yaşarsan buradan açıp "Kopyala" ile bana gönderebilirsin.</div>
@@ -3978,7 +4069,7 @@ function openHataGunluguModal(){
   openModal(`
     <h2>🪲 Hata / Donma Günlüğü</h2>
     <div class="hint-box">En yeni en üstte. "Kopyala" ile tamamını panoya alıp gönderebilirsin.</div>
-    <textarea id="hataGunluguMetin" readonly style="width:100%;height:260px;font-family:monospace;font-size:11.5px;padding:8px;border:1px solid var(--border);border-radius:6px;background:#fff;color:var(--ink);">${escapeHtml(metin)}</textarea>
+    <textarea id="hataGunluguMetin" class="hata-gunlugu-alani" readonly>${escapeHtml(metin)}</textarea>
     <div class="modal-actions">
       <button class="btn btn-muted" onclick="closeModal()">${i18n('Kapat')}</button>
       <button class="btn btn-danger" onclick="hataGunluguTemizle()">Günlüğü Temizle</button>
@@ -4774,12 +4865,12 @@ function gecmisDeltaOnizlemeAc(){
   const s = gecmisDeltaIsle(kopyaCtx);
   const bayrak = gecmisDeltaBayrakOku();
 
-  const rozet = d => d==='hazir'      ? '<span style="background:var(--green-700);color:#fff;border-radius:4px;padding:1px 6px;font-size:10.5px;font-weight:800;">UYGULANACAK</span>'
-                   : d==='uygulanmis' ? '<span style="background:var(--blue);color:#fff;border-radius:4px;padding:1px 6px;font-size:10.5px;font-weight:800;">ZATEN UYGULANMIŞ</span>'
-                                      : '<span style="background:var(--red);color:#fff;border-radius:4px;padding:1px 6px;font-size:10.5px;font-weight:800;">ATLANACAK</span>';
-  const kutu = ic => '<div style="border:1px solid var(--border);border-radius:8px;padding:8px 10px;margin:6px 0;background:var(--panel);">' + ic + '</div>';
-  const baslikCizgi = t => '<div style="font-size:11.5px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:var(--green-900);margin:14px 0 2px;border-bottom:2px solid var(--green-300);padding-bottom:3px;">' + t + '</div>';
-  const bos = t => '<div style="font-size:12px;color:var(--muted);padding:6px 2px;">' + t + '</div>';
+  const rozet = d => d==='hazir'      ? '<span class="gecmis-rozet gecmis-rozet-uygulanacak">UYGULANACAK</span>'
+                   : d==='uygulanmis' ? '<span class="gecmis-rozet gecmis-rozet-uygulanmis">ZATEN UYGULANMIŞ</span>'
+                                      : '<span class="gecmis-rozet gecmis-rozet-atlanacak">ATLANACAK</span>';
+  const kutu = ic => '<div class="gecmis-kayit-kutusu">' + ic + '</div>';
+  const baslikCizgi = t => '<div class="gecmis-bolum-basligi">' + t + '</div>';
+  const bos = t => '<div class="gecmis-bos-metin">' + t + '</div>';
 
   /* (a) Eklenecek kırım kayıtları — kağıttaki tek yeni satır kullanıcı kararıyla atlandı */
   let html = baslikCizgi('a) Eklenecek Kırım Kayıtları')
@@ -4788,24 +4879,24 @@ function gecmisDeltaOnizlemeAc(){
   /* (b) Düzeltilecek kayıtlar */
   html += baslikCizgi('b) Düzeltilecek Kayıtlar (' + s.maddeler.length + ' madde)');
   s.maddeler.forEach(m=>{
-    let ic = '<div style="display:flex;gap:8px;align-items:flex-start;justify-content:space-between;">'
-      + '<b style="font-size:13px;color:var(--green-900);">' + escapeHtml(m.baslik) + '</b>' + rozet(m.durum) + '</div>'
-      + '<div style="font-size:10.5px;color:var(--muted);margin:2px 0 4px;">Kaynak: ' + escapeHtml(m.kaynak)
-      + (m.kodNotu ? ' · <b style="color:var(--tobacco-deep);">koddan çözüldü: ' + escapeHtml(m.kodNotu) + '</b>' : '') + '</div>'
-      + '<div style="font-size:12px;margin-bottom:4px;">' + escapeHtml(m.aciklama) + '</div>';
+    let ic = '<div class="gecmis-kayit-basligi">'
+      + '<b class="gecmis-kayit-adi">' + escapeHtml(m.baslik) + '</b>' + rozet(m.durum) + '</div>'
+      + '<div class="gecmis-kaynak-metni">Kaynak: ' + escapeHtml(m.kaynak)
+      + (m.kodNotu ? ' · <b class="gecmis-kod-notu">koddan çözüldü: ' + escapeHtml(m.kodNotu) + '</b>' : '') + '</div>'
+      + '<div class="gecmis-aciklama">' + escapeHtml(m.aciklama) + '</div>';
     if(m.durum==='hazir' && m.farklar.length){
-      ic += '<table style="width:100%;border-collapse:collapse;font-size:11.5px;">'
+      ic += '<table class="gecmis-degisim-tablosu">'
         + m.farklar.map(f=>'<tr>'
-            + '<td style="padding:2px 6px 2px 0;color:var(--muted);white-space:nowrap;vertical-align:top;">' + escapeHtml(GECMIS_DELTA_ALAN_ETIKET[f.alan]||f.alan) + '</td>'
-            + '<td style="padding:2px 4px;text-decoration:line-through;color:var(--red);vertical-align:top;">' + escapeHtml(gecmisDeltaDegerMetni(f.alan, f.eski)) + '</td>'
-            + '<td style="padding:2px 4px;color:var(--muted);vertical-align:top;">→</td>'
-            + '<td style="padding:2px 0;font-weight:700;color:var(--green-900);vertical-align:top;">' + escapeHtml(gecmisDeltaDegerMetni(f.alan, f.yeni)) + '</td>'
+            + '<td class="gecmis-alan-adi">' + escapeHtml(GECMIS_DELTA_ALAN_ETIKET[f.alan]||f.alan) + '</td>'
+            + '<td class="gecmis-eski-deger">' + escapeHtml(gecmisDeltaDegerMetni(f.alan, f.eski)) + '</td>'
+            + '<td class="gecmis-ok">→</td>'
+            + '<td class="gecmis-yeni-deger">' + escapeHtml(gecmisDeltaDegerMetni(f.alan, f.yeni)) + '</td>'
           + '</tr>').join('')
         + '</table>';
     } else if(m.durum==='hazir'){
-      ic += '<div style="font-size:11.5px;color:var(--muted);">Kayıt alanları değişmiyor; yalnızca sera dolumu tarafında düzeltme var.</div>';
+      ic += '<div class="gecmis-sabit-not">Kayıt alanları değişmiyor; yalnızca sera dolumu tarafında düzeltme var.</div>';
     } else {
-      ic += '<div style="font-size:11.5px;color:' + (m.durum==='uygulanmis'?'var(--blue)':'var(--red)') + ';font-weight:700;">' + escapeHtml(m.durumNot) + '</div>';
+      ic += '<div class="gecmis-durum-notu ' + (m.durum==='uygulanmis'?'gecmis-durum-uygulanmis':'gecmis-durum-atlanan') + '">' + escapeHtml(m.durumNot) + '</div>';
     }
     html += kutu(ic);
   });
@@ -4813,28 +4904,28 @@ function gecmisDeltaOnizlemeAc(){
   /* (c) Silinecek yanlış sera dolumları */
   html += baslikCizgi('c) Silinecek Yanlış Sera Dolumları (' + s.silmeler.length + ')');
   html += s.silmeler.length
-    ? kutu(s.silmeler.map(x=>'<div style="font-size:12px;padding:1px 0;">🗑️ ' + escapeHtml(x.metin) + '</div>').join(''))
+    ? kutu(s.silmeler.map(x=>'<div class="gecmis-kisa-satir">🗑️ ' + escapeHtml(x.metin) + '</div>').join(''))
     : bos('Silinecek dolum yok (ilgili madde atlandı ya da daha önce uygulanmış).');
 
   /* (d) Sera dönemleri */
-  const donemSatirlari = s.donemler.map(x=>'<div style="font-size:12px;padding:1px 0;">'
+  const donemSatirlari = s.donemler.map(x=>'<div class="gecmis-kisa-satir">'
       + (x.tip==='kapat'?'🔒 ':x.tip==='yeniDonem'?'🆕 ':x.tip==='kaydir'?'📅 ':'🏷️ ')
       + escapeHtml(x.metin) + '</div>')
-    .concat(s.eklemeler.map(x=>'<div style="font-size:12px;padding:1px 0;">➕ ' + escapeHtml(x.metin) + '</div>'));
+    .concat(s.eklemeler.map(x=>'<div class="gecmis-kisa-satir">➕ ' + escapeHtml(x.metin) + '</div>'));
   html += baslikCizgi('d) Kapatılacak / Taşınacak / Yeni Açılacak Sera Dönemleri (' + donemSatirlari.length + ')');
   html += donemSatirlari.length ? kutu(donemSatirlari.join('')) : bos('Sera dönemlerinde değişiklik yok.');
 
   /* (e) Notlar */
-  let notlar = GECMIS_DELTA_ATLANAN_SATIRLAR.map(t=>'<div style="font-size:12px;padding:3px 0;">⏭️ ' + escapeHtml(t) + '</div>').join('');
+  let notlar = GECMIS_DELTA_ATLANAN_SATIRLAR.map(t=>'<div class="gecmis-not-satiri">⏭️ ' + escapeHtml(t) + '</div>').join('');
   const kodlu = s.maddeler.filter(m=>m.kodNotu);
-  notlar += '<div style="font-size:12px;padding:3px 0;">🔢 Çeşit kodu tablosu (kullanıcı kararı, esas alınan): '
+  notlar += '<div class="gecmis-not-satiri">🔢 Çeşit kodu tablosu (kullanıcı kararı, esas alınan): '
     + Object.keys(GECMIS_DELTA_CESIT_KODU).map(n=>'(' + n + ')=' + GECMIS_DELTA_CESIT_KODU[n]).join(' · ') + '</div>';
   if(kodlu.length){
-    notlar += '<div style="font-size:12px;padding:3px 0;">🔢 Çeşidi <b>koddan çözülen</b> satırlar: '
+    notlar += '<div class="gecmis-not-satiri">🔢 Çeşidi <b>koddan çözülen</b> satırlar: '
       + kodlu.map(m=>escapeHtml(m.kaynak) + ' → ' + escapeHtml(m.kodNotu) + ' [' + (m.durum==='hazir'?'uygulanacak':m.durum==='uygulanmis'?'zaten uygulanmış':'atlanacak') + ']').join(' · ') + '</div>';
   }
-  notlar += '<div style="font-size:12px;padding:3px 0;">⚖️ Ort. dizi ağırlığı, mevcut kuralla (3,50 kg @ 29.06 → 3,70 kg @ 22.07 doğrusal) yeniden hesaplandı; sabitler değişmedi.</div>';
-  notlar += '<div style="font-size:12px;padding:3px 0;">🔐 Yalnızca var olan kırım ve sera belgeleri güncellenir; yeni koleksiyon açılmaz, kayıt id\'leri değişmez.</div>';
+  notlar += '<div class="gecmis-not-satiri">⚖️ Ort. dizi ağırlığı, mevcut kuralla (3,50 kg @ 29.06 → 3,70 kg @ 22.07 doğrusal) yeniden hesaplandı; sabitler değişmedi.</div>';
+  notlar += '<div class="gecmis-not-satiri">🔐 Yalnızca var olan kırım ve sera belgeleri güncellenir; yeni koleksiyon açılmaz, kayıt id\'leri değişmez.</div>';
   html += baslikCizgi('e) Notlar') + kutu(notlar);
 
   const ozet = '<b>' + s.hazir + '</b> madde uygulanacak · <b>' + s.uygulanmis + '</b> zaten uygulanmış · <b>' + s.atlanan + '</b> atlanacak'
@@ -4844,11 +4935,11 @@ function gecmisDeltaOnizlemeAc(){
     <h2>🔧 Geçmiş Veri Düzeltme — Önizleme</h2>
     <div class="hint-box">Bu ekran yalnızca <b>gösterir</b>. Aşağıdaki "Onayla ve Uygula" düğmesine basmadıkça cihazda da Firestore'da da hiçbir şey değişmez. Onaydan sonra değişiklikler her zamanki senkron yolundan sahadaki herkese gider.</div>
     ${bayrak ? '<div class="uyari-box">Bu düzeltme bu cihazda daha önce ' + new Date(bayrak.zaman).toLocaleString('tr-TR') + ' tarihinde çalıştırılmış (' + escapeHtml(String(bayrak.uygulanan)) + ' madde). Aşağıdaki durumlar canlı veriye göre yeniden hesaplandı; zaten uygulanmış maddeler tekrar yazılmaz.</div>' : ''}
-    <div style="max-height:52vh;overflow-y:auto;padding-right:4px;">${html}</div>
-    <div class="hint-box" style="margin-top:10px;">${ozet}</div>
+    <div class="gecmis-icerik-kaydirmali">${html}</div>
+    <div class="hint-box ust-bosluk-10">${ozet}</div>
     <div class="modal-actions">
       <button class="btn btn-muted" onclick="closeModal()">Vazgeç</button>
-      <button class="btn btn-primary" ${s.hazir?'':'disabled style="opacity:.5;"'} onclick="gecmisDeltaOnayla()">✅ Onayla ve Uygula (${s.hazir})</button>
+      <button class="btn btn-primary gecmis-onay-dugmesi" ${s.hazir?'':'disabled'} onclick="gecmisDeltaOnayla()">✅ Onayla ve Uygula (${s.hazir})</button>
     </div>
   `, true);
 }
@@ -5150,7 +5241,7 @@ function openTarlaGitModal(pinId){
   openModal(`
     <h2>${escapeHtml(t?t.ad:i18n('Tarla'))}</h2>
     <div class="field"><label>${i18n('Konum')}</label><div>${pin.lat.toFixed(6)}, ${pin.lng.toFixed(6)}</div></div>
-    <div class="modal-actions" style="flex-wrap:wrap;">
+    <div class="modal-actions satir-sarmali">
       <button class="btn btn-muted" onclick="closeModal()">${i18n('Vazgeç')}</button>
       <button class="btn" onclick="openTarlaDetay('${pin.tarlaId}')">${i18n('📋 Tarla Detayı')}</button>
       <button class="btn btn-primary" onclick="haritaYolTarifiAc(${pin.lat},${pin.lng})">${i18n('🧭 Yol Tarifi')}</button>
@@ -5161,10 +5252,10 @@ function haritaYolTarifiAc(lat,lng){
   openModal(`
     <h2>${i18n('Yol Tarifi')}</h2>
     <div class="hint-box">Yol tarifini başlatmak için haritayı seçin.</div>
-    <div class="modal-actions" style="flex-wrap:wrap;">
+    <div class="modal-actions satir-sarmali">
       <button class="btn btn-muted" onclick="closeModal()">${i18n('Vazgeç')}</button>
-      <a class="btn" style="text-decoration:none;color:inherit;display:inline-flex;align-items:center;" href="https://maps.apple.com/?daddr=${lat},${lng}&dirflg=d" target="_blank" rel="noopener" onclick="closeModal()">🍎 Apple Maps</a>
-      <a class="btn btn-primary" style="text-decoration:none;display:inline-flex;align-items:center;" href="https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}" target="_blank" rel="noopener" onclick="closeModal()">🗺️ Google Maps</a>
+      <a class="btn harita-baglanti metin-rengi-miras" href="https://maps.apple.com/?daddr=${lat},${lng}&dirflg=d" target="_blank" rel="noopener" onclick="closeModal()">🍎 Apple Maps</a>
+      <a class="btn btn-primary harita-baglanti" href="https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}" target="_blank" rel="noopener" onclick="closeModal()">🗺️ Google Maps</a>
     </div>
   `);
 }
@@ -5175,7 +5266,7 @@ function openPinAksiyonModal(pinId){
   openModal(`
     <h2>${escapeHtml(t?t.ad:'Pin')}</h2>
     <div class="field"><label>${i18n('Konum')}</label><div>${pin.lat.toFixed(6)}, ${pin.lng.toFixed(6)}</div></div>
-    <div class="modal-actions" style="flex-wrap:wrap;">
+    <div class="modal-actions satir-sarmali">
       <button class="btn btn-muted" onclick="closeModal()">${i18n('Vazgeç')}</button>
       <button class="btn btn-danger" onclick="haritaPinSilOnay('${pinId}')">${i18n('Pini Sil')}</button>
       <button class="btn btn-primary" onclick="haritaPinGpsIleGuncelle('${pinId}')">${i18n('📍 Buradaki GPS Konumumu Kullan')}</button>
@@ -5718,7 +5809,7 @@ function renderIklim(){
     <div>${i18n('Kayıt Sayısı')}<b>${liste.length}</b></div>
     <div>${i18n('Ort. Sıcaklık')}<b>${ortSicaklik==null?'-':fmt(ortSicaklik,1)+'°C'}</b></div>
     <div>${i18n('Ort. Nem')}<b>${ortNem==null?'-':fmt(ortNem,0)+'%'}</b></div>
-    <div>${i18n('Son Ölçüm')}<b>${son?fmt(son.sicaklik,1)+'°C / %'+fmt(son.nem,0):'-'}</b>${son?`<span style="display:block;font-size:10.5px;color:var(--muted);font-weight:400;">${escapeHtml(sonSera?sonSera.ad:i18n('(silinmiş sera)'))}</span>`:''}</div>
+    <div>${i18n('Son Ölçüm')}<b>${son?fmt(son.sicaklik,1)+'°C / %'+fmt(son.nem,0):'-'}</b>${son?`<span class="olcum-alt-metni">${escapeHtml(sonSera?sonSera.ad:i18n('(silinmiş sera)'))}</span>`:''}</div>
   `;
   const gosterilen = iklimTumunuGoster ? liste : liste.slice(0, IKLIM_TABLO_LIMIT);
   listeEl.innerHTML = `
@@ -5737,7 +5828,7 @@ function renderIklim(){
         ${gosterilen.length ? gosterilen.map(k=>iklimTablosuSatirHtml(k)).join('') : `<tr><td colspan="6" class="iklim-table-empty">${i18n('Henüz sıcaklık/nem kaydı yok')}</td></tr>`}
       </tbody>
     </table>
-    ${gosterilen.length < liste.length ? `<div style="text-align:center;padding:10px 0;"><button class="btn btn-muted" style="padding:7px 14px;font-size:12.5px;" onclick="iklimTumunuGosterAc()">${i18n('Tümünü göster')} (${liste.length} ${i18n('kayıt')})</button></div>` : ''}
+    ${gosterilen.length < liste.length ? `<div class="liste-devam-alani"><button class="btn btn-muted dugme-kucuk" onclick="iklimTumunuGosterAc()">${i18n('Tümünü göster')} (${liste.length} ${i18n('kayıt')})</button></div>` : ''}
   `;
 }
 function iklimKisaTarihSaat(tarih, saat){
@@ -5881,7 +5972,7 @@ function iklimCizgiGrafikSvg(values, labels, color, birim, gradId, disValues){
   const noktaHedefiEkle = (i, deger, renk, disMi)=>{
     const zaman = labels[i] || '';
     const metin = (disMi ? i18n('Dış') + ' ' : '') + fmt(deger,1) + birim + (zaman ? ' · ' + zaman : '');
-    dokunmaHedefleri.push(`<circle cx="${x(i).toFixed(1)}" cy="${y(deger).toFixed(1)}" r="${hedefR.toFixed(1)}" fill="transparent" style="cursor:pointer" data-g="${gradId}" data-x="${x(i).toFixed(1)}" data-y="${y(deger).toFixed(1)}" data-renk="${renk}" data-et="${escapeHtml(metin)}" onclick="event.stopPropagation();iklimGrafikEtiketAcKapa(this)"><title>${escapeHtml(metin)}</title></circle>`);
+    dokunmaHedefleri.push(`<circle class="tiklanabilir" cx="${x(i).toFixed(1)}" cy="${y(deger).toFixed(1)}" r="${hedefR.toFixed(1)}" fill="transparent" data-g="${gradId}" data-x="${x(i).toFixed(1)}" data-y="${y(deger).toFixed(1)}" data-renk="${renk}" data-et="${escapeHtml(metin)}" onclick="event.stopPropagation();iklimGrafikEtiketAcKapa(this)"><title>${escapeHtml(metin)}</title></circle>`);
   };
   if(disVar) disValues.forEach((v,i)=>{ if(v!=null) noktaHedefiEkle(i, v, 'var(--muted)', true); });
   values.forEach((v,i)=> noktaHedefiEkle(i, v, color, false)); // sera noktaları üstte: çakışmada onlar seçilsin
@@ -5976,11 +6067,11 @@ function openIklimGrafikModal(){
         </select>
       </div>
     </div>
-    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:2px 0 4px;">
-      <button class="btn btn-muted" id="btnHavaGrafik" onclick="havaGrafikAcKapa()" style="padding:7px 12px;font-size:12.5px;">${i18n('🌍 Dış Ortam')}</button>
+    <div class="grafik-secim-satiri">
+      <button class="btn btn-muted dugme-dar" id="btnHavaGrafik" onclick="havaGrafikAcKapa()">${i18n('🌍 Dış Ortam')}</button>
       <span class="hava-not" id="havaGrafikNot"></span>
     </div>
-    <div class="hava-not" style="margin:0 0 4px;">${i18n('Değeri görmek için noktaya dokunun')}</div>
+    <div class="hava-not alt-bosluk-minik">${i18n('Değeri görmek için noktaya dokunun')}</div>
     <div class="iklim-grafik-grid">
       <div>
         <div class="iklim-chart-title">${i18n('Sıcaklık (°C)')}</div>
@@ -6690,12 +6781,12 @@ function openDayibasiYonetModal(){
   openModal(`
     <h2>${i18n('Dayıbaşıları Yönet')}</h2>
     <div class="hint-box">${i18n('Her dayıbaşı yalnızca atandığı bölgenin listelerinde görünür. "Bölgesiz" kalanlar (bölge alanı eklenmeden önceki eski kayıtlar) her iki bölgede de görünmeye devam eder.')}</div>
-    <div class="list-small" id="dayibasiYonetListe" style="max-height:260px;"></div>
-    <div class="field" style="margin-top:10px;">
+    <div class="list-small liste-yukseklik-sinirli" id="dayibasiYonetListe"></div>
+    <div class="field ust-bosluk-10">
       <label>${i18n('Dayıbaşı Ekle')}</label>
-      <div style="display:flex;gap:8px;flex-wrap:wrap;">
-        <input id="fDayibasiYeniAd" type="text" style="flex:1;min-width:120px;" onkeydown="if(event.key==='Enter')submitDayibasiEkle()">
-        <select id="fDayibasiYeniBolge" style="flex:0 0 auto;">${dayibasiBolgeSecenekleri(odemeBolgeAktif)}</select>
+      <div class="satir-aralikli-sarmali">
+        <input id="fDayibasiYeniAd" class="alan-esnek" type="text" onkeydown="if(event.key==='Enter')submitDayibasiEkle()">
+        <select id="fDayibasiYeniBolge" class="esnemez">${dayibasiBolgeSecenekleri(odemeBolgeAktif)}</select>
         <button class="btn btn-primary" onclick="submitDayibasiEkle()">${i18n('Ekle')}</button>
       </div>
     </div>
@@ -6711,12 +6802,12 @@ function renderDayibasiYonetListe(){
   if(el.contains(document.activeElement)) return;
   const liste = [...state.dayibasilar].sort((a,b)=>(a.ad||'').localeCompare(b.ad||'','tr'));
   el.innerHTML = liste.map(d=>`
-    <div class="item" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
-      <input type="text" value="${escapeHtml(d.ad)}" style="flex:1;min-width:110px;border:1px solid var(--border);border-radius:5px;padding:4px 6px;" onchange="dayibasiAdGuncelle('${d.id}',this.value)">
+    <div class="item satir-ortali-aralikli">
+      <input type="text" class="dayibasi-ad-alani" value="${escapeHtml(d.ad)}" onchange="dayibasiAdGuncelle('${d.id}',this.value)">
       <select style="flex:0 0 auto;border:1px solid var(--border);border-radius:5px;padding:4px 6px;font-size:11.5px;${dayibasiBolgesiVar(d)?'':'border-color:var(--amber);color:var(--amber);'}" onchange="dayibasiBolgeGuncelle('${d.id}',this.value)">
         ${dayibasiBolgeSecenekleri(d.bolge)}
       </select>
-      <label style="display:flex;align-items:center;gap:4px;font-size:11px;white-space:nowrap;">
+      <label class="secim-etiketi">
         <input type="checkbox" ${d.aktif!==false?'checked':''} onchange="dayibasiAktifDegistir('${d.id}',this.checked)">${i18n('Aktif')}
       </label>
       ${dayibasiOzelOranRozet(d)}
@@ -6803,7 +6894,7 @@ function ozelOranMatrisHtml(){
     const bolgeEtiket = dayibasiBolgesiVar(d)
       ? `<span class="ozel-oran-bolge">${odemeBolgeAdi(d.bolge)}</span>`
       : `<span class="ozel-oran-bolge">${i18n('bölgesiz')}</span>`;
-    const pasif = d.aktif===false ? ` <span style="color:var(--muted);font-size:10px;">(${i18n('Pasif')})</span>` : '';
+    const pasif = d.aktif===false ? ` <span class="metin-pasif">(${i18n('Pasif')})</span>` : '';
     return `<tr><td>${escapeHtml(d.ad)}${pasif}<br>${bolgeEtiket}</td>${hucreler}</tr>`;
   }).join('');
   return `<div class="ozel-oran-wrap">
@@ -6915,7 +7006,7 @@ function renderOdemeBakiye(){
       const odenen = odemeOdenenToplam(d.id, baslangic, bitis);
       const kalan = odemeKalanGenel(d.id);
       return `<tr class="odeme-bakiye-row" onclick="openOdemeGirModal('${d.id}')">
-        <td>${escapeHtml(d.ad)}${bolge?dayibasiBolgesizRozet(d):''}${dayibasiOzelOranRozet(d)}${d.aktif===false?' <span style="color:var(--muted);font-size:10px;">('+i18n('Pasif')+')</span>':''}</td>
+        <td>${escapeHtml(d.ad)}${bolge?dayibasiBolgesizRozet(d):''}${dayibasiOzelOranRozet(d)}${d.aktif===false?' <span class="metin-pasif">('+i18n('Pasif')+')</span>':''}</td>
         <td class="num">${fmt(hakedis,0)}</td>
         <td class="num">${fmt(odenen,0)}</td>
         <td class="num ${kalan>0?'odeme-kalan-uyari':'odeme-kalan-ok'}"><b>${fmt(kalan,0)}</b></td>
@@ -6965,9 +7056,9 @@ function renderOdemeGecmisListesi(){
   const liste = [...state.odemeKayitlari].sort((a,b)=>b.tarih.localeCompare(a.tarih));
   el.innerHTML = liste.map(o=>{
     const d = state.dayibasilar.find(x=>x.id===o.dayibasiId);
-    return `<div class="item" style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
+    return `<div class="item satir-iki-yanli">
       <span>${escapeHtml(o.tarih)} · ${escapeHtml(d?d.ad:i18n('(silinmiş)'))} · <b>${fmt(o.tutar,0)}₺</b>${o.not?' · '+escapeHtml(o.not):''}</span>
-      <button class="del" title="${i18n('Sil')}" onclick="odemeSil('${o.id}')" style="border:none;background:transparent;color:var(--muted);font-size:15px;">×</button>
+      <button class="del sade-sil-dugmesi" title="${i18n('Sil')}" onclick="odemeSil('${o.id}')">×</button>
     </div>`;
   }).join('') || `<div class="item">${i18n('Henüz ödeme kaydı yok')}</div>`;
 }
