@@ -500,15 +500,29 @@ input[type=number],.num,td,th,.badge b,.quickstats b{font-variant-numeric:tabula
 .mini-kirim .stat span{font-size:10px;color:var(--muted);}
 
 /* ---------- ORTA ---------- */
-.orta-body{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;text-align:center;gap:10px;}
-.orta-body h1{font-size:26px;color:var(--green-900);}
-.orta-body .sub{color:var(--muted);font-size:12px;}
-.legend{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-top:6px;}
+.orta-body{
+  display:flex;flex-direction:column;align-items:center;
+  height:100%;text-align:center;gap:var(--sp-2);
+  /* Düz "center" taşma anında içeriği İKİ uçtan birden kırpar ve kaydırsan bile
+     üste erişemezsin. "safe center" taşınca baştan hizalamaya döner; desteğin
+     olmadığı tarayıcılarda önceki satır geçerli kalır. */
+  justify-content:center;
+  justify-content:safe center;
+}
+/* Hiçbir parça ezilmesin: esnek sıkışma, yer daraldığında uyarı kutusunu 0
+   yüksekliğe indiriyordu — zararlı/PHI uyarıları hiç görünmüyordu. Artık içerik
+   sığmazsa panel gövdesi kaydırılıyor (overflow-y:auto zaten orada). */
+.orta-body>*{flex-shrink:0;}
+/* Panel adı zaten başlıkta yazıyor; buradaki marka tekrarı yer kaplamamalı. */
+.orta-body h1{font-size:19px;color:var(--green-900);line-height:1.2;}
+.orta-body .sub{color:var(--muted);font-size:11.5px;line-height:1.3;}
+.legend{display:flex;gap:var(--sp-2);flex-wrap:wrap;justify-content:center;margin-top:2px;}
 .legend .lg{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--muted);}
 .legend .sw{width:12px;height:12px;border-radius:3px;border:1px solid var(--border);}
-.quickstats{display:flex;gap:16px;margin-top:8px;}
+/* Panelin asıl işi bu sayılar — daralma olduğunda en son bunlar kısılsın. */
+.quickstats{display:flex;gap:var(--sp-4);margin-top:2px;flex-wrap:wrap;justify-content:center;}
 .quickstats div{font-size:11px;color:var(--muted);text-align:center;}
-.quickstats b{display:block;font-size:20px;color:var(--green-900);}
+.quickstats b{display:block;font-size:19px;color:var(--green-900);line-height:1.15;}
 
 /* ---------- SAG: SERALAR ---------- */
 .sera-plot{display:flex;flex-wrap:wrap;gap:10px;align-content:flex-start;}
@@ -839,8 +853,12 @@ body.has-fullscreen-panel{overflow:hidden;}
 .bar-row .bar-track{flex:1;background:var(--green-100);border-radius:5px;height:16px;position:relative;}
 .bar-row .bar-fill{height:100%;border-radius:5px;min-width:3px;}
 .bar-row .bar-value{width:64px;flex-shrink:0;font-size:11.5px;font-weight:700;color:var(--green-900);}
-.uyarilar-baslik{font-size:11px;font-weight:700;color:var(--green-900);margin-top:10px;}
+.uyarilar-baslik{font-size:11px;font-weight:700;color:var(--green-900);margin-top:var(--sp-2);}
+/* Uyarı yokken kutu boş kalıyor ama başlığı yer kaplamaya devam ediyordu ve dar
+   panelde asıl içeriği taşırıyordu. Uyarı yoksa başlık da görünmez. */
+.orta-body:has(.uyarilar-box:empty) .uyarilar-baslik{display:none;}
 .uyarilar-box{max-height:110px;overflow-y:auto;margin-top:4px;}
+.uyarilar-box:empty{display:none;}
 .uyarilar-box .item{font-size:11px;padding:4px 7px;border-radius:5px;margin-bottom:4px;background:var(--green-100);}
 .uyarilar-box .item.danger{background:var(--red-soft);color:var(--red);}
 .modal.modal-wide{max-width:880px;}
@@ -1539,7 +1557,7 @@ const AYARLAR = {
   UNITE_PX: 40                // referans kapasitedeki sera-box genişliği (px) — kroki oranı
 };
 const STORAGE_KEY = 'scvSahaKrokiV1';
-const APP_SURUM = 'v74'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
+const APP_SURUM = 'v75'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
 
 /* =========================================================
    HATA / DONMA GÜNLÜĞÜ — "bazen donuyor" şikayetini araştırmak için.
@@ -2373,9 +2391,12 @@ function renderSahaUyarilar(){
     }
   });
   uyarilar.sort((a,b)=> (a.tip===b.tip ? a.sira-b.sira : (a.tip==='phi'?-1:1)));
+  // Uyarı yoksa kutu TAMAMEN boş bırakılır: "Aktif uyarı yok" satırı dar panelde
+  // asıl içeriği taşırıyordu ve zaten esnek sıkışma yüzünden 0 yüksekliğe ezilip
+  // hiç okunamıyordu. Kutu boşken CSS başlığıyla birlikte gizliyor.
   el.innerHTML = uyarilar.length
     ? uyarilar.map(u=>`<div class="item${u.tip==='phi'?' danger':''}">${u.html}</div>`).join('')
-    : `<div class="item">${i18n('Aktif uyarı yok')}</div>`;
+    : '';
 }
 
 function renderBadges(){
