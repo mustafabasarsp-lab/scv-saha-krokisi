@@ -1,9 +1,14 @@
-const CACHE_NAME = 'scv-saha-v1-cache-68';
+const CACHE_NAME = 'scv-saha-v1-cache-69';
 const CORE_ASSETS = [
   './scv-saha-v1.html',
   './manifest.json',
   './icon-192.png',
   './icon-512.png',
+  // Arayüz yazı tipi (Archivo, değişken ağırlık). HTML her sürümde baştan indirilirken
+  // (network-first) font ayrı dosya olduğu için stale-while-revalidate yoluna girer ve
+  // önbellekten anında gelir. Türkçe için iki alt küme de gerekli: ğ/ş/İ ve ₺ latin-ext'te.
+  './archivo-latin.woff2',
+  './archivo-latin-ext.woff2',
   'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css',
   'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js',
   'https://unpkg.com/xlsx@0.18.5/dist/xlsx.full.min.js',
