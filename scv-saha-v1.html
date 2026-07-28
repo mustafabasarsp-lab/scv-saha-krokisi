@@ -4,8 +4,37 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
 <title>SCV Saha</title>
+<!-- Betikten ÖNCE durmalı: temaUygula bu etiketi güncelliyor. -->
+<meta name="theme-color" content="#0E6B41">
+<script>
+/* Tema tercihi, sayfa çizilmeden ÖNCE uygulanır: aşağıda yer alsaydı ekran önce
+   açık temayla boyanır, sonra koyuya atlardı (karanlıkta göz alıcı bir sıçrama).
+   'auto' = cihazın sistem ayarını izle; kullanıcı elle seçerse tercih saklanır. */
+function temaTercihi(){
+  try{ return localStorage.getItem('scvTema') || 'auto'; }catch(e){ return 'auto'; }
+}
+function temaUygula(){
+  var tercih = temaTercihi();
+  var koyuMu = tercih === 'auto'
+    ? (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches)
+    : tercih === 'dark';
+  document.documentElement.setAttribute('data-theme', koyuMu ? 'dark' : 'light');
+  // Telefonda tarayıcı/durum çubuğu da temayla birlikte değişsin, yoksa koyu
+  // ekranın tepesinde parlak yeşil bir şerit kalıyor.
+  var renkMeta = document.querySelector('meta[name="theme-color"]');
+  if(renkMeta) renkMeta.setAttribute('content', koyuMu ? '#171F1A' : '#0E6B41');
+  return koyuMu;
+}
+temaUygula();
+/* Tercih 'auto' iken cihazın teması gün içinde değişirse (ör. gün batımı) izle. */
+if(window.matchMedia){
+  var koyuSorgu = window.matchMedia('(prefers-color-scheme: dark)');
+  var sistemDegisti = function(){ if(temaTercihi()==='auto'){ temaUygula(); if(window.temaButonuGuncelle) window.temaButonuGuncelle(); } };
+  if(koyuSorgu.addEventListener) koyuSorgu.addEventListener('change', sistemDegisti);
+  else if(koyuSorgu.addListener) koyuSorgu.addListener(sistemDegisti);
+}
+</script>
 <link rel="manifest" href="manifest.json">
-<meta name="theme-color" content="#167a4d">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -120,10 +149,13 @@
   --overlay:rgba(12,24,17,.45);
 }
 
-/* Koyu tema: cihazın sistem ayarını takip eder. Yeşiller açılır (koyu zeminde
-   okunması için), accent üzerine basılan metin koyuya döner. */
-@media (prefers-color-scheme:dark){
-  :root{
+/* Koyu tema. Yeşiller açılır (koyu zeminde okunması için), accent üzerine basılan
+   metin koyuya döner.
+   Medya sorgusu yerine kök öğedeki data-theme'e bağlı: böylece koyu palet tek bir
+   yerde tanımlı kalıyor ve hem sistem tercihi hem de uygulama içindeki anahtar aynı
+   bloğu kullanıyor. Tercihi belirleyip data-theme'i basan betik <head> içinde, sayfa
+   çizilmeden önce çalışır (bkz. temaUygula). */
+:root[data-theme="dark"]{
     --bg:#0F1512;
     --panel:#171F1A;
     --panel-2:#1D2620;
@@ -165,7 +197,6 @@
     --shadow-md:0 2px 4px rgba(0,0,0,.4),0 8px 20px rgba(0,0,0,.28);
     --shadow-lg:0 8px 32px rgba(0,0,0,.5);
     --overlay:rgba(0,0,0,.62);
-  }
 }
 
 *{box-sizing:border-box;}
@@ -1074,6 +1105,7 @@ body.has-fullscreen-panel{overflow:hidden;}
         <button class="hava-serit" id="havaSerit" onclick="sayfaGecis('pageIklim')" title="İklim Takip" data-i18n-title="İklim Takip">—</button>
         <div class="sync-status" id="syncStatus"><span class="dot"></span><span id="syncStatusText">Bağlanıyor…</span></div>
         <div class="header-actions">
+          <button class="btn-csv" id="temaBtn" onclick="temaDegistir()" title="Tema" data-i18n-title="Tema">🌗 <span id="temaBtnText">Otomatik</span></button>
           <button class="btn-csv" onclick="dilDegistir()">🌐 <span id="dilBtnText">EN</span></button>
           <button class="btn-csv" id="installBtn" style="display:none;" onclick="pwaYukle()" data-i18n="⬇️ Uygulamayı Yükle">⬇️ Uygulamayı Yükle</button>
           <button class="btn-csv" id="bildirimBtn" onclick="bildirimIzniIste()">🔔 <span id="bildirimBtnText">Bildirimleri Aç</span></button>
@@ -1466,7 +1498,7 @@ const AYARLAR = {
   UNITE_PX: 40                // referans kapasitedeki sera-box genişliği (px) — kroki oranı
 };
 const STORAGE_KEY = 'scvSahaKrokiV1';
-const APP_SURUM = 'v70'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
+const APP_SURUM = 'v71'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
 
 /* =========================================================
    HATA / DONMA GÜNLÜĞÜ — "bazen donuyor" şikayetini araştırmak için.
@@ -1688,6 +1720,7 @@ const I18N_EN = {
   'Seçili aralığın/filtrenin dışında':'Outside the selected range/filter:',
   'yevmiye kaydı var':'daily wage record(s)',
   'tanesi gelecek tarihli':'of them future-dated',
+  'Tema':'Theme', 'Otomatik':'Auto', 'Açık':'Light', 'Koyu':'Dark',
 };
 function i18n(tr){ return currentLang==='en' ? (I18N_EN[tr] || tr) : tr; }
 function dilDegistir(){
@@ -1697,10 +1730,34 @@ function dilDegistir(){
   renderAll();
   bildirimDurumGuncelle();
 }
+/* ---- Tema anahtarı ----
+   Üç konumlu: Otomatik → Açık → Koyu → Otomatik. Otomatik, cihazın sistem
+   ayarını izler (varsayılan). Paletin kendisi <head>'deki temaUygula ile kök
+   öğeye basılan data-theme üzerinden çalışır. */
+function temaDegistir(){
+  const sira = ['auto','light','dark'];
+  const sonraki = sira[(sira.indexOf(temaTercihi()) + 1) % sira.length];
+  try{ localStorage.setItem('scvTema', sonraki); }catch(e){ /* depolama kapalı: bu oturumluk kalır */ }
+  temaUygula();
+  temaButonuGuncelle();
+}
+function temaButonuGuncelle(){
+  const el = document.getElementById('temaBtnText');
+  if(!el) return;
+  const tercih = temaTercihi();
+  const koyuMu = document.documentElement.getAttribute('data-theme') === 'dark';
+  el.textContent = tercih==='auto' ? i18n('Otomatik') : (tercih==='dark' ? i18n('Koyu') : i18n('Açık'));
+  const btn = document.getElementById('temaBtn');
+  // Otomatikte simge o an hangi tema geçerliyse onu gösterir.
+  if(btn) btn.firstChild.textContent = (tercih==='auto' ? '🌗' : (koyuMu ? '🌙' : '☀️')) + ' ';
+}
+window.temaButonuGuncelle = temaButonuGuncelle;
+
 function uygulaStatikDil(){
   document.documentElement.lang = currentLang;
   const dilBtn = document.getElementById('dilBtnText');
   if(dilBtn) dilBtn.textContent = currentLang==='tr' ? 'EN' : 'TR';
+  temaButonuGuncelle();
   document.querySelectorAll('[data-i18n]').forEach(el=>{
     el.textContent = i18n(el.getAttribute('data-i18n'));
   });
