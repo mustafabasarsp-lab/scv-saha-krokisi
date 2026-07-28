@@ -1197,7 +1197,7 @@ const AYARLAR = {
   UNITE_PX: 40                // referans kapasitedeki sera-box genişliği (px) — kroki oranı
 };
 const STORAGE_KEY = 'scvSahaKrokiV1';
-const APP_SURUM = 'v64'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
+const APP_SURUM = 'v65'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
 
 /* =========================================================
    HATA / DONMA GÜNLÜĞÜ — "bazen donuyor" şikayetini araştırmak için.
@@ -1304,7 +1304,7 @@ const I18N_EN = {
   '📈 Grafik':'📈 Chart', 'Saat':'Time', 'Sıcaklık (°C)':'Temperature (°C)', 'Nem (%)':'Humidity (%)',
   'Sıcaklık/Nem Kaydı Ekle':'Add Temperature/Humidity Record', 'Sıcaklık/Nem Kaydını Düzenle':'Edit Temperature/Humidity Record',
   'Ort. Sıcaklık':'Avg. Temperature', 'Ort. Nem':'Avg. Humidity', 'Henüz sıcaklık/nem kaydı yok':'No temperature/humidity records yet',
-  'Son Ölçüm':'Latest Reading',
+  'Son Ölçüm':'Latest Reading', 'Tümünü göster':'Show all',
   '(silinmiş sera)':'(deleted greenhouse)', 'Sıcaklık / Nem Grafiği':'Temperature / Humidity Chart', 'Son Kaç Kayıt':'How Many Recent Records',
   /* Hava durumu (Open-Meteo — dış ortam) */
   'Dış Ortam — Kalemli':'Outdoor — Kalemli', 'Dış Ortam':'Outdoor', '🌍 Dış Ortam':'🌍 Outdoor', 'Dış':'Out', 'Sera içi':'Indoor',
@@ -1503,9 +1503,31 @@ let state = bosState();
   stateNormalizeEt();
 })();
 
-function saveState(){
+/* localStorage yazımı tüm state'i JSON'a çevirir; her renderAll sonunda senkron
+   yapılınca büyük veride ana iş parçacığını kilitliyor. Yazım geciktirilir, ama
+   Firestore'a gönderim ASLA geciktirilmez. Sayfa gizlenirken/kapanırken bekleyen
+   yazım hemen boşaltılır — yoksa son değişiklikler cihazda kaybolur. */
+const LOCALSTORAGE_YAZ_GECIKME_MS = 800;
+let localStorageYazTimer = null;
+function localStorageYaz(){
   try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
   catch(e){ /* sessizce yut, veri bu oturum için bellekte kalmaya devam eder */ }
+}
+function scheduleLocalStorageYaz(){
+  if(localStorageYazTimer) return;
+  localStorageYazTimer = setTimeout(()=>{ localStorageYazTimer = null; localStorageYaz(); }, LOCALSTORAGE_YAZ_GECIKME_MS);
+}
+function localStorageYazFlush(){
+  if(!localStorageYazTimer) return;
+  clearTimeout(localStorageYazTimer);
+  localStorageYazTimer = null;
+  localStorageYaz();
+}
+window.addEventListener('pagehide', localStorageYazFlush);
+document.addEventListener('visibilitychange', ()=>{ if(document.visibilityState==='hidden') localStorageYazFlush(); });
+
+function saveState(){
+  scheduleLocalStorageYaz();
   pushStateToFirestore();
 }
 
@@ -1614,6 +1636,16 @@ function setSyncStatus(durum){
   txt.textContent = durum==='saving' ? i18n('Kaydediliyor…') : (durum ? i18n('Kaydedildi · Herkese senkron') : i18n('Çevrimdışı · Cihazda bekliyor'));
 }
 
+/* 12 koleksiyonun dinleyicisi (özellikle ilk açılışta) art arda ateşleniyor;
+   her biri ayrı renderAll tetiklerse tam render 12 kez yapılıyor. Kısa bir
+   pencerede gelen tüm anlık görüntü değişiklikleri tek render'da birleşir.
+   Sadece onSnapshot içindir; kullanıcı etkileşimleri renderAll'ı senkron çağırmaya devam eder. */
+let renderAllTimer = null;
+function scheduleRenderAll(){
+  if(renderAllTimer) return;
+  renderAllTimer = setTimeout(()=>{ renderAllTimer = null; renderAll(); }, 50);
+}
+
 function baglamFirestoreDinleyici(){
   if(firestoreUnsubscribes.length) return;
   SYNC_KOLEKSIYONLARI.forEach(collName=>{
@@ -1641,7 +1673,7 @@ function baglamFirestoreDinleyici(){
       setSyncStatus(true);
       if(degisti){
         stateNormalizeEt();
-        renderAll();
+        scheduleRenderAll();
       }
     }, ()=>{ setSyncStatus(false); });
     firestoreUnsubscribes.push(unsub);
@@ -1753,7 +1785,17 @@ function sonIslemEtiket(kayit){
 function escapeHtml(s){
   return String(s==null?'':s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
-function fmt(n, d){ if(n==null||isNaN(n)) return '-'; return Number(n).toLocaleString('tr-TR',{maximumFractionDigits:d==null?1:d, minimumFractionDigits:0}); }
+/* Basamak sayısına göre önbelleklenmiş formatlayıcılar: toLocaleString her
+   çağrıda yeni bir Intl.NumberFormat kurar, fmt ise render başına binlerce kez
+   çağrılıyor. */
+const fmtCache = {};
+function fmt(n, d){
+  if(n==null||isNaN(n)) return '-';
+  const basamak = d==null?1:d;
+  let f = fmtCache[basamak];
+  if(!f) f = fmtCache[basamak] = new Intl.NumberFormat('tr-TR',{maximumFractionDigits:basamak, minimumFractionDigits:0});
+  return f.format(Number(n));
+}
 
 /* =========================================================
    TÜREV HESAPLAR
@@ -1793,7 +1835,8 @@ function fideYontemiEtiket(t){
   return '-';
 }
 function seraBul(id){ return state.seralar.find(s=>s.id===id); }
-function seralarSirali(liste){ return [...(liste||state.seralar)].sort((a,b)=>(a.ad||'').localeCompare(b.ad||'','tr',{numeric:true})); }
+const seraAdKarsilastirici = new Intl.Collator('tr',{numeric:true}); // localeCompare her çağrıda collator kurar; sıralama sıcak yolda
+function seralarSirali(liste){ return [...(liste||state.seralar)].sort((a,b)=>seraAdKarsilastirici.compare(a.ad||'', b.ad||'')); }
 function seraAktifDonem(sera){ return (sera && sera.donemler || []).find(d=>d.aktif) || null; }
 function seraGuncelDolu(sera){ const d = seraAktifDonem(sera); return d ? (Number(d.dolu)||0) : 0; }
 function seraGuncelDizilmisKg(sera){ const d = seraAktifDonem(sera); return d ? (d.kaynaklar||[]).reduce((s,k)=>s+(Number(k.diziKg)||0),0) : 0; }
@@ -5177,8 +5220,11 @@ function iklimHucreGuncelle(id, alan, deger, sayisalMi){
   Object.assign(k, sonIslemDamgasi());
   renderAll();
 }
-function iklimTablosuSatirHtml(k){
-  const seraOpts = seralarSirali().map(s=>`<option value="${s.id}" ${s.id===k.seraId?'selected':''}>${escapeHtml(s.ad)}</option>`).join('');
+/* siraliSeralar: çağıran tarafından bir kez hesaplanıp geçilir — her satırda
+   yeniden sıralamak yüzlerce kayıtta tabloyu dondurur. */
+function iklimTablosuSatirHtml(k, siraliSeralar){
+  siraliSeralar = siraliSeralar || seralarSirali();
+  const seraOpts = siraliSeralar.map(s=>`<option value="${s.id}" ${s.id===k.seraId?'selected':''}>${escapeHtml(s.ad)}</option>`).join('');
   return `
     <tr data-id="${k.id}" title="${i18n('Son İşlem')}: ${sonIslemEtiket(k)}">
       <td><input type="date" value="${escapeHtml(k.tarih||'')}" onchange="iklimHucreGuncelle('${k.id}','tarih',this.value)"></td>
@@ -5188,6 +5234,15 @@ function iklimTablosuSatirHtml(k){
       <td class="num"><input class="${iklimNemSinifi(k.nem)}" type="number" step="1" min="0" max="100" value="${k.nem??''}" onchange="iklimHucreGuncelle('${k.id}','nem',this.value,true)"></td>
       <td><button class="iklim-row-del" onclick="iklimSil('${k.id}')" title="${i18n('Sil')}">×</button></td>
     </tr>`;
+}
+/* Tablo varsayılan olarak yalnızca en yeni IKLIM_TABLO_LIMIT kaydı çizer;
+   özet kutusundaki sayı/ortalamalar her zaman TÜM kayıtlardan hesaplanır. */
+const IKLIM_TABLO_LIMIT = 100;
+let iklimTumunuGoster = false;
+function iklimTumunuGosterAc(){
+  iklimTumunuGoster = true;
+  if(document.activeElement && document.activeElement.blur) document.activeElement.blur(); // düğme tablonun içinde ve odakta; renderIklim'in "hücrede yazılıyor" koruması aksi halde çizimi atlar
+  renderIklim();
 }
 function renderIklim(){
   if(sayfaGizliMi('pageIklim')) return;
@@ -5207,6 +5262,8 @@ function renderIklim(){
     <div>${i18n('Ort. Nem')}<b>${ortNem==null?'-':fmt(ortNem,0)+'%'}</b></div>
     <div>${i18n('Son Ölçüm')}<b>${son?fmt(son.sicaklik,1)+'°C / %'+fmt(son.nem,0):'-'}</b>${son?`<span style="display:block;font-size:10.5px;color:var(--muted);font-weight:400;">${escapeHtml(sonSera?sonSera.ad:i18n('(silinmiş sera)'))}</span>`:''}</div>
   `;
+  const siraliSeralar = seralarSirali();
+  const gosterilen = iklimTumunuGoster ? liste : liste.slice(0, IKLIM_TABLO_LIMIT);
   listeEl.innerHTML = `
     <table class="iklim-table">
       <thead>
@@ -5220,9 +5277,10 @@ function renderIklim(){
         </tr>
       </thead>
       <tbody>
-        ${liste.length ? liste.map(iklimTablosuSatirHtml).join('') : `<tr><td colspan="6" class="iklim-table-empty">${i18n('Henüz sıcaklık/nem kaydı yok')}</td></tr>`}
+        ${gosterilen.length ? gosterilen.map(k=>iklimTablosuSatirHtml(k, siraliSeralar)).join('') : `<tr><td colspan="6" class="iklim-table-empty">${i18n('Henüz sıcaklık/nem kaydı yok')}</td></tr>`}
       </tbody>
     </table>
+    ${gosterilen.length < liste.length ? `<div style="text-align:center;padding:10px 0;"><button class="btn btn-muted" style="padding:7px 14px;font-size:12.5px;" onclick="iklimTumunuGosterAc()">${i18n('Tümünü göster')} (${liste.length} ${i18n('kayıt')})</button></div>` : ''}
   `;
 }
 function iklimKisaTarihSaat(tarih, saat){
