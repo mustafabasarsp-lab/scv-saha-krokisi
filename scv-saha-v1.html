@@ -257,26 +257,39 @@ input[type=number],.num,td,th,.badge b,.quickstats b{font-variant-numeric:tabula
   flex-direction:column;
   gap:var(--sp-2);
 }
-.header-ust{display:flex;align-items:center;gap:var(--sp-3);flex-wrap:wrap;}
-.header-sag{display:flex;align-items:center;gap:var(--sp-2);margin-left:auto;flex-wrap:wrap;}
+.header-ust{display:flex;align-items:center;gap:var(--sp-3);flex-wrap:wrap;min-width:0;}
+.header-sag{display:flex;align-items:center;gap:var(--sp-2);margin-left:auto;flex-wrap:wrap;min-width:0;}
+/* YATAY TAŞMANIN KÖKÜ: esnek ve ızgara çocukları varsayılan olarak
+   içeriklerinden küçülemez (min-width:auto). Bu yüzden telefonda başlık ve
+   paneller ekrandan taşıyordu — overflow-x:auto verilmiş şeritler bile
+   (sekmeler, rozetler) kendi içerikleri kadar genişleyip kaymak yerine
+   taşıyorlardı. Küçülmeye izin verince kaydırma doğru çalışıyor.
+   Zincirin en tepesi .app ızgarasının kendi çocukları (.header, .page, .middle):
+   onlar küçülemezse alttaki hiçbir sarma kuralı devreye giremiyor. */
+.app>*,.page>*,.header>*,.header-ust>*,.header-sag>*,.middle>*,.bottom-panel>*{min-width:0;}
 .header .brand{
   font-size:19px;
   font-weight:800;
   letter-spacing:-.02em;
   color:var(--green-900);
-  white-space:nowrap;
   line-height:1.15;
+  min-width:0;
 }
+/* Alt satır (tarih · sürüm · geliştirici) dar ekranda sert kesiliyordu;
+   artık üç noktayla biter. Yalnızca ad bölünmez. */
 .header .brand small{
   display:block;
   font-weight:400;
   font-size:11px;
   color:var(--muted);
   letter-spacing:0;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
 }
 /* Marka işareti: ad + kırım sırası şeridi. Şerit uygulamanın her yerinde
    tekrar eden imza; burada da kimliğin taşıyıcısı. */
-.brand-ad{display:inline-flex;align-items:center;gap:9px;}
+.brand-ad{display:inline-flex;align-items:center;gap:9px;white-space:nowrap;}
 .brand-ad .kirim-serit i{width:7px;height:12px;}
 /* Yatay kayan şeritler: kaydırma çubuğu gizli, dokunmayla sürüklenir. */
 .header .page-tabs,.badges{
@@ -322,7 +335,7 @@ input[type=number],.num,td,th,.badge b,.quickstats b{font-variant-numeric:tabula
   box-shadow:var(--shadow);
 }
 .badge.open .badge-tip{display:block;}
-.header-actions{display:flex;gap:8px;align-items:center;}
+.header-actions{display:flex;gap:var(--sp-2);align-items:center;flex-wrap:wrap;min-width:0;}
 .user-menu{position:relative;}
 .user-menu-dropdown{
   display:none;
@@ -1509,7 +1522,7 @@ const AYARLAR = {
   UNITE_PX: 40                // referans kapasitedeki sera-box genişliği (px) — kroki oranı
 };
 const STORAGE_KEY = 'scvSahaKrokiV1';
-const APP_SURUM = 'v72'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
+const APP_SURUM = 'v73'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
 
 /* =========================================================
    HATA / DONMA GÜNLÜĞÜ — "bazen donuyor" şikayetini araştırmak için.
