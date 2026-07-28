@@ -675,6 +675,30 @@ body.has-fullscreen-panel{overflow:hidden;}
   padding:2px 5px;border-radius:999px;background:#fdf1da;color:var(--amber);
   border:1px solid var(--amber);text-transform:uppercase;letter-spacing:.03em;white-space:nowrap;
 }
+/* Varsayılandan farklı yövmiye oranı tanımlı dayıbaşı rozeti */
+.dayibasi-ozel-oran{
+  display:inline-block;font-size:9px;font-weight:700;line-height:1;vertical-align:middle;
+  padding:2px 5px;border-radius:999px;background:var(--green-100);color:var(--green-900);
+  border:1px solid var(--green-500);text-transform:uppercase;letter-spacing:.03em;white-space:nowrap;
+  cursor:help;
+}
+/* Başlıkta tek bir ₺ oran yazılamadığında (dayıbaşılar farklı oran kullanıyor) */
+.odeme-oran-farkli{font-style:italic;opacity:.75;cursor:help;}
+/* Yövmiye Ayarları: dayıbaşı × iş kalemi oran matrisi */
+.ozel-oran-baslik{
+  font-family:'Barlow Semi Condensed',sans-serif;font-weight:800;font-size:15px;
+  color:var(--ink);margin:14px 0 6px;
+}
+.ozel-oran-baslik span{font-family:inherit;font-weight:600;font-size:11.5px;color:var(--muted);}
+.ozel-oran-wrap{max-height:300px;overflow:auto;border:1px solid var(--border);border-radius:8px;background:#fff;}
+.ozel-oran-table{min-width:440px;}
+.ozel-oran-table td:first-child{min-width:110px;line-height:1.3;}
+.ozel-oran-table input[type=number]{min-width:56px;}
+/* Boş hücre = varsayılan (placeholder'da varsayılan değer soluk görünür),
+   dolu hücre = bu dayıbaşına özel oran, belirgin şekilde vurgulanır. */
+.ozel-oran-table input::placeholder{color:var(--muted);opacity:.6;font-weight:400;}
+.ozel-oran-table input.ozel-oran-dolu{background:var(--green-100);color:var(--green-900);border-color:var(--green-500);}
+.ozel-oran-bolge{font-size:9.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.03em;}
 /* Filtre dışında kalan yevmiye kayıtlarını haber veren bilgi satırı */
 .odeme-filtre-disi-ipucu{font-size:11.5px;color:var(--muted);margin:6px 2px 0;line-height:1.5;}
 .odeme-filtre-disi-ipucu b{color:var(--ink);}
@@ -1207,7 +1231,7 @@ const AYARLAR = {
   UNITE_PX: 40                // referans kapasitedeki sera-box genişliği (px) — kroki oranı
 };
 const STORAGE_KEY = 'scvSahaKrokiV1';
-const APP_SURUM = 'v67'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
+const APP_SURUM = 'v68'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
 
 /* =========================================================
    HATA / DONMA GÜNLÜĞÜ — "bazen donuyor" şikayetini araştırmak için.
@@ -1412,7 +1436,12 @@ const I18N_EN = {
   'Genel Toplam':'Grand Total', 'Hakediş':'Earned', 'Ödenen':'Paid', 'Kalan (genel)':'Remaining (overall)',
   'Ödeme Gir':'Enter Payment', 'Ödeme Geçmişi':'Payment History', 'Tutar (₺)':'Amount (₺)', 'Not (opsiyonel)':'Note (optional)',
   'Yazdır':'Print',
-  'Yeni oranlar sadece bundan sonraki günlük kayıtlara uygulanır. Geçmiş kayıtlar etkilenmez.':'New rates apply only to future daily entries. Past records are not affected.',
+  'Aşağıdaki oranlar VARSAYILAN oranlardır. Bir dayıbaşıya farklı ücret ödeniyorsa matriste yalnızca o hücreye özel değeri yazın; boş hücreler varsayılanı kullanır.':'The rates below are the DEFAULT rates. If a crew leader is paid differently, fill in only that cell in the matrix; empty cells use the default.',
+  'Dayıbaşına Özel Oranlar':'Per-Crew-Leader Rates', 'boş = varsayılan':'empty = default',
+  'Oran değişikliği, ilgili dayıbaşının GEÇMİŞ günlerdeki hakedişini de yeniden hesaplar.':'Changing a rate also recalculates that crew leader\'s earnings for PAST days.',
+  'özel oran':'custom rate', 'dayıbaşına göre':'per crew leader',
+  'Bu dayıbaşı için özel yövmiye oranı tanımlı':'A custom daily wage rate is defined for this crew leader',
+  'Bu kalemde dayıbaşılar farklı oran kullanıyor':'Crew leaders use different rates for this item',
   'Kırım':'Harvest', 'İmza':'Signature', 'Aktif':'Active', 'Pasif':'Inactive',
   'Henüz dayıbaşı eklenmedi':'No crew leaders added yet', 'Bu bölgede aktif dayıbaşı yok':'No active crew leaders in this region',
   'Bu bölgede dayıbaşı yok':'No crew leaders in this region',
@@ -1483,24 +1512,37 @@ function stateNormalizeEt(){
       k.diziSayisi = (k.seraDagilimi||[]).reduce((s,d)=>s+(Number(d.diziSayisi)||0),0);
     }
   });
-  yevmiyeSnapshotlariniOnar();
+  odemeVeriNormalizeEt();
 }
-function yevmiyeSnapshotlariniOnar(){
-  // Kayıt oluşturulduğu anda oran ayarları henüz senkronlanmamış/ayarlanmamışsa
-  // snapshot tamamı-0 donar ve hakediş kalıcı 0 hesaplanır. Tamamı-0 snapshot
-  // "hiç alınamamış" sayılır ve güncel oranlarla onarılır; kısmen dolu snapshot'lara
-  // asla dokunulmaz (oran değişikliği geçmişi etkilemesin kuralı).
-  // NOT: YEVMIYE_ALANLARI sabiti dosyanın çok aşağısında const ile tanımlı ve bu
-  // fonksiyon sayfa yüklenirken ondan ÖNCE çalışıyor (TDZ) — bu yüzden yerel liste.
+/* Ödeme verisi şekil düzeltmeleri.
+   v65: yövmiye oranları artık dayıbaşına göre değişebiliyor (dayibasi.ozelYevmiyeler)
+   ve hakediş her zaman GÜNCEL efektif orandan hesaplanıyor — kayıttaki `yevmiyeler`
+   alanı yalnızca "kayıt anında geçerli oran" denetim izidir, hesaplamada kullanılmaz
+   (bkz. yevmiyeKaydiTutar). Eski snapshot değerleri bilerek SİLİNMEZ: hesabı yeniden
+   snapshot'a bağlamak istenirse veri yerinde duruyor.
+   NOT: YEVMIYE_ALANLARI sabiti dosyanın çok aşağısında const ile tanımlı ve bu
+   fonksiyon sayfa yüklenirken ondan ÖNCE çalışıyor (TDZ) — bu yüzden yerel liste. */
+function odemeVeriNormalizeEt(){
   const alanlar = ['kirim','sulama','dizimAsim','sera','capa'];
-  const guncel = (state.odemeAyarlari||[])[0];
-  const guncelDolu = guncel && alanlar.some(f=>Number(guncel[f])>0);
   (state.yevmiyeKayitlari||[]).forEach(y=>{
     y.sayilar = y.sayilar || {};
     y.yevmiyeler = y.yevmiyeler || {};
-    if(guncelDolu && alanlar.every(f=>!(Number(y.yevmiyeler[f])>0))){
-      alanlar.forEach(f=>{ y.yevmiyeler[f] = Number(guncel[f])||0; });
-    }
+  });
+  (state.dayibasilar||[]).forEach(d=>{
+    if(!d.ozelYevmiyeler) return;
+    // Şekil garantisi: 5 anahtar da bulunur, "varsayılanı kullan" null ile temsil
+    // edilir. Anahtar İÇERİDEN SİLİNMEZ — Firestore set(merge:true) iç içe map'lerde
+    // eksik anahtarı sunucudan kaldırmaz, null ise null olarak yazar.
+    let ozelVar = false;
+    alanlar.forEach(f=>{
+      const sayi = Number(d.ozelYevmiyeler[f]);
+      const gecerli = d.ozelYevmiyeler[f]!==null && d.ozelYevmiyeler[f]!=='' && d.ozelYevmiyeler[f]!=null && !isNaN(sayi) && sayi>=0;
+      d.ozelYevmiyeler[f] = gecerli ? sayi : null;
+      if(gecerli) ozelVar = true;
+    });
+    // Hiç özel oran kalmadıysa alanı tamamen kaldır (üst düzey alan olduğu için
+    // senkron bunu FieldValue.delete() ile sunucudan da siler).
+    if(!ozelVar) delete d.ozelYevmiyeler;
   });
 }
 
@@ -6010,6 +6052,43 @@ let odemeBakiyeBolge = '';
 function odemeAyarlariGetir(){
   return state.odemeAyarlari[0] || { kirim:0, sulama:0, dizimAsim:0, sera:0, capa:0 };
 }
+/* ---- Dayıbaşına özel yövmiye oranları (v65) ----
+   Yövmiye tek bir orandan ibaret değil: aynı iş kalemi için dayıbaşından dayıbaşına
+   farklı ücret ödenebiliyor. Model:
+     - `odemeAyarlari[0]`  → VARSAYILAN oranlar (5 iş kalemi)
+     - `dayibasi.ozelYevmiyeler[alan]` → o dayıbaşıya özel oran; null ise varsayılan
+   Böylece çoğu dayıbaşı tek yerden yönetilmeye devam eder, istisnalar hücre bazında
+   girilir. Alanın tamamı varsayılansa `ozelYevmiyeler` hiç tutulmaz.
+   HESAP KURALI: hakediş her zaman GÜNCEL efektif orandan hesaplanır — bir oranı
+   değiştirmek o dayıbaşının GEÇMİŞ kayıtlarının hakedişini de yeniden hesaplar. */
+function dayibasiOzelOran(d, alan){
+  const v = d && d.ozelYevmiyeler ? d.ozelYevmiyeler[alan] : null;
+  if(v===null || v===undefined || v==='') return null;
+  const sayi = Number(v);
+  return isNaN(sayi) ? null : sayi;
+}
+function dayibasiOzelOraniVarMi(d){
+  return YEVMIYE_ALANLARI.some(f=>dayibasiOzelOran(d,f)!==null);
+}
+// Bir dayıbaşının 5 kalem için fiilen geçerli oranları (özel varsa o, yoksa varsayılan).
+function dayibasiEfektifOranlar(d){
+  const varsayilan = odemeAyarlariGetir();
+  const sonuc = {};
+  YEVMIYE_ALANLARI.forEach(f=>{
+    const ozel = dayibasiOzelOran(d, f);
+    sonuc[f] = ozel!==null ? ozel : (Number(varsayilan[f])||0);
+  });
+  return sonuc;
+}
+// Listelerde "bu dayıbaşının oranı varsayılandan farklı" uyarısı; tooltip'te hangi kalem kaç ₺.
+function dayibasiOzelOranRozet(d){
+  if(!dayibasiOzelOraniVarMi(d)) return '';
+  const detay = YEVMIYE_ALANLARI
+    .filter(f=>dayibasiOzelOran(d,f)!==null)
+    .map(f=>`${i18n(YEVMIYE_ETIKETLER[f])}: ${fmt(dayibasiOzelOran(d,f),0)}₺`)
+    .join(' · ');
+  return ` <span class="dayibasi-ozel-oran" title="${escapeHtml(i18n('Bu dayıbaşı için özel yövmiye oranı tanımlı')+' — '+detay)}">${i18n('özel oran')}</span>`;
+}
 /* ---- Dayıbaşı ↔ bölge ----
    Dayıbaşı kayıtları artık bir bölgeye ('tekeliler' | 'kalemli') ait: Tekeliler
    sekmesinde sadece Tekeliler dayıbaşıları, Kalemli'de sadece Kalemli'ninkiler
@@ -6045,27 +6124,43 @@ function odemeGunlukDayibasilar(tarih, bolge){
     })
     .sort((a,b)=>(a.ad||'').localeCompare(b.ad||'','tr'));
 }
-function odemeGunSnapshotOranlari(tarih, bolge){
-  // Gün içindeki kayıtlar farklı oran snapshot'ları taşıyabilir (kayıtlar arasında
-  // oran ayarı değiştiyse). Tek bir başlık ipucu ancak tüm kayıtlar aynı oranı
-  // taşıyorsa doğrudur; karışıksa null dön (ipucu gizlenir), kayıt yoksa güncel ayar.
-  const kayitlar = state.yevmiyeKayitlari.filter(y=>y.tarih===tarih && y.bolge===bolge);
-  if(!kayitlar.length) return odemeAyarlariGetir();
-  const ilk = kayitlar[0].yevmiyeler || {};
-  const hepsiAyni = kayitlar.every(y=> YEVMIYE_ALANLARI.every(f=> (Number((y.yevmiyeler||{})[f])||0) === (Number(ilk[f])||0)));
-  return hepsiAyni ? ilk : null;
+/* Günlük tablo başlığındaki ₺ ipucu. Oranlar dayıbaşına göre değişebildiği için tek
+   bir başlık değeri artık her zaman doğru değil: o kalemde ekrandaki TÜM dayıbaşılar
+   aynı oranı kullanıyorsa oran, kullanmıyorsa null (başlıkta "farklı" yazılır). */
+function odemeGunlukKolonOranlari(dayibasilar){
+  const varsayilan = odemeAyarlariGetir();
+  const sonuc = {};
+  if(!dayibasilar.length){
+    YEVMIYE_ALANLARI.forEach(f=>{ sonuc[f] = Number(varsayilan[f])||0; });
+    return sonuc;
+  }
+  const tumOranlar = dayibasilar.map(d=>dayibasiEfektifOranlar(d));
+  YEVMIYE_ALANLARI.forEach(f=>{
+    const ilk = tumOranlar[0][f];
+    sonuc[f] = tumOranlar.every(o=>o[f]===ilk) ? ilk : null;
+  });
+  return sonuc;
 }
-// Bir yevmiye kaydının hakediş (₺) tutarı — saklanmaz, her zaman snapshot orandan türetilir.
-function yevmiyeKaydiTutar(y){
-  return YEVMIYE_ALANLARI.reduce((s,f)=> s + (Number(y.sayilar[f])||0) * (Number(y.yevmiyeler[f])||0), 0);
+/* Bir yevmiye kaydının hakediş (₺) tutarı — saklanmaz, dayıbaşının GÜNCEL efektif
+   oranından türetilir. `oranlar` verilmezse kayıttaki dayıbaşıdan hesaplanır; dayıbaşı
+   silinmişse efektif oran bilinemeyeceği için kayıtla saklanan eski snapshot'a düşülür. */
+function yevmiyeKaydiTutar(y, oranlar){
+  if(!oranlar){
+    const d = state.dayibasilar.find(x=>x.id===y.dayibasiId);
+    oranlar = d ? dayibasiEfektifOranlar(d) : (y.yevmiyeler||{});
+  }
+  return YEVMIYE_ALANLARI.reduce((s,f)=> s + (Number(y.sayilar[f])||0) * (Number(oranlar[f])||0), 0);
 }
 function odemeHakedisToplam(dayibasiId, baslangic, bitis, bolge){
+  // Oranlar dayıbaşı başına bir kez hesaplanır, her kayıt için tekrar aranmaz.
+  const d = state.dayibasilar.find(x=>x.id===dayibasiId);
+  const oranlar = d ? dayibasiEfektifOranlar(d) : null;
   return state.yevmiyeKayitlari
     .filter(y=> y.dayibasiId===dayibasiId
       && (!baslangic || y.tarih>=baslangic)
       && (!bitis || y.tarih<=bitis)
       && (!bolge || y.bolge===bolge))
-    .reduce((s,y)=>s+yevmiyeKaydiTutar(y), 0);
+    .reduce((s,y)=>s+yevmiyeKaydiTutar(y, oranlar), 0);
 }
 function odemeOdenenToplam(dayibasiId, baslangic, bitis){
   return state.odemeKayitlari
@@ -6123,21 +6218,19 @@ function yevmiyeHucreGuncelle(tarih, bolge, dayibasiId, alan, deger){
   let kayit = state.yevmiyeKayitlari.find(y=>y.tarih===tarih && y.bolge===bolge && y.dayibasiId===dayibasiId);
   if(!kayit){
     if(v<=0){ renderAll(); return; } // hiçbir şey girilmedi, boş kayıt oluşturma
-    const ayarlar = odemeAyarlariGetir();
+    const dayibasi = state.dayibasilar.find(x=>x.id===dayibasiId);
     kayit = {
       id: 'yv_'+tarih+'_'+bolge+'_'+dayibasiId,
       tarih, bolge, dayibasiId,
       sayilar: { ...YEVMIYE_BOS_SAYILAR },
-      // Kayıt İLK oluşturulduğu andaki ₺ oranların snapshot'ı — sonradan oran ayarı
-      // değişse bile bu kaydın hakedişi hep bu snapshot'a göre hesaplanır.
-      yevmiyeler: { kirim:ayarlar.kirim||0, sulama:ayarlar.sulama||0, dizimAsim:ayarlar.dizimAsim||0, sera:ayarlar.sera||0, capa:ayarlar.capa||0 },
+      // Kayıt anında geçerli olan efektif ₺ oranların izi. Yalnızca denetim/geçmiş
+      // içindir; hakediş bu alandan DEĞİL, dayıbaşının güncel efektif oranından
+      // hesaplanır (bkz. yevmiyeKaydiTutar).
+      yevmiyeler: dayibasiEfektifOranlar(dayibasi),
       olusturma: Date.now()
     };
     state.yevmiyeKayitlari.push(kayit);
   }
-  // Emniyet kemeri: kayıt, oranlar henüz senkronlanmadan oluşturulduysa snapshot'ı
-  // tamamı-0 kalmıştır — güncel oranlar artık doluysa burada onarılır (idempotent).
-  yevmiyeSnapshotlariniOnar();
   kayit.sayilar[alan] = v;
   Object.assign(kayit, sonIslemDamgasi());
   const hepsiBos = YEVMIYE_ALANLARI.every(f=>!(Number(kayit.sayilar[f])>0));
@@ -6156,7 +6249,7 @@ function renderOdemeGunluk(){
   const tarih = odemeGunlukTarih;
   const bolge = odemeBolgeAktif;
   const dayibasilar = odemeGunlukDayibasilar(tarih, bolge);
-  const oranlar = odemeGunSnapshotOranlari(tarih, bolge);
+  const oranlar = odemeGunlukKolonOranlari(dayibasilar);
   const kolonToplam = { ...YEVMIYE_BOS_SAYILAR };
   let genelToplam = 0;
 
@@ -6178,10 +6271,13 @@ function renderOdemeGunluk(){
 
   const girisHucre = (d, sayilar, f) => `<input type="number" inputmode="numeric" min="0" step="1" value="${sayilar[f]?sayilar[f]:''}" onchange="yevmiyeHucreGuncelle('${tarih}','${bolge}','${d.id}','${f}',this.value)">`;
 
-  const tabloBasliklari = YEVMIYE_ALANLARI.map(f=>`<th class="num">${i18n(YEVMIYE_ETIKETLER[f])}${oranlar?`<span class="odeme-oran-ipucu">₺${fmt(oranlar[f]||0,0)}</span>`:''}</th>`).join('');
+  const oranIpucu = f => oranlar[f]===null
+    ? `<span class="odeme-oran-ipucu odeme-oran-farkli" title="${escapeHtml(i18n('Bu kalemde dayıbaşılar farklı oran kullanıyor'))}">${i18n('dayıbaşına göre')}</span>`
+    : `<span class="odeme-oran-ipucu">₺${fmt(oranlar[f],0)}</span>`;
+  const tabloBasliklari = YEVMIYE_ALANLARI.map(f=>`<th class="num">${i18n(YEVMIYE_ETIKETLER[f])}${oranIpucu(f)}</th>`).join('');
   const tabloSatirlari = satirVerileri.map(({d,sayilar,satirToplam})=>`
     <tr data-id="${d.id}">
-      <td>${escapeHtml(d.ad)}${dayibasiBolgesizRozet(d)}</td>
+      <td>${escapeHtml(d.ad)}${dayibasiBolgesizRozet(d)}${dayibasiOzelOranRozet(d)}</td>
       ${YEVMIYE_ALANLARI.map(f=>`<td class="num">${girisHucre(d,sayilar,f)}</td>`).join('')}
       <td class="num"><b>${fmt(satirToplam,0)}</b></td>
     </tr>`).join('');
@@ -6194,7 +6290,7 @@ function renderOdemeGunluk(){
 
   const kartlar = satirVerileri.map(({d,sayilar,satirToplam})=>`
     <div class="odeme-kart" data-id="${d.id}">
-      <div class="odeme-kart-ad">${escapeHtml(d.ad)}${dayibasiBolgesizRozet(d)}</div>
+      <div class="odeme-kart-ad">${escapeHtml(d.ad)}${dayibasiBolgesizRozet(d)}${dayibasiOzelOranRozet(d)}</div>
       <div class="odeme-mini-grid">
         ${YEVMIYE_ALANLARI.map(f=>`
           <div class="field">
@@ -6265,6 +6361,7 @@ function renderDayibasiYonetListe(){
       <label style="display:flex;align-items:center;gap:4px;font-size:11px;white-space:nowrap;">
         <input type="checkbox" ${d.aktif!==false?'checked':''} onchange="dayibasiAktifDegistir('${d.id}',this.checked)">${i18n('Aktif')}
       </label>
+      ${dayibasiOzelOranRozet(d)}
     </div>`).join('') || `<div class="item">${i18n('Henüz dayıbaşı eklenmedi')}</div>`;
 }
 function submitDayibasiEkle(){
@@ -6320,12 +6417,53 @@ function dayibasiAktifDegistir(id, checked){
   renderAll();
 }
 
-/* ---- Yövmiye Ayarları ---- */
+/* ---- Yövmiye Ayarları ----
+   Üstte 5 iş kaleminin VARSAYILAN oranı, altta dayıbaşı × iş kalemi matrisi. Matriste
+   boş bırakılan hücre "varsayılanı kullan" demektir ve placeholder olarak varsayılan
+   değeri gösterir; yalnızca gerçekten farklı ödenen hücreler doldurulur. */
+const YEVMIYE_AYAR_INPUT_ID = { kirim:'fYevmiyeKirim', sulama:'fYevmiyeSulama', dizimAsim:'fYevmiyeDizimAsim', sera:'fYevmiyeSera', capa:'fYevmiyeCapa' };
+function ozelOranInputId(dayibasiId, alan){ return 'fOzelOran_'+dayibasiId+'_'+alan; }
+function ozelOranMatrisHtml(){
+  const varsayilan = odemeAyarlariGetir();
+  // Pasif dayıbaşılar normalde gizli; ama özel oranı varsa oranı görünmez/düzenlenemez
+  // kalmasın diye listelenir.
+  const liste = state.dayibasilar
+    .filter(d=>d.aktif!==false || dayibasiOzelOraniVarMi(d))
+    .sort((a,b)=>{
+      const ba = a.bolge||'zzz', bb = b.bolge||'zzz';
+      return ba===bb ? (a.ad||'').localeCompare(b.ad||'','tr') : ba.localeCompare(bb,'tr');
+    });
+  if(!liste.length) return `<div class="item">${i18n('Henüz dayıbaşı eklenmedi')}</div>`;
+  const basliklar = YEVMIYE_ALANLARI.map(f=>`<th class="num">${i18n(YEVMIYE_ETIKETLER[f])}</th>`).join('');
+  const satirlar = liste.map(d=>{
+    const hucreler = YEVMIYE_ALANLARI.map(f=>{
+      const ozel = dayibasiOzelOran(d, f);
+      return `<td class="num"><input id="${ozelOranInputId(d.id,f)}" type="number" inputmode="numeric" min="0" step="1"
+        value="${ozel!==null?ozel:''}" placeholder="${fmt(Number(varsayilan[f])||0,0)}"
+        class="${ozel!==null?'ozel-oran-dolu':''}" onchange="ozelOranHucreIsaretle(this)"></td>`;
+    }).join('');
+    const bolgeEtiket = dayibasiBolgesiVar(d)
+      ? `<span class="ozel-oran-bolge">${odemeBolgeAdi(d.bolge)}</span>`
+      : `<span class="ozel-oran-bolge">${i18n('bölgesiz')}</span>`;
+    const pasif = d.aktif===false ? ` <span style="color:var(--muted);font-size:10px;">(${i18n('Pasif')})</span>` : '';
+    return `<tr><td>${escapeHtml(d.ad)}${pasif}<br>${bolgeEtiket}</td>${hucreler}</tr>`;
+  }).join('');
+  return `<div class="ozel-oran-wrap">
+    <table class="iklim-table ozel-oran-table">
+      <thead><tr><th>${i18n('Dayıbaşı')}</th>${basliklar}</tr></thead>
+      <tbody>${satirlar}</tbody>
+    </table>
+  </div>`;
+}
+// Hücre doldurulunca/boşalınca "özel oran" vurgusu anında güncellensin (kaydetmeyi beklemeden).
+function ozelOranHucreIsaretle(el){
+  el.classList.toggle('ozel-oran-dolu', el.value.trim()!=='');
+}
 function openYevmiyeAyarlariModal(){
   const a = odemeAyarlariGetir();
   openModal(`
     <h2>${i18n('Yövmiye Ayarları')}</h2>
-    <div class="hint-box">${i18n('Yeni oranlar sadece bundan sonraki günlük kayıtlara uygulanır. Geçmiş kayıtlar etkilenmez.')}</div>
+    <div class="hint-box">${i18n('Aşağıdaki oranlar VARSAYILAN oranlardır. Bir dayıbaşıya farklı ücret ödeniyorsa matriste yalnızca o hücreye özel değeri yazın; boş hücreler varsayılanı kullanır.')}</div>
     <div class="row3">
       <div class="field"><label>${i18n('Kırım')} (₺)</label><input id="fYevmiyeKirim" type="number" min="0" step="1" value="${a.kirim||0}"></div>
       <div class="field"><label>${i18n('Sulama')} (₺)</label><input id="fYevmiyeSulama" type="number" min="0" step="1" value="${a.sulama||0}"></div>
@@ -6335,27 +6473,45 @@ function openYevmiyeAyarlariModal(){
       <div class="field"><label>${i18n('Sera K.')} (₺)</label><input id="fYevmiyeSera" type="number" min="0" step="1" value="${a.sera||0}"></div>
       <div class="field"><label>${i18n('Çapa')} (₺)</label><input id="fYevmiyeCapa" type="number" min="0" step="1" value="${a.capa||0}"></div>
     </div>
+    <div class="ozel-oran-baslik">${i18n('Dayıbaşına Özel Oranlar')} <span>(${i18n('boş = varsayılan')})</span></div>
+    <div class="uyari-box">⚠️ ${i18n('Oran değişikliği, ilgili dayıbaşının GEÇMİŞ günlerdeki hakedişini de yeniden hesaplar.')}</div>
+    ${ozelOranMatrisHtml()}
     <div class="modal-actions">
       <button class="btn btn-muted" onclick="closeModal()">${i18n('Vazgeç')}</button>
       <button class="btn btn-primary" onclick="submitYevmiyeAyarlari()">${i18n('Kaydet')}</button>
     </div>
-  `);
+  `, true);
 }
 function submitYevmiyeAyarlari(){
-  const guncelleme = {
-    id: 'guncel',
-    kirim: Number(document.getElementById('fYevmiyeKirim').value)||0,
-    sulama: Number(document.getElementById('fYevmiyeSulama').value)||0,
-    dizimAsim: Number(document.getElementById('fYevmiyeDizimAsim').value)||0,
-    sera: Number(document.getElementById('fYevmiyeSera').value)||0,
-    capa: Number(document.getElementById('fYevmiyeCapa').value)||0,
-    ts: Date.now()
-  };
+  const guncelleme = { id:'guncel', ts: Date.now() };
+  YEVMIYE_ALANLARI.forEach(f=>{
+    guncelleme[f] = Math.max(0, Number(document.getElementById(YEVMIYE_AYAR_INPUT_ID[f]).value)||0);
+  });
   Object.assign(guncelleme, sonIslemDamgasi());
   if(state.odemeAyarlari.length){ Object.assign(state.odemeAyarlari[0], guncelleme); }
   else { state.odemeAyarlari.push(guncelleme); }
-  // Oranlar girişlerden SONRA ayarlandıysa, snapshot'ı tamamı-0 donmuş kayıtlar hemen düzelsin
-  yevmiyeSnapshotlariniOnar();
+
+  // Dayıbaşına özel oranlar. Matriste görünmeyen (pasif+özel oransız) dayıbaşıların
+  // mevcut değerleri korunur, sıfırlanmaz.
+  state.dayibasilar.forEach(d=>{
+    const oncekiJson = JSON.stringify(d.ozelYevmiyeler || null);
+    const yeni = {};
+    let ozelVar = false;
+    YEVMIYE_ALANLARI.forEach(f=>{
+      const el = document.getElementById(ozelOranInputId(d.id, f));
+      let deger;
+      if(!el){ deger = dayibasiOzelOran(d, f); }
+      else {
+        const ham = String(el.value).trim();
+        deger = ham==='' ? null : Math.max(0, Math.round(Number(ham)||0));
+      }
+      yeni[f] = deger;
+      if(deger!==null) ozelVar = true;
+    });
+    if(ozelVar) d.ozelYevmiyeler = yeni; else delete d.ozelYevmiyeler;
+    if(JSON.stringify(d.ozelYevmiyeler || null) !== oncekiJson) Object.assign(d, sonIslemDamgasi());
+  });
+
   closeModal(); renderAll();
 }
 
@@ -6401,7 +6557,7 @@ function renderOdemeBakiye(){
       const odenen = odemeOdenenToplam(d.id, baslangic, bitis);
       const kalan = odemeKalanGenel(d.id);
       return `<tr class="odeme-bakiye-row" onclick="openOdemeGirModal('${d.id}')">
-        <td>${escapeHtml(d.ad)}${bolge?dayibasiBolgesizRozet(d):''}${d.aktif===false?' <span style="color:var(--muted);font-size:10px;">('+i18n('Pasif')+')</span>':''}</td>
+        <td>${escapeHtml(d.ad)}${bolge?dayibasiBolgesizRozet(d):''}${dayibasiOzelOranRozet(d)}${d.aktif===false?' <span style="color:var(--muted);font-size:10px;">('+i18n('Pasif')+')</span>':''}</td>
         <td class="num">${fmt(hakedis,0)}</td>
         <td class="num">${fmt(odenen,0)}</td>
         <td class="num ${kalan>0?'odeme-kalan-uyari':'odeme-kalan-ok'}"><b>${fmt(kalan,0)}</b></td>
