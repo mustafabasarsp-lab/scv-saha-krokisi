@@ -401,12 +401,29 @@ input[type=number],.num,td,th,.badge b,.quickstats b{font-variant-numeric:tabula
   flex:0 0 auto;
   flex-wrap:wrap;
 }
-.panel-head-left{flex:1 1 auto;min-width:0;}
+/* Başlık iki katmanlı: üstte panel adı ve ikon düğmeleri, altta filtre şeridi
+   (arama + bölge sekmeleri + ek filtreler). Hepsi tek satırda yarışırken dar
+   panellerde (Seralar 336px) ikonlar alta sarkıyordu.
+   Filtre şeridi markup'ta ikonlardan ÖNCE geliyor; sırayı order düzeltiyor,
+   böylece HTML'de ilgili kontroller bir arada kalıyor. */
+.panel-head>h2{order:0;flex:0 1 auto;}
+.panel-head-left{
+  order:2;flex:1 1 100%;min-width:0;
+  display:flex;align-items:center;gap:var(--sp-2);flex-wrap:wrap;
+}
+/* Tek çocuğu başlık olan paneller hariç: orada :last-child h2'nin kendisi olur
+   ve sağa yaslanırdı. */
+.panel-head>*:last-child:not(h2){order:1;flex:0 0 auto;margin-left:auto;}
 /* Panel başlığındaki bölge sekmeleri dar sütunda alt alta sarılıp başlığı üç
    satıra çıkarıyordu; artık tek satırda yatay kayıyorlar. */
 .panel-head .page-tabs{display:flex;gap:var(--sp-1);overflow-x:auto;flex-wrap:nowrap;scrollbar-width:none;}
 .panel-head .page-tabs::-webkit-scrollbar{display:none;}
 .panel-head .tab-btn{flex:0 0 auto;padding:6px 11px;font-size:12.5px;min-height:34px;}
+/* Metni yerine yalnızca simgesiyle duran filtre düğmesi (açıklaması title'da).
+   Dar panelde uzun etiket başlığı üç satıra çıkarıyordu. */
+.tab-btn-ikon{padding:6px 9px;font-size:14px;line-height:1;}
+/* Filtre şeridindeki arama kutusu kalan yeri alsın, sabit genişlikte durmasın. */
+.panel-head-left .search-input{flex:1 1 110px;min-width:0;}
 .panel-head h2{font-size:15.5px;font-weight:800;color:var(--ink);letter-spacing:-.015em;}
 .panel-body{
   padding:var(--sp-3);
@@ -1235,15 +1252,15 @@ body.has-fullscreen-panel{overflow:hidden;}
     <!-- SAG: SERALAR -->
     <div class="panel" id="seraPanelBox">
       <div class="panel-head">
-        <div class="panel-head-left" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
-          <h2 data-i18n="Seralar">Seralar</h2>
+        <h2 data-i18n="Seralar">Seralar</h2>
+        <div class="panel-head-left">
           <input type="search" id="seraAramaInput" class="search-input" placeholder="Sera ara…" data-i18n-placeholder="Sera ara…" oninput="renderSeralar()">
           <div class="page-tabs bolge-tabs" id="seraBolgeTabs">
             <button class="tab-btn active" id="seraBolgeTab_tumu" onclick="seraBolgeSekmeGecis('tumu')" data-i18n="Tümü">Tümü</button>
             <button class="tab-btn" id="seraBolgeTab_tekeliler" onclick="seraBolgeSekmeGecis('tekeliler')">Tekeliler</button>
             <button class="tab-btn" id="seraBolgeTab_kalemli" onclick="seraBolgeSekmeGecis('kalemli')">Kalemli</button>
           </div>
-          <button class="tab-btn" id="seraTermometreFiltreBtn" onclick="seraTermometreFiltreToggle()" data-i18n="🌡️ Sadece Termometreli">🌡️ Sadece Termometreli</button>
+          <button class="tab-btn tab-btn-ikon" id="seraTermometreFiltreBtn" onclick="seraTermometreFiltreToggle()" title="Sadece Termometreli" data-i18n-title="Sadece Termometreli" aria-label="Sadece Termometreli">🌡️</button>
         </div>
         <div style="display:flex;align-items:center;gap:6px;">
           <button class="icon-btn ghost" onclick="panelTamEkranAc('seraPanelBox')" title="Tam Ekran" data-i18n-title="Tam Ekran">⤢</button>
@@ -1261,8 +1278,8 @@ body.has-fullscreen-panel{overflow:hidden;}
   <!-- ALT: TARLALAR -->
   <div class="bottom-panel" id="tarlalarPanelBox">
     <div class="panel-head" style="margin:-8px -10px 4px -10px;">
-      <div class="panel-head-left" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
-        <h2 data-i18n="Tarlalar">Tarlalar</h2>
+      <h2 data-i18n="Tarlalar">Tarlalar</h2>
+      <div class="panel-head-left">
         <input type="search" id="tarlaAramaInput" class="search-input" placeholder="Tarla ara…" data-i18n-placeholder="Tarla ara…" oninput="renderTarlalar()">
         <div class="page-tabs bolge-tabs" id="tarlaBolgeTabs">
           <button class="tab-btn active" id="tarlaBolgeTab_tumu" onclick="tarlaBolgeSekmeGecis('tumu')" data-i18n="Tümü">Tümü</button>
@@ -1522,7 +1539,7 @@ const AYARLAR = {
   UNITE_PX: 40                // referans kapasitedeki sera-box genişliği (px) — kroki oranı
 };
 const STORAGE_KEY = 'scvSahaKrokiV1';
-const APP_SURUM = 'v73'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
+const APP_SURUM = 'v74'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
 
 /* =========================================================
    HATA / DONMA GÜNLÜĞÜ — "bazen donuyor" şikayetini araştırmak için.
@@ -1721,6 +1738,7 @@ const I18N_EN = {
   'Soldurma Süresi (gün)':'Wilting Duration (days)',
   'Termometre':'Thermometer', 'Var':'Yes', 'Yok':'No',
   '🌡️ Termometre Ekle':'🌡️ Add Thermometer', '🌡️ Termometre Çıkar':'🌡️ Remove Thermometer', '🌡️ Sadece Termometreli':'🌡️ Thermometer Only',
+  'Sadece Termometreli':'Thermometer only',
   '💰 Ödemeler':'💰 Payments', 'Ödeme':'Pay', 'Günlük Giriş':'Daily Entry', 'Bakiye / Özet':'Balance / Summary',
   'Dayıbaşı':'Crew Leader', 'Dayıbaşıları Yönet':'Manage Crew Leaders', 'Dayıbaşı Ekle':'Add Crew Leader',
   'Yövmiye Ayarları':'Daily Wage Settings', 'Dizim-Asım':'Stringing-Hanging', 'Sera K.':'Greenhouse', 'Çapa':'Hoeing',
