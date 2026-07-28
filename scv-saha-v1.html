@@ -96,6 +96,14 @@ if(window.matchMedia){
      parlaklaşıyor ve geniş bir başlık şeridi olarak kullanıldığında göz yoruyordu. */
   --table-head-bg:#0E6B41;
   --table-head-ink:#FFFFFF;
+  /* Kroki kutularındaki ad şeridi. --green-900'den ayrı bir belirteç: o belirteç
+     metin rengi olarak da kullanıldığı için koyu temada AÇILIYOR ve burada dolu
+     zemin olarak parlak bir leke bırakıyordu. */
+  --etiket-bg:#0B4F32;
+  --etiket-ink:#FFFFFF;
+  /* Doluluk dolgusunun üzerine binen metinleri okunur tutan halo. Zeminle aynı
+     yönde olmalı: koyu temada beyaz halo, açılan metnin çevresinde parlıyordu. */
+  --metin-halo:rgba(255,255,255,.85);
   /* "hiç doldurulmamış" yüzeyi: boş tarla karesi, %0 doluluk çubuğu */
   --empty:#E2E7DE;
 
@@ -182,8 +190,11 @@ if(window.matchMedia){
     --empty:#232C26;
     --table-head-bg:#1C3327;
     --table-head-ink:#BFE0CC;
+    --etiket-bg:#24352C;
+    --etiket-ink:#C6E3D2;
+    --metin-halo:rgba(0,0,0,.78);
 
-    --plot-outline:#D4695B;
+    --plot-outline:#8E4C41;
     --tobacco:#DFA83C;
     --tobacco-deep:#E0B25A;
     --amber:#E0A94A;
@@ -485,13 +496,13 @@ input[type=number],.num,td,th,.badge b,.quickstats b{font-variant-numeric:tabula
   position:absolute;top:50%;left:0;right:0;
   transform:translateY(-50%);
   text-align:center;font-size:11px;font-weight:700;color:var(--ink);
-  z-index:3;text-shadow:0 1px 3px rgba(255,255,255,.85),0 0 4px rgba(255,255,255,.6);
+  z-index:3;text-shadow:0 1px 3px var(--metin-halo),0 0 4px var(--metin-halo);
   padding:0 4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
 }
 .sera-box .pct{
   position:absolute;bottom:3px;left:0;right:0;
   text-align:center;font-size:10px;font-weight:600;color:var(--ink);
-  z-index:3;text-shadow:0 1px 2px rgba(255,255,255,.6);
+  z-index:3;text-shadow:0 1px 2px var(--metin-halo);
 }
 .sera-box .fill{
   position:absolute;left:0;right:0;bottom:0;
@@ -578,9 +589,9 @@ body.has-fullscreen-panel{overflow:hidden;}
   display:flex;flex-direction:column;
 }
 .tarla-box .name{
-  font-weight:700;font-size:10.5px;color:var(--on-accent);
+  font-weight:700;font-size:10.5px;color:var(--etiket-ink);
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
-  background:var(--green-900);
+  background:var(--etiket-bg);
   align-self:flex-start;
   max-width:100%;
   padding:1px 6px;
@@ -593,7 +604,7 @@ body.has-fullscreen-panel{overflow:hidden;}
   content:'';
   position:absolute;left:0;top:100%;
   border-width:3px 3px 0 0;border-style:solid;
-  border-color:var(--green-900) transparent transparent transparent;
+  border-color:var(--etiket-bg) transparent transparent transparent;
 }
 .tarla-box .sub{font-size:9px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .tarla-box .kirim-row{display:flex;align-items:center;gap:2px;margin-top:auto;flex-wrap:wrap;}
@@ -1498,7 +1509,7 @@ const AYARLAR = {
   UNITE_PX: 40                // referans kapasitedeki sera-box genişliği (px) — kroki oranı
 };
 const STORAGE_KEY = 'scvSahaKrokiV1';
-const APP_SURUM = 'v71'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
+const APP_SURUM = 'v72'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
 
 /* =========================================================
    HATA / DONMA GÜNLÜĞÜ — "bazen donuyor" şikayetini araştırmak için.
