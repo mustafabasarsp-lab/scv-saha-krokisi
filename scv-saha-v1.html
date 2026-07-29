@@ -969,7 +969,19 @@ body.has-fullscreen-panel{overflow:hidden;}
 .dizim-del:hover{background:var(--red-soft);color:var(--red);}
 .iklim-chart-title{font-size:11.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.03em;margin:10px 0 2px;}
 .iklim-chart-svg{width:100%;display:block;}
-.iklim-grafik-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:2px 24px;align-items:start;}
+.iklim-grafik-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:2px 24px;align-items:start;position:relative;}
+/* Sıcaklık ve nem ayrı SVG'ler; aynı ana ait iki noktayı birleştiren kesikli
+   çizgi hiçbirinin içine sığmadığı için ızgaranın tamamını kaplayan bir katmana
+   çizilir. Koordinatlar getBoundingClientRect ile ekrandan okunup bu katmanın
+   sol/üst köşesine göre yazılır, o yüzden katmanın viewBox'ı yoktur (1 birim = 1px). */
+.iklim-baglanti-katman{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:2;overflow:visible;}
+/* iOS'ta uzun basınca çıkan seçim/paylaş menüsü değer okumayı bozuyordu.
+   touch-action bilerek serbest bırakıldı: modal telefonda tam ekran ve
+   kaydırılabilir, hedefler de sık — kaydırmayı grafiğin üstünde kilitlemek
+   yerine, kaydırma başlayınca tarayıcının gönderdiği pointercancel etiketi
+   kapatıyor (bkz. belge düzeyindeki dinleyici). */
+.iklim-dokunma circle{-webkit-touch-callout:none;}
+.iklim-grafik-grid,.iklim-chart-svg{-webkit-user-select:none;user-select:none;}
 
 /* ---------- HAVA DURUMU (Open-Meteo, dış ortam) ---------- */
 .hava-serit{
@@ -1747,7 +1759,7 @@ const AYARLAR = {
   UNITE_PX: 40                // referans kapasitedeki sera-box genişliği (px) — kroki oranı
 };
 const STORAGE_KEY = 'scvSahaKrokiV1';
-const APP_SURUM = 'v77'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
+const APP_SURUM = 'v78'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
 
 /* =========================================================
    HATA / DONMA GÜNLÜĞÜ — "bazen donuyor" şikayetini araştırmak için.
@@ -1864,7 +1876,7 @@ const I18N_EN = {
   'Hava durumu yükleniyor…':'Loading weather…', 'Hava verisi alınamadı':'Weather data unavailable',
   'Dış ortam verisi yükleniyor…':'Loading outdoor data…', 'Dış ortam verisi alınamadı':'Could not load outdoor data',
   'Dış ortam verisi kapalı':'Outdoor data off', 'Dış ortam (en yakın saat)':'Outdoor (nearest hour)',
-  'Değeri görmek için noktaya dokunun':'Tap a point to see its value',
+  'Noktaya basılı tutun: aynı ana ait sıcaklık ve nem birlikte, kesikli çizgiyle bağlı görünür. Bırakınca kaybolur.':'Press and hold a point: the temperature and humidity for that moment appear together, joined by a dotted line. Release to hide.',
   'Bu tarihler için dış ortam verisi yok (yaklaşık 2 aydan eski)':'No outdoor data for these dates (older than about 2 months)',
   'Kayıtlarda saat bilgisi olmadığı için dış ortam eşleştirilemedi':'Could not match outdoor data: records have no time of day',
   'Açık':'Clear', 'Az bulutlu':'Partly cloudy', 'Bulutlu':'Cloudy', 'Sisli':'Foggy',
@@ -6516,10 +6528,13 @@ function iklimCizgiGrafikSvg(values, labels, color, birim, gradId, disValues){
      yanındaki değer açılıyordu. */
   const hedefR = Math.max(Math.min(4, nAralik*0.9), Math.min(11, nAralik*0.55));
   const dokunmaHedefleri = [];
+  /* data-i / data-dis: iki grafikte aynı ana ait noktayı eşleştirmek için.
+     Sıcaklığın 5. sera noktasına basınca nemin 5. sera noktası bulunup birlikte
+     gösteriliyor (bkz. iklimGrafikEsNokta). */
   const noktaHedefiEkle = (i, deger, renk, disMi)=>{
     const zaman = labels[i] || '';
     const metin = (disMi ? i18n('Dış') + ' ' : '') + fmt(deger,1) + birim + (zaman ? ' · ' + zaman : '');
-    dokunmaHedefleri.push(`<circle class="tiklanabilir" cx="${x(i).toFixed(1)}" cy="${y(deger).toFixed(1)}" r="${hedefR.toFixed(1)}" fill="transparent" data-g="${gradId}" data-x="${x(i).toFixed(1)}" data-y="${y(deger).toFixed(1)}" data-renk="${renk}" data-et="${escapeHtml(metin)}" onclick="event.stopPropagation();iklimGrafikEtiketAcKapa(this)"><title>${escapeHtml(metin)}</title></circle>`);
+    dokunmaHedefleri.push(`<circle class="tiklanabilir" cx="${x(i).toFixed(1)}" cy="${y(deger).toFixed(1)}" r="${hedefR.toFixed(1)}" fill="transparent" data-g="${gradId}" data-i="${i}" data-dis="${disMi?1:0}" data-x="${x(i).toFixed(1)}" data-y="${y(deger).toFixed(1)}" data-renk="${renk}" data-et="${escapeHtml(metin)}" onpointerdown="event.stopPropagation();iklimGrafikNoktaBas(this)"><title>${escapeHtml(metin)}</title></circle>`);
   };
   if(disVar) disValues.forEach((v,i)=>{ if(v!=null) noktaHedefiEkle(i, v, 'var(--muted)', true); });
   values.forEach((v,i)=> noktaHedefiEkle(i, v, color, false)); // sera noktaları üstte: çakışmada onlar seçilsin
@@ -6554,30 +6569,52 @@ function iklimEtiketBalonKutu(cx, cy, metin, W){
     by: (cy - yuk - 9) >= 2 ? cy - yuk - 9 : cy + 9
   };
 }
-/* Aynı anda tek balon açık kalır: yeni noktaya dokunmak öncekini kapatır, aynı
-   noktaya tekrar dokunmak balonu gizler, grafiğin boş bir yerine/dışına dokunmak
-   da kapatır (belge düzeyindeki dinleyici; nokta dokunuşları stopPropagation yapar). */
-let iklimAcikNokta = null;
+/* Noktaya BASILI TUTULDUĞU sürece değer görünür, parmak/fare kalkınca kaybolur.
+   Basılan nokta yalnız gösterilmez: diğer grafikteki aynı ana ait nokta da
+   (sıcaklık ↔ nem) bulunup birlikte gösterilir ve ikisi kesikli bir çizgiyle
+   birleştirilir — "bu sıcaklıkta nem neydi?" sorusu sahada tek hareketle
+   cevaplansın diye. */
+let iklimAcikNoktalar = [];
+const NS_SVG = 'http://www.w3.org/2000/svg';
 function iklimGrafikBalonKutusu(hedef){
   return hedef ? document.getElementById('iklimBalon' + hedef.getAttribute('data-g')) : null;
 }
-function iklimGrafikEtiketKapat(){
-  if(!iklimAcikNokta) return;
-  const g = iklimGrafikBalonKutusu(iklimAcikNokta);
-  if(g) while(g.firstChild) g.removeChild(g.firstChild);
-  iklimAcikNokta = null;
+function iklimGrafikBaglantiKatmani(){
+  return document.getElementById('iklimBaglantiKatman');
 }
-function iklimGrafikEtiketAcKapa(hedef){
-  const onceki = iklimAcikNokta;
-  iklimGrafikEtiketKapat();
-  if(!hedef || onceki === hedef) return; // aynı noktaya ikinci dokunuş: sadece kapat
+function iklimGrafikEtiketKapat(){
+  iklimAcikNoktalar.forEach(hedef=>{
+    const g = iklimGrafikBalonKutusu(hedef);
+    if(g) while(g.firstChild) g.removeChild(g.firstChild);
+  });
+  iklimAcikNoktalar = [];
+  const katman = iklimGrafikBaglantiKatmani();
+  if(katman) while(katman.firstChild) katman.removeChild(katman.firstChild);
+}
+/* Basılan noktanın diğer grafikteki karşılığı: aynı kayıt sırası (data-i) ve
+   aynı seri (sera içi / dış ortam). Nem grafiği "Veri yok" ise null döner. */
+function iklimGrafikEsNokta(hedef){
+  const kaynak = hedef.getAttribute('data-g');
+  const es = kaynak==='sic' ? 'nem' : (kaynak==='nem' ? 'sic' : null);
+  if(!es) return null;
+  return document.querySelector(`.iklim-dokunma circle[data-g="${es}"][data-i="${hedef.getAttribute('data-i')}"][data-dis="${hedef.getAttribute('data-dis')}"]`);
+}
+function iklimGrafikBalonCiz(hedef){
   const g = iklimGrafikBalonKutusu(hedef);
   if(!g) return;
   const metin = hedef.getAttribute('data-et') || '';
   const renk = hedef.getAttribute('data-renk') || 'var(--ink)';
-  const kutu = iklimEtiketBalonKutu(Number(hedef.getAttribute('data-x')), Number(hedef.getAttribute('data-y')), metin, IKLIM_GRAFIK_W);
-  const NS = 'http://www.w3.org/2000/svg';
-  const kutuEl = document.createElementNS(NS, 'rect');
+  const cx = Number(hedef.getAttribute('data-x')), cy = Number(hedef.getAttribute('data-y'));
+  const kutu = iklimEtiketBalonKutu(cx, cy, metin, IKLIM_GRAFIK_W);
+  // Basılı tutulan nokta, çizgi kalabalığında kaybolmasın diye halkayla vurgulanır
+  const halka = document.createElementNS(NS_SVG, 'circle');
+  halka.setAttribute('cx', cx.toFixed(1));
+  halka.setAttribute('cy', cy.toFixed(1));
+  halka.setAttribute('r', '5.5');
+  halka.setAttribute('fill', 'none');
+  halka.setAttribute('stroke', renk);
+  halka.setAttribute('stroke-width', '2');
+  const kutuEl = document.createElementNS(NS_SVG, 'rect');
   kutuEl.setAttribute('x', kutu.bx.toFixed(1));
   kutuEl.setAttribute('y', kutu.by.toFixed(1));
   kutuEl.setAttribute('width', kutu.gen.toFixed(1));
@@ -6587,7 +6624,7 @@ function iklimGrafikEtiketAcKapa(hedef){
   kutuEl.setAttribute('stroke', renk);
   kutuEl.setAttribute('stroke-width', '1.4');
   kutuEl.setAttribute('opacity', '.97');
-  const yaziEl = document.createElementNS(NS, 'text');
+  const yaziEl = document.createElementNS(NS_SVG, 'text');
   yaziEl.setAttribute('x', (kutu.bx + kutu.gen/2).toFixed(1));
   yaziEl.setAttribute('y', (kutu.by + 12).toFixed(1));
   yaziEl.setAttribute('font-size', '10.5');
@@ -6595,9 +6632,43 @@ function iklimGrafikEtiketAcKapa(hedef){
   yaziEl.setAttribute('fill', renk);
   yaziEl.setAttribute('text-anchor', 'middle');
   yaziEl.textContent = metin;
+  g.appendChild(halka);
   g.appendChild(kutuEl);
   g.appendChild(yaziEl);
-  iklimAcikNokta = hedef;
+  iklimAcikNoktalar.push(hedef);
+}
+/* İki noktayı birleştiren kesikli çizgi. Her grafik kendi viewBox'ında olduğu
+   için ortak koordinat yoktur; ekran koordinatları okunup ızgara katmanının
+   köşesine göre yazılır. Telefonda grafikler alt alta dizilir, çizgi de doğal
+   olarak aşağı doğru iner. */
+function iklimGrafikBaglantiCiz(a, b){
+  const katman = iklimGrafikBaglantiKatmani();
+  if(!katman || !a || !b) return;
+  const kr = katman.getBoundingClientRect();
+  if(!kr.width) return;
+  const merkez = el=>{ const r = el.getBoundingClientRect(); return [r.left + r.width/2 - kr.left, r.top + r.height/2 - kr.top]; };
+  const [ax, ay] = merkez(a), [bx, by] = merkez(b);
+  const cizgi = document.createElementNS(NS_SVG, 'line');
+  cizgi.setAttribute('x1', ax.toFixed(1));
+  cizgi.setAttribute('y1', ay.toFixed(1));
+  cizgi.setAttribute('x2', bx.toFixed(1));
+  cizgi.setAttribute('y2', by.toFixed(1));
+  cizgi.setAttribute('stroke', 'var(--ink)');
+  cizgi.setAttribute('stroke-width', '1.4');
+  cizgi.setAttribute('stroke-dasharray', '3 4');
+  cizgi.setAttribute('stroke-linecap', 'round');
+  cizgi.setAttribute('opacity', '.55');
+  katman.appendChild(cizgi);
+}
+function iklimGrafikNoktaBas(hedef){
+  iklimGrafikEtiketKapat();
+  if(!hedef) return;
+  iklimGrafikBalonCiz(hedef);
+  const es = iklimGrafikEsNokta(hedef);
+  if(es){
+    iklimGrafikBalonCiz(es);
+    iklimGrafikBaglantiCiz(hedef, es);
+  }
 }
 function openIklimGrafikModal(){
   if(!state.iklimKayitlari.length){ alert('Henüz sıcaklık/nem kaydı yok.'); return; }
@@ -6618,8 +6689,8 @@ function openIklimGrafikModal(){
       <button class="btn btn-muted dugme-dar" id="btnHavaGrafik" onclick="havaGrafikAcKapa()">${i18n('🌍 Dış Ortam')}</button>
       <span class="hava-not" id="havaGrafikNot"></span>
     </div>
-    <div class="hava-not alt-bosluk-minik">${i18n('Değeri görmek için noktaya dokunun')}</div>
-    <div class="iklim-grafik-grid">
+    <div class="hava-not alt-bosluk-minik">${i18n('Noktaya basılı tutun: aynı ana ait sıcaklık ve nem birlikte, kesikli çizgiyle bağlı görünür. Bırakınca kaybolur.')}</div>
+    <div class="iklim-grafik-grid" id="iklimGrafikGrid">
       <div>
         <div class="iklim-chart-title">${i18n('Sıcaklık (°C)')}</div>
         <div id="iklimGrafikSicaklik"></div>
@@ -6628,6 +6699,7 @@ function openIklimGrafikModal(){
         <div class="iklim-chart-title">${i18n('Nem (%)')}</div>
         <div id="iklimGrafikNem"></div>
       </div>
+      <svg class="iklim-baglanti-katman" id="iklimBaglantiKatman"></svg>
     </div>
     <div class="modal-actions">
       <button class="btn btn-muted" onclick="closeModal()">${i18n('Kapat')}</button>
@@ -6656,7 +6728,7 @@ function renderIklimGrafik(){
   const sicaklikEl = document.getElementById('iklimGrafikSicaklik');
   const nemEl = document.getElementById('iklimGrafikNem');
   if(!sicaklikEl || !nemEl) return;
-  iklimAcikNokta = null; // yeniden çizimde eski nokta DOM'dan silindi, referansı da bırak
+  iklimAcikNoktalar = []; // yeniden çizimde eski noktalar DOM'dan silindi, referansları da bırak
   const liste = iklimGrafikListesi();
   if(!liste.length){
     sicaklikEl.innerHTML = nemEl.innerHTML = `<div class="item">${i18n('Veri yok')}</div>`;
@@ -7857,7 +7929,11 @@ uygulaStatikDil();
 renderAll();
 havaBaslat();
 // grafikte açık bir değer balonu varsa, boş bir yere dokunulduğunda kapansın
-document.addEventListener('click', iklimGrafikEtiketKapat);
+/* Basılı tutma bırakılınca değerler kaybolur. pointerup belge düzeyinde dinlenir:
+   parmak noktadan kayarak kalksa bile etiket kapanır. pointercancel, kaydırma
+   jesti araya girdiğinde (tarayıcı dokunuşu geri aldığında) aynı işi yapar. */
+document.addEventListener('pointerup', iklimGrafikEtiketKapat);
+document.addEventListener('pointercancel', iklimGrafikEtiketKapat);
 bildirimDurumGuncelle();
 if('Notification' in window && Notification.permission==='granted'){
   bildirimKontrolEt();
