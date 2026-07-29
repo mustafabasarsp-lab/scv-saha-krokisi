@@ -692,11 +692,101 @@ body.has-fullscreen-panel{overflow:hidden;}
 }
 .zararli-badge.siddetli{background:var(--red);}
 .tarla-close{
-  position:absolute;bottom:2px;right:2px;
+  position:absolute;bottom:2px;right:2px;z-index:6;
   width:13px;height:13px;border-radius:50%;
   background:rgba(0,0,0,.4);color:var(--on-accent);border:none;font-size:9px;
   display:flex;align-items:center;justify-content:center;padding:0;
 }
+
+/* ---------- ÇALIŞMA İŞARETİ (bugün kırım yapılıyor / sera dolduruluyor) ----------
+   Saha ekibi kaydı girmeden ÖNCE o günkü tarla/serayı işaretler. İşaret bir tarih
+   tutar ve yalnızca bugüne aitse görünür — gece yarısı kendiliğinden düşer.
+   Sera kutuları kapasiteyle orantılı (≈37px) olduğundan tam ibare kutuya sığmaz;
+   kutuda kısa şerit, panelin üstündeki bantta tam ibare + isim listesi durur. */
+.tarla-box.calisma-isaretli,.sera-box.calisma-isaretli{
+  border-color:var(--red);
+  animation:calismaNabiz 1.1s ease-in-out infinite;
+}
+.sera-box.calisma-isaretli{border-width:2px;}
+/* Şerit kutunun altına oturur; tarlada kırım noktaları (uygulamanın imzası)
+   örtülmesin diye iki satırlık şerit kadarını yukarı iter. */
+.tarla-box.calisma-isaretli{padding-bottom:19px;}
+@keyframes calismaNabiz{50%{border-color:var(--border-strong);}}
+.calisma-serit-kutu{
+  position:absolute;left:0;right:0;bottom:0;z-index:5;
+  background:var(--red);color:var(--on-accent);
+  font-size:7px;font-weight:800;line-height:1.15;letter-spacing:.02em;
+  text-transform:uppercase;text-align:center;padding:1px 2px;
+  animation:calismaSolma 1.1s ease-in-out infinite;
+}
+/* tarlada sağ alttaki silme düğmesinin altında kalmasın */
+.tarla-box .calisma-serit-kutu{padding-right:15px;}
+/* sera kutusu kapasiteyle orantılı ve en darı ~33px; şerit orada da kırpılmasın */
+.sera-box .calisma-serit-kutu{font-size:6px;letter-spacing:0;padding:1px 1px;}
+@keyframes calismaSolma{50%{opacity:.4;}}
+.calisma-bant{
+  display:flex;align-items:baseline;gap:6px;flex-wrap:wrap;
+  border:1px solid var(--red);border-radius:var(--r-sm);
+  background:var(--red-soft);color:var(--red);
+  font-size:11px;padding:4px 8px;margin-bottom:6px;
+}
+.calisma-bant b{font-weight:800;text-transform:uppercase;letter-spacing:.04em;animation:calismaSolma 1.1s ease-in-out infinite;}
+.calisma-bant span{color:var(--ink);font-weight:600;}
+@media (prefers-reduced-motion:reduce){
+  .tarla-box.calisma-isaretli,.sera-box.calisma-isaretli,.calisma-serit-kutu,.calisma-bant b{animation:none;}
+}
+
+/* ---------- TOPLU GİRİŞ / SEÇİM LİSTELERİ ---------- */
+.toplu-satir{
+  display:grid;grid-template-columns:1.2fr 1fr .9fr .8fr .8fr 26px;
+  gap:5px;align-items:center;margin-bottom:5px;
+}
+/* min-width:0 olmadan tarih/saat girdilerinin doğal genişliği fr sütunlarını
+   şişiriyor ve satır, başlık satırıyla hizasını kaybediyor. */
+.toplu-satir > *{min-width:0;}
+.toplu-satir input,.toplu-satir select{
+  width:100%;margin:0;padding:7px 8px;font-size:13px;
+  border:1px solid var(--border);border-radius:6px;
+  background:var(--panel);color:var(--ink);
+}
+.toplu-satir input:focus,.toplu-satir select:focus{outline:none;border-color:var(--green-500);box-shadow:0 0 0 2px var(--green-100);}
+.toplu-satir input[type=number]{text-align:right;font-weight:700;}
+.toplu-satir-sil{
+  border:none;background:transparent;color:var(--muted);
+  font-size:16px;line-height:1;padding:4px;border-radius:5px;cursor:pointer;
+}
+.toplu-satir-sil:hover{background:var(--red-soft);color:var(--red);}
+.toplu-baslik{
+  display:grid;grid-template-columns:1.2fr 1fr .9fr .8fr .8fr 26px;
+  gap:5px;font-size:10px;text-transform:uppercase;letter-spacing:.04em;
+  color:var(--muted);font-weight:700;margin-bottom:3px;
+}
+/* Dar ekranda satır tek sıraya sığmıyor; kart gibi üç sıraya açılır:
+   sera | tarih–saat | sıcaklık–nem. Sütun başlıkları düşer, alanların
+   placeholder/aria-label'ı yerini tutar. */
+@media (max-width:640px){
+  .toplu-baslik{display:none;}
+  .toplu-satir{
+    grid-template-columns:1fr 1fr 26px;
+    border:1px solid var(--border);border-radius:6px;padding:6px;margin-bottom:8px;
+  }
+  .toplu-satir > :nth-child(1){grid-row:1;grid-column:1/3;}
+  .toplu-satir > :nth-child(6){grid-row:1;grid-column:3;}
+  .toplu-satir > :nth-child(2){grid-row:2;grid-column:1;}
+  .toplu-satir > :nth-child(3){grid-row:2;grid-column:2/4;}
+  .toplu-satir > :nth-child(4){grid-row:3;grid-column:1;}
+  .toplu-satir > :nth-child(5){grid-row:3;grid-column:2/4;}
+}
+.secim-listesi{max-height:300px;overflow-y:auto;border:1px solid var(--border);border-radius:6px;padding:4px 8px;background:var(--panel-2);}
+.secim-listesi .check-row{margin:2px 0;}
+/* .check-row (display:flex) genel .hidden kuralından SONRA tanımlı; arama
+   filtresinin satırı gizleyebilmesi için özgüllüğü artıran bu kural gerekli. */
+.check-row.hidden{display:none;}
+.secim-listesi-baslik{
+  font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);
+  font-weight:700;margin:8px 0 2px;
+}
+.secim-listesi-baslik:first-child{margin-top:2px;}
 
 /* ---------- SAYFA GEÇİŞİ / HARİTALAR ---------- */
 .page{display:contents;}
@@ -1088,6 +1178,9 @@ body.has-fullscreen-panel{overflow:hidden;}
   .tarla-box{width:64px;height:64px;padding:4px 5px;}
   .tarla-box .name{font-size:9px;}
   .tarla-box .sub{font-size:8px;}
+  /* 64px kutuda iki satırlık "kırım yapılıyor" şeridi + ad + dekar + kırım
+     noktaları aynı anda sığmıyor; işaretliyken dekar düşer, kırım noktaları kalır. */
+  .tarla-box.calisma-isaretli .sub{display:none;}
   .sera-box{height:64px;}
   .kdot{width:9px;height:9px;}
   #haritaMap{min-height:260px;}
@@ -1372,12 +1465,14 @@ input.dayibasi-ad-alani{flex:1;min-width:110px;border:1px solid var(--border);bo
           <button class="tab-btn tab-btn-ikon" id="seraTermometreFiltreBtn" onclick="seraTermometreFiltreToggle()" title="Sadece Termometreli" data-i18n-title="Sadece Termometreli" aria-label="Sadece Termometreli">🌡️</button>
         </div>
         <div class="satir-ortali-dar">
+          <button class="icon-btn ghost" onclick="openSeraTopluModal()" title="Toplu İşlem" data-i18n-title="Toplu İşlem">☑</button>
           <button class="icon-btn ghost" onclick="panelTamEkranAc('seraPanelBox')" title="Tam Ekran" data-i18n-title="Tam Ekran">⤢</button>
           <button class="icon-btn fullscreen-close" onclick="panelTamEkranKapat('seraPanelBox')" title="Tam Ekranı Kapat" data-i18n-title="Tam Ekranı Kapat">×</button>
           <button class="icon-btn" onclick="openSeraEkleModalAktifBolgeIle()">+</button>
         </div>
       </div>
       <div class="panel-body">
+        <div id="seraCalismaBant"></div>
         <div class="sera-plot" id="seraPlot"></div>
       </div>
     </div>
@@ -1397,11 +1492,13 @@ input.dayibasi-ad-alani{flex:1;min-width:110px;border:1px solid var(--border);bo
         </div>
       </div>
       <div class="satir-ortali-dar">
+        <button class="icon-btn ghost" onclick="openTarlaTopluModal()" title="Toplu İşlem" data-i18n-title="Toplu İşlem">☑</button>
         <button class="icon-btn ghost" onclick="panelTamEkranAc('tarlalarPanelBox')" title="Tam Ekran" data-i18n-title="Tam Ekran">⤢</button>
         <button class="icon-btn fullscreen-close" onclick="panelTamEkranKapat('tarlalarPanelBox')" title="Tam Ekranı Kapat" data-i18n-title="Tam Ekranı Kapat">×</button>
         <button class="icon-btn" onclick="openTarlaEkleModalAktifBolgeIle()">+</button>
       </div>
     </div>
+    <div id="tarlaCalismaBant"></div>
     <div class="tarla-plot" id="tarlaPlot"></div>
   </div>
   </div>
@@ -1492,6 +1589,8 @@ input.dayibasi-ad-alani{flex:1;min-width:110px;border:1px solid var(--border);bo
         <h2 data-i18n="İklim Takip">İklim Takip</h2>
         <div class="satir-ortali-dar">
           <button class="btn" onclick="openIklimGrafikModal()" data-i18n="📈 Grafik">📈 Grafik</button>
+          <button class="btn" onclick="openIklimTopluEkleModal()" data-i18n="📋 Toplu Giriş">📋 Toplu Giriş</button>
+          <button class="icon-btn ghost" onclick="openIklimAralikSilModal()" title="Aralıkla Sil" data-i18n-title="Aralıkla Sil">🗑</button>
           <button class="icon-btn" onclick="openIklimEkleModal()">+</button>
           <button class="icon-btn ghost" onclick="panelTamEkranAc('iklimPanelBox')" title="Tam Ekran" data-i18n-title="Tam Ekran">⤢</button>
           <button class="icon-btn fullscreen-close" onclick="panelTamEkranKapat('iklimPanelBox')" title="Tam Ekranı Kapat" data-i18n-title="Tam Ekranı Kapat">×</button>
@@ -1648,7 +1747,7 @@ const AYARLAR = {
   UNITE_PX: 40                // referans kapasitedeki sera-box genişliği (px) — kroki oranı
 };
 const STORAGE_KEY = 'scvSahaKrokiV1';
-const APP_SURUM = 'v76'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
+const APP_SURUM = 'v77'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
 
 /* =========================================================
    HATA / DONMA GÜNLÜĞÜ — "bazen donuyor" şikayetini araştırmak için.
@@ -1872,6 +1971,24 @@ const I18N_EN = {
   'yevmiye kaydı var':'daily wage record(s)',
   'tanesi gelecek tarihli':'of them future-dated',
   'Tema':'Theme', 'Otomatik':'Auto', 'Açık':'Light', 'Koyu':'Dark',
+  // Çalışma işareti (bugün kırım yapılıyor / sera dolduruluyor)
+  'KIRIM YAPILIYOR':'HARVEST IN PROGRESS', 'SERALAR DOLDURULUYOR':'GREENHOUSES BEING FILLED', 'DOLUYOR':'FILLING',
+  '🔴 Bugün Kırım Yapılıyor':'🔴 Harvesting Today', '🔴 Kırım İşaretini Kaldır':'🔴 Clear Harvest Mark',
+  '🔴 Bugün Dolduruluyor':'🔴 Being Filled Today', '🔴 Doldurma İşaretini Kaldır':'🔴 Clear Filling Mark',
+  '🔴 Kırım Yapılıyor İşaretle':'🔴 Mark as Harvesting', '🔴 Dolduruluyor İşaretle':'🔴 Mark as Being Filled',
+  'İşareti Kaldır':'Clear Mark', 'kırım yapılıyor':'harvesting', 'dolduruluyor':'being filled',
+  // Toplu işlemler
+  'Toplu İşlem':'Bulk Action', 'Seralar — Toplu İşlem':'Greenhouses — Bulk Action', 'Tarlalar — Toplu İşlem':'Fields — Bulk Action',
+  'Tümünü Seç':'Select All', 'Seçimi Temizle':'Clear Selection', 'Boşalt (dönemi arşivle)':'Empty (archive cycle)',
+  'Kayıt yok':'No records', 'boş':'empty', 'kırım yok':'no harvest',
+  'Tek Sera':'Single Greenhouse', 'Çoklu Sera':'Multiple Greenhouses', 'Sera Adları':'Greenhouse Names', 'Hepsini Ekle':'Add All',
+  // Toplu / aralıklı iklim işlemleri
+  '📋 Toplu Giriş':'📋 Bulk Entry', 'Toplu Sıcaklık/Nem Girişi':'Bulk Temperature/Humidity Entry',
+  '+ Satır Ekle':'+ Add Row', 'Hepsini Kaydet':'Save All', 'Satırı sil':'Delete row',
+  'Aralıkla Sil':'Delete by Range', 'Sıcaklık/Nem Kayıtlarını Aralıkla Sil':'Delete Temperature/Humidity Records by Range',
+  'Tüm seralar':'All greenhouses', 'Seçilenleri Sil':'Delete Selected',
+  'Başlangıç tarihi bitişten sonra.':'Start date is after the end date.', 'Bu aralıkta kayıt yok.':'No records in this range.',
+  'kayıt silinecek':'record(s) will be deleted',
 };
 function i18n(tr){ return currentLang==='en' ? (I18N_EN[tr] || tr) : tr; }
 function dilDegistir(){
@@ -2351,6 +2468,49 @@ function tarlaStats(tarlaId){
   return { kayitSayisi: kayitlar.length, maxKirimNo, toplamKg, toplamDizi };
 }
 
+/* ---- Çalışma işareti ----
+   Saha ekibi kaydı girmeden önce "bugün burada çalışılıyor" der: tarlada kırım
+   yapılıyor, serada dizim/doldurma sürüyor. İşaret bir BAYRAK değil TARİH tutar;
+   böylece dünden kalan işaret bugün kendiliğinden düşer, kimsenin temizlemesi
+   gerekmez. Tarladaki işaret, o tarihe kırım kaydı girildiğinde de düşer —
+   işaretin amacı zaten "kayıt henüz girilmedi" penceresidir. */
+function tarlaKirimYapiliyorMu(t){ return !!t && t.kirimIsaretTarihi === todayStr(); }
+function seraDolduruluyorMu(s){ return !!s && s.doldurmaIsaretTarihi === todayStr(); }
+function calismaIsaretiUygula(kayit, alan, acikMi){
+  if(!kayit) return;
+  if(acikMi) kayit[alan] = todayStr();
+  else delete kayit[alan];
+  Object.assign(kayit, sonIslemDamgasi());
+}
+function tarlaKirimIsaretiToggle(id){
+  const t = tarlaBul(id);
+  if(!t) return;
+  calismaIsaretiUygula(t, 'kirimIsaretTarihi', !tarlaKirimYapiliyorMu(t));
+  renderAll(); openTarlaDetay(id);
+}
+function seraDoldurmaIsaretiToggle(id){
+  const s = seraBul(id);
+  if(!s) return;
+  calismaIsaretiUygula(s, 'doldurmaIsaretTarihi', !seraDolduruluyorMu(s));
+  renderAll(); openSeraDetay(id);
+}
+/* Kırım kaydı girilen tarlaların o güne ait işaretini düşürür. */
+function kirimIsaretiniDusur(tarlaIdListesi, tarih){
+  (tarlaIdListesi||[]).forEach(id=>{
+    const t = tarlaBul(id);
+    if(t && t.kirimIsaretTarihi === tarih){
+      delete t.kirimIsaretTarihi;
+      Object.assign(t, sonIslemDamgasi());
+    }
+  });
+}
+/* Panel üstündeki bant: kutulardaki kısa şeridin tam karşılığı + isim listesi. */
+function calismaBandiHtml(liste, ibare){
+  if(!liste.length) return '';
+  const adlar = liste.map(x=>escapeHtml(x.ad||'-')).join(', ');
+  return `<div class="calisma-bant"><b>🔴 ${i18n(ibare)}</b><span>${adlar}</span></div>`;
+}
+
 function tarlaPhiDurum(tarla){
   if(!tarla.ilaclar || !tarla.ilaclar.length) return null;
   const today = new Date(todayStr());
@@ -2636,6 +2796,9 @@ function renderSeralar(){
   const arama = aramaInput ? aramaInput.value.trim().toLocaleLowerCase('tr') : '';
   if(arama) liste = liste.filter(s=>(s.ad||'').toLocaleLowerCase('tr').includes(arama));
   liste = [...liste].sort((a,b)=>(a.ad||'').localeCompare(b.ad||'','tr',{numeric:true}));
+  // Bant filtreden bağımsızdır: işaretli sera arama/bölge filtresi yüzünden gizlenmiş olsa da görünür kalır
+  const bantEl = document.getElementById('seraCalismaBant');
+  if(bantEl) bantEl.innerHTML = calismaBandiHtml(seralarSirali(state.seralar.filter(seraDolduruluyorMu)), 'SERALAR DOLDURULUYOR');
   if(!liste.length){
     let msg = 'Henüz sera yok. "+" ile ekleyin.';
     if(state.seralar.length && arama) msg = 'Arama sonucu bulunamadı.';
@@ -2648,11 +2811,12 @@ function renderSeralar(){
     const cls = seraDurumSinifiExact(pct);
     const width = (s.kapasite/AYARLAR.UNITE_KAPASITE) * AYARLAR.UNITE_PX;
     const fillH = Math.min(pct,100);
-    return `<div class="sera-box" style="width:${width}px" onclick="openSeraDetay('${s.id}')">
+    const dolduruluyor = seraDolduruluyorMu(s);
+    return `<div class="sera-box${dolduruluyor?' calisma-isaretli':''}" style="width:${width}px" onclick="openSeraDetay('${s.id}')">
       <button class="sera-close" title="Sil" onclick="event.stopPropagation();seraSil('${s.id}')">×</button>
       <div class="label">${escapeHtml(s.ad)}</div>
       <div class="fill ${cls}" style="height:${fillH}%"></div>
-      <div class="pct">${fmt(pct,0)}%</div>
+      ${dolduruluyor ? `<div class="calisma-serit-kutu">${i18n('DOLUYOR')}</div>` : `<div class="pct">${fmt(pct,0)}%</div>`}
     </div>`;
   }).join('');
 }
@@ -2675,6 +2839,12 @@ function renderTarlalar(){
   const aramaInput = document.getElementById('tarlaAramaInput');
   const arama = aramaInput ? aramaInput.value.trim().toLocaleLowerCase('tr') : '';
   if(arama) liste = liste.filter(t=>(t.ad||'').toLocaleLowerCase('tr').includes(arama));
+  // Bant filtreden bağımsızdır (bkz. renderSeralar)
+  const bantEl = document.getElementById('tarlaCalismaBant');
+  if(bantEl){
+    const isaretliler = state.tarlalar.filter(tarlaKirimYapiliyorMu).sort((a,b)=>(a.ad||'').localeCompare(b.ad||'','tr',{numeric:true}));
+    bantEl.innerHTML = calismaBandiHtml(isaretliler, 'KIRIM YAPILIYOR');
+  }
   if(!liste.length){
     let msg = 'Henüz tarla yok. "+" ile ekleyin.';
     if(state.tarlalar.length && arama) msg = 'Arama sonucu bulunamadı.';
@@ -2693,12 +2863,14 @@ function renderTarlalar(){
     for(let i=1;i<=6;i++){
       dots += `<span class="kdot kdot-${i} ${i<=stats.maxKirimNo?'':'empty'}" title="${i}. ${i18n('kırım')}"></span>`;
     }
-    return `<div class="tarla-box" onclick="openTarlaDetay('${t.id}')">
+    const kirimYapiliyor = tarlaKirimYapiliyorMu(t);
+    return `<div class="tarla-box${kirimYapiliyor?' calisma-isaretli':''}" onclick="openTarlaDetay('${t.id}')">
       ${phi ? `<div class="phi-badge">${phi.kalanGun}g</div>` : ''}
       ${zararli ? `<div class="zararli-badge ${zararli.yuzde>=50?'siddetli':''}" title="${escapeHtml(zararli.ad)} — %${zararli.yuzde}">🐛 %${zararli.yuzde}</div>` : ''}
       <div class="name">${escapeHtml(t.ad)}</div>
       <div class="sub">${fmt(t.dekar,1)} da</div>
       <div class="kirim-row">${dots}</div>
+      ${kirimYapiliyor ? `<div class="calisma-serit-kutu">${i18n('KIRIM YAPILIYOR')}</div>` : ''}
       <button class="tarla-close" title="Sil" onclick="event.stopPropagation();tarlaSil('${t.id}')">×</button>
     </div>`;
   }).join('');
@@ -2790,25 +2962,106 @@ function seraFormOku(){
     bolge: document.getElementById('fSeraBolge').value || ''
   };
 }
+function yeniSeraNesnesi(ad, kapasite, bolge){
+  return {
+    id: uid(), ad, kapasite, bolge,
+    termometreVar: false,
+    donemler: [], olusturma: Date.now(), ...sonIslemDamgasi()
+  };
+}
 function openSeraEkleModal(bolgeVarsayilan){
+  const bolge = bolgeVarsayilan || '';
   openModal(`
     <h2>${i18n('Yeni Sera')}</h2>
-    ${seraFormFieldsHtml({ bolge: bolgeVarsayilan || '' })}
+    <div class="page-tabs alt-bosluk-6">
+      <button class="tab-btn active" id="seraEkleTab_tek" onclick="seraEkleModuGecis('tek')">${i18n('Tek Sera')}</button>
+      <button class="tab-btn" id="seraEkleTab_coklu" onclick="seraEkleModuGecis('coklu')">${i18n('Çoklu Sera')}</button>
+    </div>
+    <div id="seraEkleTek">
+      ${seraFormFieldsHtml({ bolge })}
+    </div>
+    <div id="seraEkleCoklu" class="hidden">
+      <div class="field">
+        <label>${i18n('Sera Adları')}</label>
+        <textarea id="fSeraCokluAdlar" rows="6" placeholder="B1-B41&#10;C1-C37&#10;Deneme 1"></textarea>
+      </div>
+      <div class="hint-box">Her satıra bir ad yazın (virgülle de ayırabilirsiniz). <b>B1-B41</b> gibi bir aralık yazarsanız B1, B2 … B41 olarak açılır. Aynı adda sera zaten varsa atlanır.</div>
+      <div class="row2">
+        <div class="field">
+          <label>${i18n('Sera Dizi Kapasitesi')}</label>
+          <select id="fSeraCokluKapasite">${seraKapasiteSecenekleriHtml(450)}</select>
+        </div>
+        <div class="field">
+          <label>${i18n('Bölge')}</label>
+          <select id="fSeraCokluBolge">
+            <option value="" ${!bolge?'selected':''}>${i18n('Diğer / Belirtilmemiş')}</option>
+            <option value="tekeliler" ${bolge==='tekeliler'?'selected':''}>Tekeliler</option>
+            <option value="kalemli" ${bolge==='kalemli'?'selected':''}>Kalemli</option>
+          </select>
+        </div>
+      </div>
+    </div>
     <div class="modal-actions">
       <button class="btn btn-muted" onclick="closeModal()">${i18n('Vazgeç')}</button>
-      <button class="btn btn-primary" onclick="submitSeraEkle()">${i18n('Ekle')}</button>
+      <button class="btn btn-primary" id="seraEkleOnayBtn" onclick="submitSeraEkle()">${i18n('Ekle')}</button>
     </div>
   `);
+}
+function seraEkleModuGecis(mod){
+  const cokluMu = mod==='coklu';
+  document.getElementById('seraEkleTek').classList.toggle('hidden', cokluMu);
+  document.getElementById('seraEkleCoklu').classList.toggle('hidden', !cokluMu);
+  document.getElementById('seraEkleTab_tek').classList.toggle('active', !cokluMu);
+  document.getElementById('seraEkleTab_coklu').classList.toggle('active', cokluMu);
+  document.getElementById('seraEkleOnayBtn').setAttribute('onclick', cokluMu ? 'submitSeraCokluEkle()' : 'submitSeraEkle()');
+  document.getElementById('seraEkleOnayBtn').textContent = cokluMu ? i18n('Hepsini Ekle') : i18n('Ekle');
+}
+/* "B1-B41" / "B1-41" gibi aralıkları açar; başındaki sıfırlar korunur ("B01-B05").
+   Aralık okunamazsa metin olduğu gibi tek ad sayılır (kullanıcı yazdığını görür). */
+function seraAdListesiCoz(metin){
+  const adlar = [];
+  String(metin||'').split(/[\n,;]+/).map(x=>x.trim()).filter(Boolean).forEach(parca=>{
+    const m = parca.match(/^(.*?)(\d+)\s*[-–]\s*(.*?)(\d+)$/);
+    if(m){
+      const onek = m[1].trim();
+      const bitisOnek = (m[3]||'').trim();
+      const bas = parseInt(m[2],10), son = parseInt(m[4],10);
+      const ayniOnek = !bitisOnek || bitisOnek.toLocaleLowerCase('tr')===onek.toLocaleLowerCase('tr');
+      if(ayniOnek && bas<=son && son-bas<=500){
+        const pad = m[2][0]==='0' ? m[2].length : 0;
+        for(let i=bas;i<=son;i++) adlar.push(onek + String(i).padStart(pad,'0'));
+        return;
+      }
+    }
+    adlar.push(parca);
+  });
+  return adlar;
 }
 function submitSeraEkle(){
   const f = seraFormOku();
   if(!f.ad){ alert('Sera adı girin.'); return; }
   if(adCakismaVarMi(state.seralar, f.ad) && !confirm(`"${f.ad}" adında bir sera zaten var. Yine de eklensin mi?`)) return;
-  state.seralar.push({
-    id: uid(), ad: f.ad, kapasite: f.kapasite, bolge: f.bolge,
-    termometreVar: false,
-    donemler: [], olusturma: Date.now(), ...sonIslemDamgasi()
+  state.seralar.push(yeniSeraNesnesi(f.ad, f.kapasite, f.bolge));
+  closeModal(); renderAll();
+}
+function submitSeraCokluEkle(){
+  const adlar = seraAdListesiCoz(document.getElementById('fSeraCokluAdlar').value);
+  if(!adlar.length){ alert('En az bir sera adı girin.'); return; }
+  const kapasite = Number(document.getElementById('fSeraCokluKapasite').value);
+  const bolge = document.getElementById('fSeraCokluBolge').value || '';
+  const eklenecek = [], atlanan = [];
+  const gorulen = new Set(state.seralar.map(s=>(s.ad||'').trim().toLocaleLowerCase('tr')));
+  adlar.forEach(ad=>{
+    const anahtar = ad.toLocaleLowerCase('tr');
+    if(gorulen.has(anahtar)){ atlanan.push(ad); return; } // hem mevcut seralar hem de aynı listede tekrar edenler
+    gorulen.add(anahtar);
+    eklenecek.push(ad);
   });
+  if(!eklenecek.length){ alert(`Girilen ${adlar.length} adın tamamı zaten mevcut — hiçbir şey eklenmedi.`); return; }
+  const ozet = eklenecek.length<=12 ? eklenecek.join(', ') : eklenecek.slice(0,10).join(', ')+` … (+${eklenecek.length-10})`;
+  const atlananNot = atlanan.length ? `\n\nAtlanan (zaten var / tekrar): ${atlanan.length} adet` : '';
+  if(!confirm(`${eklenecek.length} sera eklenecek (${kapasite} dizi):\n\n${ozet}${atlananNot}`)) return;
+  eklenecek.forEach(ad=>state.seralar.push(yeniSeraNesnesi(ad, kapasite, bolge)));
   closeModal(); renderAll();
 }
 function openSeraDuzenleModal(id){
@@ -2895,6 +3148,146 @@ function seraBosalt(id){
   d.aktif = false; d.bitis = Date.now();
   renderAll(); openSeraDetay(id);
 }
+/* =========================================================
+   TOPLU İŞLEMLER (sera / tarla)
+   Seralar yüzler mertebesinde; boşaltmayı, işaretlemeyi ve eklemeyi tek tek
+   yapmak sahada mümkün olmuyor. Ortak kalıp: onay kutulu liste + altında
+   toplu eylem düğmeleri. Liste arama kutusuyla daraltılır (DOM'dan silinmez,
+   yalnızca gizlenir — böylece görünmeyen bir seçim sessizce kaybolmaz;
+   eylemler her zaman İŞARETLİ olan her satıra uygulanır).
+   ========================================================= */
+function topluListeFiltrele(inp, listeId){
+  const q = (inp.value||'').trim().toLocaleLowerCase('tr');
+  const kapsayici = document.getElementById(listeId);
+  if(!kapsayici) return;
+  kapsayici.querySelectorAll('.check-row').forEach(row=>{
+    const ad = row.dataset.ad || '';
+    row.classList.toggle('hidden', !!q && !ad.includes(q));
+  });
+  // başlığı altında görünür satır kalmayan bölge başlıklarını da gizle
+  kapsayici.querySelectorAll('.secim-listesi-baslik').forEach(bas=>{
+    let gorunur = false;
+    for(let el = bas.nextElementSibling; el && !el.classList.contains('secim-listesi-baslik'); el = el.nextElementSibling){
+      if(!el.classList.contains('hidden')){ gorunur = true; break; }
+    }
+    bas.classList.toggle('hidden', !gorunur);
+  });
+}
+function topluTumunuSec(listeId, secilsinMi){
+  const kapsayici = document.getElementById(listeId);
+  if(!kapsayici) return;
+  kapsayici.querySelectorAll('.check-row:not(.hidden) input[type=checkbox]').forEach(chk=>{ chk.checked = secilsinMi; });
+}
+function topluSecilenIdler(listeId){
+  const kapsayici = document.getElementById(listeId);
+  if(!kapsayici) return [];
+  return [...kapsayici.querySelectorAll('input[type=checkbox]:checked')].map(chk=>chk.value);
+}
+const BOLGE_ETIKETLERI = { tekeliler:'Tekeliler', kalemli:'Kalemli', '':'Diğer / Belirtilmemiş' };
+/* Bölgeye göre gruplanmış onay kutusu listesi. notHtml(kayit) satır sonuna
+   durum bilgisi (doluluk, kırım no, işaret) yazar. */
+function topluSecimListesiHtml(kayitlar, listeId, notHtml){
+  const gruplar = { tekeliler:[], kalemli:[], '':[] };
+  kayitlar.forEach(x=>{ (gruplar[x.bolge||''] || gruplar['']).push(x); });
+  let html = '';
+  ['tekeliler','kalemli',''].forEach(b=>{
+    if(!gruplar[b].length) return;
+    html += `<div class="secim-listesi-baslik">${escapeHtml(i18n(BOLGE_ETIKETLERI[b]))} (${gruplar[b].length})</div>`;
+    html += gruplar[b].map(x=>`<div class="check-row" data-ad="${escapeHtml((x.ad||'').toLocaleLowerCase('tr'))}">
+      <input type="checkbox" value="${x.id}" id="${listeId}_${x.id}">
+      <label for="${listeId}_${x.id}" class="etiket-normal">${escapeHtml(x.ad||'-')}${notHtml?notHtml(x):''}</label>
+    </div>`).join('');
+  });
+  return html || `<div class="item">${i18n('Kayıt yok')}</div>`;
+}
+
+function openSeraTopluModal(){
+  const liste = seralarSirali();
+  if(!liste.length){ alert('Önce en az bir sera ekleyin.'); return; }
+  const notHtml = s=>{
+    const d = seraAktifDonem(s);
+    const pct = (d && s.kapasite>0) ? Math.round(d.dolu/s.kapasite*100) : 0;
+    const parcalar = [d ? '%'+pct : i18n('boş')];
+    if(seraDolduruluyorMu(s)) parcalar.push('🔴 '+i18n('dolduruluyor'));
+    return ` <span class="metin-pasif">· ${parcalar.join(' · ')}</span>`;
+  };
+  openModal(`
+    <h2>${i18n('Seralar — Toplu İşlem')}</h2>
+    <div class="field">
+      <input type="search" placeholder="${i18n('Sera ara…')}" oninput="topluListeFiltrele(this,'seraTopluListe')">
+    </div>
+    <div class="satir-ortali-dar-sarmali alt-bosluk-6">
+      <button class="btn btn-muted dugme-cok-kucuk" onclick="topluTumunuSec('seraTopluListe',true)">${i18n('Tümünü Seç')}</button>
+      <button class="btn btn-muted dugme-cok-kucuk" onclick="topluTumunuSec('seraTopluListe',false)">${i18n('Seçimi Temizle')}</button>
+    </div>
+    <div class="secim-listesi" id="seraTopluListe">${topluSecimListesiHtml(liste,'seraTopluListe',notHtml)}</div>
+    <div class="hint-box ust-bosluk-6">Arama yalnızca listeyi daraltır; eylemler görünmeyen ama işaretli kalan seralara da uygulanır.</div>
+    <div class="modal-actions eylem-sola-sarmali">
+      <button class="btn" onclick="seraTopluIsaret(true)">${i18n('🔴 Dolduruluyor İşaretle')}</button>
+      <button class="btn" onclick="seraTopluIsaret(false)">${i18n('İşareti Kaldır')}</button>
+      <button class="btn btn-danger" onclick="seraTopluBosalt()">${i18n('Boşalt (dönemi arşivle)')}</button>
+      <button class="btn btn-muted" onclick="closeModal()">${i18n('Kapat')}</button>
+    </div>
+  `, true);
+}
+function seraTopluIsaret(acikMi){
+  const idler = topluSecilenIdler('seraTopluListe');
+  if(!idler.length){ alert('Sera seçin.'); return; }
+  idler.forEach(id=>calismaIsaretiUygula(seraBul(id), 'doldurmaIsaretTarihi', acikMi));
+  closeModal(); renderAll();
+}
+function seraTopluBosalt(){
+  const idler = topluSecilenIdler('seraTopluListe');
+  if(!idler.length){ alert('Sera seçin.'); return; }
+  const bosaltilacak = idler.map(seraBul).filter(s=>s && seraAktifDonem(s));
+  const atlanan = idler.length - bosaltilacak.length;
+  if(!bosaltilacak.length){ alert('Seçilen seraların hiçbirinde aktif dönem yok.'); return; }
+  const adlar = seralarSirali(bosaltilacak).map(s=>s.ad).join(', ');
+  if(!confirm(`${bosaltilacak.length} seranın dönemi tamamlanıp arşivlensin mi?\n\n${adlar}\n\n(Seralar boşalacak, geçmiş dönem verisi saklanır.)`)) return;
+  bosaltilacak.forEach(s=>{
+    const d = seraAktifDonem(s);
+    d.aktif = false; d.bitis = Date.now();
+    delete s.doldurmaIsaretTarihi; // boşalan sera artık "dolduruluyor" değil
+    Object.assign(s, sonIslemDamgasi());
+  });
+  closeModal(); renderAll();
+  if(atlanan) alert(`${bosaltilacak.length} sera boşaltıldı. ${atlanan} serada aktif dönem olmadığı için atlandı.`);
+}
+
+function openTarlaTopluModal(){
+  const liste = [...state.tarlalar].sort((a,b)=>(a.ad||'').localeCompare(b.ad||'','tr',{numeric:true}));
+  if(!liste.length){ alert('Önce en az bir tarla ekleyin.'); return; }
+  const notHtml = t=>{
+    const stats = tarlaStats(t.id);
+    const parcalar = [stats.maxKirimNo ? stats.maxKirimNo+'. '+i18n('kırım') : i18n('kırım yok')];
+    if(tarlaKirimYapiliyorMu(t)) parcalar.push('🔴 '+i18n('kırım yapılıyor'));
+    return ` <span class="metin-pasif">· ${parcalar.join(' · ')}</span>`;
+  };
+  openModal(`
+    <h2>${i18n('Tarlalar — Toplu İşlem')}</h2>
+    <div class="field">
+      <input type="search" placeholder="${i18n('Tarla ara…')}" oninput="topluListeFiltrele(this,'tarlaTopluListe')">
+    </div>
+    <div class="satir-ortali-dar-sarmali alt-bosluk-6">
+      <button class="btn btn-muted dugme-cok-kucuk" onclick="topluTumunuSec('tarlaTopluListe',true)">${i18n('Tümünü Seç')}</button>
+      <button class="btn btn-muted dugme-cok-kucuk" onclick="topluTumunuSec('tarlaTopluListe',false)">${i18n('Seçimi Temizle')}</button>
+    </div>
+    <div class="secim-listesi" id="tarlaTopluListe">${topluSecimListesiHtml(liste,'tarlaTopluListe',notHtml)}</div>
+    <div class="hint-box ust-bosluk-6">İşaret bugün için geçerlidir, ertesi gün kendiliğinden düşer. Tarlaya o güne ait kırım kaydı girildiğinde de düşer.</div>
+    <div class="modal-actions eylem-sola-sarmali">
+      <button class="btn" onclick="tarlaTopluIsaret(true)">${i18n('🔴 Kırım Yapılıyor İşaretle')}</button>
+      <button class="btn" onclick="tarlaTopluIsaret(false)">${i18n('İşareti Kaldır')}</button>
+      <button class="btn btn-muted" onclick="closeModal()">${i18n('Kapat')}</button>
+    </div>
+  `, true);
+}
+function tarlaTopluIsaret(acikMi){
+  const idler = topluSecilenIdler('tarlaTopluListe');
+  if(!idler.length){ alert('Tarla seçin.'); return; }
+  idler.forEach(id=>calismaIsaretiUygula(tarlaBul(id), 'kirimIsaretTarihi', acikMi));
+  closeModal(); renderAll();
+}
+
 function seraSil(id){
   const s = seraBul(id);
   if(!confirm('Bu sera silinsin mi? Tüm dönem geçmişi de silinecek.')) return;
@@ -2984,6 +3377,7 @@ function openSeraDetay(id){
     <div class="modal-actions">
       <button class="btn btn-muted" onclick="closeModal()">${i18n('Kapat')}</button>
       <button class="btn btn-primary" onclick="openSeraDizimModal('${s.id}')">${i18n('+ Tütün Dizimi Ekle')}</button>
+      <button class="btn" onclick="seraDoldurmaIsaretiToggle('${s.id}')">${seraDolduruluyorMu(s)?i18n('🔴 Doldurma İşaretini Kaldır'):i18n('🔴 Bugün Dolduruluyor')}</button>
       <button class="btn" onclick="openSeraDuzenleModal('${s.id}')">${i18n('Düzenle')}</button>
       <button class="btn" onclick="seraTermometreToggle('${s.id}')">${s.termometreVar?i18n('🌡️ Termometre Çıkar'):i18n('🌡️ Termometre Ekle')}</button>
       ${d? `<button class="btn" onclick="seraBosalt('${s.id}')">${i18n('Boşalt')}</button>` : ''}
@@ -3277,6 +3671,7 @@ function openTarlaDetay(id){
     </div>
     <div class="modal-actions">
       <button class="btn btn-muted" onclick="closeModal()">${i18n('Kapat')}</button>
+      <button class="btn" onclick="tarlaKirimIsaretiToggle('${t.id}')">${tarlaKirimYapiliyorMu(t)?i18n('🔴 Kırım İşaretini Kaldır'):i18n('🔴 Bugün Kırım Yapılıyor')}</button>
       <button class="btn" onclick="openTarlaDuzenleModal('${t.id}')">${i18n('Düzenle')}</button>
       <button class="btn btn-danger" onclick="tarlaSil('${t.id}')">${i18n('Sil')}</button>
     </div>
@@ -3687,6 +4082,7 @@ function submitKirimEkle(){
     if(seraKapasiteAsimOnayi(secim.seraId, miktar)) dagitim.push({ seraId: secim.seraId, miktar });
   });
   state.kirimlar.push(k);
+  kirimIsaretiniDusur(tarlaIds, k.tarih); // "kırım yapılıyor" işareti, kayıt girilene kadarki pencereyi anlatır
   dagitim.forEach(d=>dizimUygula(k, d.seraId, d.miktar, dizimTarihi));
   if(kirimModalPresetTarlaId){ renderAll(); openTarlaDetay(kirimModalPresetTarlaId); }
   else { closeModal(); renderAll(); }
@@ -4035,6 +4431,10 @@ function openVeriYonetimiModal(){
         <button class="btn" onclick="gecmisDepoKutulariniDuzelt()">📦 Depo Kutularını Düzelt (Tek Seferlik)</button>
       </div>
       <div class="hint-box">Geçmiş veri aktarımında tek kayıt olarak girilen 14 depo/paketleme satırını siler (tüm cihazlardan), yerine kağıttaki adetlere göre her kutuyu ayrı kayıt olarak (kalite + paketleme tarihiyle, Kalemli deposuna) yeniden oluşturur. Daha önce düzeltildiyse uyarı verir.</div>
+      <div class="modal-actions eylem-sola-sarmali ust-bosluk-2">
+        <button class="btn" onclick="openIklimAralikSilModal('2026-07-25','2026-07-28')">🌡️ 25–28 Tem 2026 Sıcaklık/Nem Kayıtlarını Sil</button>
+      </div>
+      <div class="hint-box">Elle girilirken hatalı olduğu tespit edilen 25.07–28.07.2026 arası sıcaklık/nem kayıtlarını silmek için aralık silme penceresini bu tarihlerle açar. <b>Silmeden önce kaç kaydın gideceğini gösterir</b>; onaylamazsanız hiçbir şey değişmez. Aynı pencereye İklim Takip panelindeki 🗑 düğmesinden istediğiniz tarih aralığıyla da ulaşabilirsiniz.</div>
       <div class="modal-actions eylem-sola-sarmali ust-bosluk-2">
         <button class="btn" onclick="gecmisDeltaOnizlemeAc()">🔧 Geçmiş Veri Düzeltme (Önizleme)</button>
       </div>
@@ -5702,6 +6102,153 @@ function iklimSil(id){
   silmeYedekAl(['iklimKayitlari'], 'Sıcaklık/nem kaydı');
   state.iklimKayitlari = state.iklimKayitlari.filter(k=>k.id!==id);
   renderAll();
+}
+
+/* ---- Toplu (çok günlü) sıcaklık/nem girişi ----
+   Aynı seranın ölçümü gün içinde birden çok saatte alınıyor ve çoğu zaman
+   defterde birikip sonradan giriliyor. Tek tek modal açmak yerine satır satır
+   girilir; her satırın serası ve tarihi bağımsızdır, yeni satır bir üsttekinden
+   devralır (art arda saatler ve aynı seranın birkaç günü hızlı girilsin diye).
+   Sera seçicileri iklim tablosundaki gibi tembel doldurulur — sera sayısı
+   yüzlerce olduğunda tüm option'ları her satıra basmak iOS'ta donduruyor. */
+function iklimTopluSatirEkle(odakla){
+  const kap = document.getElementById('iklimTopluSatirlar');
+  if(!kap) return;
+  const sirali = seralarSirali();
+  let seraId = sirali.length ? sirali[0].id : '';
+  let tarih = todayStr();
+  const sonSatir = kap.lastElementChild;
+  if(sonSatir){
+    const s = sonSatir.querySelector('.iklimTopluSera');
+    const t = sonSatir.querySelector('.iklimTopluTarih');
+    if(s && s.value) seraId = s.value;
+    if(t && t.value) tarih = t.value;
+  }
+  const sera = seraBul(seraId);
+  const div = document.createElement('div');
+  div.className = 'toplu-satir';
+  div.innerHTML = `
+    <select class="iklimTopluSera" onfocus="iklimSeraSelectDoldur(this)" onmousedown="iklimSeraSelectDoldur(this)"><option value="${escapeHtml(seraId)}">${escapeHtml(sera?sera.ad:i18n('(silinmiş sera)'))}</option></select>
+    <input class="iklimTopluTarih" type="date" value="${escapeHtml(tarih)}" aria-label="${i18n('Tarih')}">
+    <input class="iklimTopluSaat" type="time" aria-label="${i18n('Saat')}">
+    <input class="iklimTopluSicaklik" type="number" step="0.1" placeholder="°C" aria-label="${i18n('Sıcaklık (°C)')}">
+    <input class="iklimTopluNem" type="number" step="1" min="0" max="100" placeholder="%" aria-label="${i18n('Nem (%)')}">
+    <button type="button" class="toplu-satir-sil" onclick="this.parentNode.remove()" title="${i18n('Satırı sil')}">×</button>`;
+  kap.appendChild(div);
+  // Odak yalnızca kullanıcı "+ Satır Ekle"ye bastığında verilir; modal açılırken
+  // verilseydi iOS saat seçiciyi kendiliğinden açardı.
+  if(odakla){
+    const saatEl = div.querySelector('.iklimTopluSaat');
+    if(saatEl) saatEl.focus();
+  }
+}
+function openIklimTopluEkleModal(){
+  if(!state.seralar.length){ alert('Önce en az bir sera ekleyin.'); return; }
+  openModal(`
+    <h2>${i18n('Toplu Sıcaklık/Nem Girişi')}</h2>
+    <div class="hint-box">Birikmiş ölçümleri tek seferde girin — her satır ayrı bir gün ve saat olabilir. Yeni satır, bir üstteki satırın serasını ve tarihini devralır. Tamamen boş satırlar yok sayılır.</div>
+    <div class="toplu-baslik">
+      <span>${i18n('Sera')}</span><span>${i18n('Tarih')}</span><span>${i18n('Saat')}</span><span>°C</span><span>${i18n('Nem')} %</span><span></span>
+    </div>
+    <div id="iklimTopluSatirlar"></div>
+    <button class="btn btn-muted ust-bosluk-6" onclick="iklimTopluSatirEkle(true)">${i18n('+ Satır Ekle')}</button>
+    <div class="modal-actions">
+      <button class="btn btn-muted" onclick="closeModal()">${i18n('Vazgeç')}</button>
+      <button class="btn btn-primary" onclick="submitIklimTopluEkle()">${i18n('Hepsini Kaydet')}</button>
+    </div>
+  `, true);
+  for(let i=0;i<3;i++) iklimTopluSatirEkle();
+}
+function submitIklimTopluEkle(){
+  const satirlar = [...document.querySelectorAll('#iklimTopluSatirlar .toplu-satir')];
+  const yeniler = [];
+  const anahtarlar = new Set(state.iklimKayitlari.map(k=>k.seraId+'|'+k.tarih+'|'+k.saat));
+  let cakisan = 0;
+  for(let i=0;i<satirlar.length;i++){
+    const r = satirlar[i];
+    const seraId = r.querySelector('.iklimTopluSera').value;
+    const tarih = r.querySelector('.iklimTopluTarih').value;
+    const saat = r.querySelector('.iklimTopluSaat').value;
+    const sicaklikRaw = r.querySelector('.iklimTopluSicaklik').value;
+    const nemRaw = r.querySelector('.iklimTopluNem').value;
+    if(!saat && sicaklikRaw==='' && nemRaw==='') continue; // dokunulmamış satır
+    const no = i+1;
+    if(!seraId){ alert(no+'. satır: sera seçin.'); return; }
+    if(!tarih){ alert(no+'. satır: tarih girin.'); return; }
+    if(!saat){ alert(no+'. satır: saat girin.'); return; }
+    if(sicaklikRaw===''){ alert(no+'. satır: sıcaklık girin.'); return; }
+    if(nemRaw===''){ alert(no+'. satır: nem girin.'); return; }
+    const anahtar = seraId+'|'+tarih+'|'+saat;
+    if(anahtarlar.has(anahtar)) cakisan++; // hem mevcut kayıtlar hem de listenin kendi içindeki tekrarlar
+    anahtarlar.add(anahtar);
+    yeniler.push({ id: uid(), seraId, tarih, saat, sicaklik: Number(sicaklikRaw), nem: Number(nemRaw), olusturma: Date.now(), ...sonIslemDamgasi() });
+  }
+  if(!yeniler.length){ alert('Kaydedilecek satır yok — en az bir satırı doldurun.'); return; }
+  if(cakisan && !confirm(`${cakisan} satır için aynı sera/tarih/saatte zaten kayıt var. Yine de eklensin mi?`)) return;
+  yeniler.forEach(k=>state.iklimKayitlari.push(k));
+  closeModal(); renderAll();
+}
+
+/* ---- Tarih aralığına göre toplu silme ----
+   Elle girilen ölçümlerde bir günün tamamı yanlış girilebiliyor; kaydı tek tek
+   silmek yerine aralık verilip önce KAÇ kaydın gideceği gösterilir. Silme
+   "Geri Al" yedeğiyle yapılır (silmeYedekAl), yanlışlıkla basılırsa dönülebilir. */
+function iklimAralikKayitlari(bas, bit, seraId){
+  return state.iklimKayitlari.filter(k=>{
+    const t = String(k.tarih||'');
+    if(bas && t < bas) return false;
+    if(bit && t > bit) return false;
+    if(seraId && k.seraId !== seraId) return false;
+    return true;
+  });
+}
+function openIklimAralikSilModal(basVarsayilan, bitVarsayilan){
+  const bas = basVarsayilan || todayStr();
+  const bit = bitVarsayilan || todayStr();
+  const seraOpts = seralarSirali().map(s=>`<option value="${escapeHtml(s.id)}">${escapeHtml(s.ad)}</option>`).join('');
+  openModal(`
+    <h2>${i18n('Sıcaklık/Nem Kayıtlarını Aralıkla Sil')}</h2>
+    <div class="row2">
+      <div class="field"><label>${i18n('Başlangıç')}</label><input id="fIklimSilBas" type="date" value="${escapeHtml(bas)}" onchange="iklimAralikSilOnizle()"></div>
+      <div class="field"><label>${i18n('Bitiş')}</label><input id="fIklimSilBit" type="date" value="${escapeHtml(bit)}" onchange="iklimAralikSilOnizle()"></div>
+    </div>
+    <div class="field">
+      <label>${i18n('Sera')}</label>
+      <select id="fIklimSilSera" onchange="iklimAralikSilOnizle()"><option value="">${i18n('Tüm seralar')}</option>${seraOpts}</select>
+    </div>
+    <div class="list-small" id="iklimSilOnizleme"></div>
+    <div class="hint-box">Aralık her iki uç dahil çalışır. Silme tüm cihazlara yansır; yanlışlıkla silerseniz ekrandaki "Geri Al" ile dönebilirsiniz.</div>
+    <div class="modal-actions">
+      <button class="btn btn-muted" onclick="closeModal()">${i18n('Vazgeç')}</button>
+      <button class="btn btn-danger" onclick="submitIklimAralikSil()">${i18n('Seçilenleri Sil')}</button>
+    </div>
+  `);
+  iklimAralikSilOnizle();
+}
+function iklimAralikSilOnizle(){
+  const el = document.getElementById('iklimSilOnizleme');
+  if(!el) return;
+  const bas = document.getElementById('fIklimSilBas').value;
+  const bit = document.getElementById('fIklimSilBit').value;
+  if(bas && bit && bas > bit){ el.innerHTML = `<div class="item">${i18n('Başlangıç tarihi bitişten sonra.')}</div>`; return; }
+  const kayitlar = iklimAralikKayitlari(bas, bit, document.getElementById('fIklimSilSera').value);
+  if(!kayitlar.length){ el.innerHTML = `<div class="item">${i18n('Bu aralıkta kayıt yok.')}</div>`; return; }
+  const gunler = {};
+  kayitlar.forEach(k=>{ gunler[k.tarih] = (gunler[k.tarih]||0)+1; });
+  const satirlar = Object.keys(gunler).sort().map(g=>`<div class="item">${iklimTarihMetni(g)} — <b>${gunler[g]}</b> ${i18n('kayıt')}</div>`).join('');
+  el.innerHTML = `<div class="item"><b>${kayitlar.length}</b> ${i18n('kayıt silinecek')}</div>` + satirlar;
+}
+function submitIklimAralikSil(){
+  const bas = document.getElementById('fIklimSilBas').value;
+  const bit = document.getElementById('fIklimSilBit').value;
+  if(bas && bit && bas > bit){ alert('Başlangıç tarihi bitişten sonra olamaz.'); return; }
+  const kayitlar = iklimAralikKayitlari(bas, bit, document.getElementById('fIklimSilSera').value);
+  if(!kayitlar.length){ alert('Bu aralıkta silinecek kayıt yok.'); return; }
+  if(!confirm(`${iklimTarihMetni(bas)} – ${iklimTarihMetni(bit)} aralığındaki ${kayitlar.length} sıcaklık/nem kaydı silinsin mi?`)) return;
+  const silinecekIdler = new Set(kayitlar.map(k=>k.id));
+  silmeYedekAl(['iklimKayitlari'], kayitlar.length + ' sıcaklık/nem kaydı');
+  state.iklimKayitlari = state.iklimKayitlari.filter(k=>!silinecekIdler.has(k.id));
+  closeModal(); renderAll();
 }
 function iklimSicaklikSinifi(v){
   const n = Number(v);
