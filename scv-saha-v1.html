@@ -1463,6 +1463,10 @@ input.dayibasi-ad-alani{flex:1;min-width:110px;border:1px solid var(--border);bo
             <div><b id="qsSera">0</b><span data-i18n="Sera">Sera</span></div>
             <div><b id="qsKirim">0</b><span data-i18n="Kırım Kaydı">Kırım Kaydı</span></div>
             <div><b id="qsSeraDoluluk">-</b><span data-i18n="Sera Doluluk">Sera Doluluk</span></div>
+            <div><b id="qsDoluSera">0</b><span data-i18n="Dolu Sera">Dolu Sera</span></div>
+            <div><b id="qsBosSera">0</b><span data-i18n="Boş Sera">Boş Sera</span></div>
+            <div title="Toplam kg ÷ kırım yapılmış tarlaların dekarı"><b id="qsVerimKirilan">-</b><span data-i18n="kg/da (kırılan)">kg/da (kırılan)</span></div>
+            <div title="Toplam kg ÷ bütün tarlaların dekarı"><b id="qsVerimTum">-</b><span data-i18n="kg/da (tüm saha)">kg/da (tüm saha)</span></div>
           </div>
           <div class="uyarilar-baslik" data-i18n="⚠️ Uyarılar">⚠️ Uyarılar</div>
           <div class="uyarilar-box" id="sahaUyarilar"></div>
@@ -1766,7 +1770,7 @@ const AYARLAR = {
   UNITE_PX: 40                // referans kapasitedeki sera-box genişliği (px) — kroki oranı
 };
 const STORAGE_KEY = 'scvSahaKrokiV1';
-const APP_SURUM = 'v80'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
+const APP_SURUM = 'v81'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
 
 /* =========================================================
    HATA / DONMA GÜNLÜĞÜ — "bazen donuyor" şikayetini araştırmak için.
@@ -1859,6 +1863,7 @@ const I18N_EN = {
   'Başlangıç':'Start', 'Bitiş':'End', 'Çeşit / Varyete':'Variety', 'Tümü':'All',
   'Saha Genel':'Farm Overview', 'Üstten görünüm kroki paneli':'Top-down layout panel',
   'Boş':'Empty', 'Tarla':'Field', 'Sera':'Greenhouse', 'Sera Doluluk':'Greenhouse Occupancy',
+  'Dolu Sera':'Full', 'Boş Sera':'Empty', 'kg/da (kırılan)':'kg/da (harvested)', 'kg/da (tüm saha)':'kg/da (all land)',
   'Seralar':'Greenhouses', 'Sera ara…':'Search greenhouses…',
   'Tarlalar':'Fields', 'Tarla ara…':'Search fields…',
   'Tarla Ara':'Search Field', 'Sonuç bulunamadı':'No results found',
@@ -2602,13 +2607,35 @@ function seraDurumSinifiExact(pct){
    BADGE / ROZET HESAPLARI
    ========================================================= */
 function hesaplaRozetler(){
-  // kg/dekar: kirim yapılmış tarlaların kg/dekar ortalaması
-  const aktifTarlalar = state.tarlalar.filter(t => state.kirimlar.some(k=>kirimTarlaIdListesi(k).includes(t.id)) && Number(t.dekar)>0);
-  let kgDekarOrt = null;
-  if(aktifTarlalar.length){
-    const toplam = aktifTarlalar.reduce((s,t)=> s + (tarlaStats(t.id).toplamKg / Number(t.dekar)), 0);
-    kgDekarOrt = toplam / aktifTarlalar.length;
-  }
+  /* Dekar başına verim. Oranların ortalaması DEĞİL, ağırlıklı toplam: eskiden
+     her tarlanın kg/dekar'ı ayrı hesaplanıp ortalanıyordu, bu da küçük ama
+     verimli tarlaları büyükler kadar ağırlıklandırıp sayıyı şişiriyordu.
+     İki payda birden veriliyor çünkü sezon ortasında ikisi çok farklı:
+     - kırılan: yalnızca kırım yapılmış tarlaların dekarı — fiilen hasat edilen
+       araziden alınan gerçek verim, hasat edilmemiş tarla eklenince düşmez.
+     - tüm saha: bütün tarlaların dekarı — sezon ilerledikçe gerçeğe yaklaşır.
+     Pay her iki durumda da tarlalara DÜŞEN kg; ortak kırımın payı tarla
+     sayısına bölünür (bkz. kirimTarlaPayi), tarlası girilmemiş kayıt sayılmaz. */
+  const tarlaKg = new Map();
+  state.kirimlar.forEach(k=>{
+    const idler = kirimTarlaIdListesi(k);
+    if(!idler.length) return;
+    const pay = kirimTurev(k).toplamKg / idler.length;
+    idler.forEach(id=> tarlaKg.set(id, (tarlaKg.get(id)||0) + pay));
+  });
+  let kirilanDekar = 0, tumDekar = 0, tarlayaDusenKg = 0;
+  state.tarlalar.forEach(t=>{
+    const dekar = Number(t.dekar)||0;
+    tumDekar += dekar;
+    tarlayaDusenKg += tarlaKg.get(t.id) || 0;
+    if(tarlaKg.has(t.id)) kirilanDekar += dekar;
+  });
+  const verimKirilan = kirilanDekar>0 ? tarlayaDusenKg/kirilanDekar : null;
+  const verimTum     = tumDekar>0     ? tarlayaDusenKg/tumDekar     : null;
+
+  // Dolu / boş sera: aktif dönemi olan sera dolu sayılır
+  const doluSera = state.seralar.filter(s=>seraAktifDonem(s)).length;
+  const bosSera = state.seralar.length - doluSera;
 
   // TL/kg: toplam isci maliyeti / toplam kg
   let toplamMaliyet = 0, toplamKgTum = 0;
@@ -2633,7 +2660,7 @@ function hesaplaRozetler(){
   const toplamKayip = state.kirimlar.reduce((s,k)=>s+(Number(k.kayipDizi)||0),0);
   const kayipOrani = toplamDiziTum>0 ? (toplamKayip/toplamDiziTum*100) : null;
 
-  return { kgDekarOrt, tlKg, seraDoluluk, ortDizi, kayipOrani };
+  return { verimKirilan, verimTum, doluSera, bosSera, tlKg, seraDoluluk, ortDizi, kayipOrani };
 }
 
 /* =========================================================
@@ -2675,6 +2702,10 @@ function renderQuickStats(){
   document.getElementById('qsKirim').textContent = state.kirimlar.length;
   const r = hesaplaRozetler();
   document.getElementById('qsSeraDoluluk').textContent = r.seraDoluluk==null ? '-' : fmt(r.seraDoluluk,0)+'%';
+  document.getElementById('qsDoluSera').textContent = r.doluSera;
+  document.getElementById('qsBosSera').textContent = r.bosSera;
+  document.getElementById('qsVerimKirilan').textContent = r.verimKirilan==null ? '-' : fmt(r.verimKirilan,0);
+  document.getElementById('qsVerimTum').textContent = r.verimTum==null ? '-' : fmt(r.verimTum,0);
 }
 
 function renderSahaUyarilar(){
@@ -2704,7 +2735,7 @@ function renderSahaUyarilar(){
 function renderBadges(){
   const r = hesaplaRozetler();
   const items = [
-    { label:'kg/dekar', val: r.kgDekarOrt==null?'-':fmt(r.kgDekarOrt,1), tip:'Kırım yapılmış tarlaların kg/dekar ortalaması.' },
+    { label:'kg/dekar', val: r.verimKirilan==null?'-':fmt(r.verimKirilan,1), tip:'Toplam kg ÷ kırım yapılmış tarlaların toplam dekarı. Tüm sahaya göre verim Saha Genel panelinde.' },
     { label:'₺/kg', val: r.tlKg==null?'-':fmt(r.tlKg,2), tip:'Toplam işçi maliyeti ÷ toplam kg (tüm kayıtlar).' },
     { label:'Sera Doluluk', val: r.seraDoluluk==null?'-':fmt(r.seraDoluluk,0)+'%', tip:'Tüm seraların toplam dolu dizi ÷ toplam kapasite.' },
     { label:'Ort. Dizi (7g)', val: r.ortDizi==null?'-':fmt(r.ortDizi,2)+' kg', tip:'Son 7 gündeki kırımların ortalama dizi ağırlığı.' },
