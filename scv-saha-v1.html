@@ -1058,6 +1058,26 @@ body.has-fullscreen-panel{overflow:hidden;}
 .iklim-table input[type=number].iklim-dry{background:var(--amber-soft);color:var(--amber);}
 .iklim-table input[type=number].iklim-humid{background:var(--blue-soft);color:var(--blue);}
 .iklim-table-empty{padding:18px;text-align:center;color:var(--muted);font-size:12px;}
+/* Günlük kutu basımı tablosu. İklim tablosuyla aynı görsel dil ama ayrı kurallar:
+   oradaki hücre içi giriş alanları ve sıcaklık/nem renk sınıfları buraya taşmasın. */
+/* Bir gruba başlık olan tek başına etiket (.field içinde değil) */
+.alan-basligi{display:block;font-size:11.5px;color:var(--muted);margin-bottom:2px;text-transform:uppercase;letter-spacing:.03em;}
+.depo-tablo-wrap{max-height:300px;overflow:auto;border:1px solid var(--border);border-radius:8px;background:var(--panel);}
+.depo-tablo{width:100%;min-width:430px;border-collapse:collapse;font-size:12px;}
+.depo-tablo thead th{
+  position:sticky;top:0;z-index:1;background:var(--table-head-bg);color:var(--table-head-ink);
+  font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;padding:7px 8px;text-align:left;
+}
+.depo-tablo th.num,.depo-tablo td.num{text-align:right;}
+.depo-tablo tbody tr{border-bottom:1px solid var(--border);}
+.depo-tablo tbody tr:nth-child(even){background:var(--panel-2);}
+.depo-tablo td{padding:6px 8px;}
+.depo-tablo td.toplam{font-weight:800;color:var(--green-900);}
+.depo-tablo .kod-not{color:var(--muted);font-size:10.5px;}
+.depo-tablo tfoot td{
+  padding:7px 8px;font-weight:800;background:var(--green-100);color:var(--green-900);
+  border-top:2px solid var(--green-300);position:sticky;bottom:0;
+}
 .iklim-row-del{border:none;background:transparent;color:var(--muted);font-size:15px;line-height:1;cursor:pointer;padding:4px 7px;border-radius:5px;}
 .iklim-row-del:hover{background:var(--red-soft);color:var(--red);}
 
@@ -1572,11 +1592,15 @@ input.dayibasi-ad-alani{flex:1;min-width:110px;border:1px solid var(--border);bo
             <button class="tab-btn" id="depoBolgeTab_kalemli" onclick="depoBolgeSekmeGecis('kalemli')">Kalemli</button>
           </div>
         </div>
-        <button class="icon-btn" onclick="openKutuEkleModal()">+</button>
+        <button class="icon-btn" onclick="openKutuBasimModal()">+</button>
       </div>
       <div class="panel-body">
         <input type="search" id="depoAramaInput" class="search-input alt-bosluk-2" placeholder="Kutu no, tarih veya kalite ara…" data-i18n-placeholder="Kutu no, tarih veya kalite ara…" oninput="renderDepo()">
         <div class="detail-grid" id="depoOzet"></div>
+        <div class="field ust-bosluk-10">
+          <label data-i18n="Günlük Kutu Basımı">Günlük Kutu Basımı</label>
+          <div class="depo-tablo-wrap"><table class="depo-tablo" id="depoGunlukTablo"></table></div>
+        </div>
         <div class="field ust-bosluk-10">
           <label data-i18n="Kutular">Kutular</label>
           <div class="hint-box hidden alt-bosluk-6" id="depoKaliteOzet"></div>
@@ -1784,7 +1808,7 @@ const AYARLAR = {
   UNITE_PX: 40                // referans kapasitedeki sera-box genişliği (px) — kroki oranı
 };
 const STORAGE_KEY = 'scvSahaKrokiV1';
-const APP_SURUM = 'v82'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
+const APP_SURUM = 'v83'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
 
 /* =========================================================
    HATA / DONMA GÜNLÜĞÜ — "bazen donuyor" şikayetini araştırmak için.
@@ -1971,8 +1995,13 @@ const I18N_EN = {
   'Dikim Tarihi (Transplanting)':'Planting Date (Transplanting)', 'Çapa Tarihi (Hoe)':'Hoeing Date (Hoe)',
   'Viyol (dekar)':'Tray Seedling (decares)', 'Yer Ocağı (dekar)':'Ground Bed (decares)', 'Tahmini Hasat (kg)':'Estimated Harvest (kg)',
   'Uygulanan İlaçlar (opsiyonel)':'Applied Pesticides (optional)', 'Zararlılar (opsiyonel)':'Pests (optional)', 'Gübreler (opsiyonel)':'Fertilizers (optional)',
-  'Kutu Ağırlığı (kg)':'Box Weight (kg)', 'Kutulanma Tarihi':'Boxing Date', 'Kalite':'Quality', 'Belirtilmemiş':'Unspecified',
-  'Kutu Adedi (aynı bilgilerle kaç kutu eklenecek)':'Box Count (how many boxes with the same details)',
+  'Kalite':'Quality', 'Belirtilmemiş':'Unspecified',
+  // Kutu basımı (toplu giriş) ve günlük döküm tablosu
+  'Kutu Basımı Gir':'Log Boxing', 'Paketleme Tarihi':'Packing Date', 'Tavlama Tarihi':'Conditioning Date',
+  'Ürün Kodu':'Product Code', 'Kutu Başına Kg':'Kg per Box', 'Kalite Başına Kutu Adedi':'Box Count per Quality',
+  'Kalite başına kutu adedi girin.':'Enter a box count per quality.', 'Kutu No':'Box No',
+  'Günlük Kutu Basımı':'Daily Boxing', 'Paketleme':'Packed', 'çıktı':'shipped',
+  'Henüz kutu kaydı yok':'No box records yet',
   'Yol Tarifi':'Directions', '📋 Tarla Detayı':'📋 Field Details', '🧭 Yol Tarifi':'🧭 Directions', 'Konum':'Location',
   'Enlem (lat)':'Latitude (lat)', 'Boylam (lng)':'Longitude (lng)', 'Tarla + Pin Ekle':'Add Field + Pin',
   'Pini Sil':'Delete Pin', '📍 Buradaki GPS Konumumu Kullan':'📍 Use My GPS Location Here',
@@ -5978,59 +6007,98 @@ function depoBolgeSekmeGecis(bolge){
   });
   renderDepo();
 }
-function openKutuEkleModal(){
+/* ---- Kutu basımı (toplu giriş) ----
+   Kutular tek tek değil, bir günün basımı olarak giriliyor: kâğıttaki kayıt da
+   böyle tutuluyor (bir gün + ürün kodu + kalite başına adet). Kalite başına
+   adet verilip her kutu yine AYRI kayıt olarak açılıyor — depodan çıkış tek
+   kutu bazında yapıldığı için kayıt düzeyi değişmiyor, yalnızca giriş
+   hızlanıyor. Kutu numarası bölgedeki en büyükten ardışık devam eder. */
+const KUTU_KALITELERI = ['XX1','X1','X2'];
+function sonKutuKg(bolge){
+  const liste = state.depoKutulari.filter(k=>k.bolge===bolge && Number(k.kg)>0);
+  if(!liste.length) return '';
+  return liste.reduce((a,b)=>(a.olusturma||0)>(b.olusturma||0)?a:b).kg;
+}
+function openKutuBasimModal(){
+  const bolge = depoBolgeAktif;
   openModal(`
-    <h2>${i18n('Kutu Ekle')}</h2>
+    <h2>${i18n('Kutu Basımı Gir')}</h2>
     <div class="row2">
       <div class="field"><label>${i18n('Bölge')}</label>
-        <select id="fKutuBolge">
-          <option value="tekeliler" ${depoBolgeAktif==='tekeliler'?'selected':''}>Tekeliler</option>
-          <option value="kalemli" ${depoBolgeAktif==='kalemli'?'selected':''}>Kalemli</option>
+        <select id="fKbBolge" onchange="kutuBasimOzet()">
+          <option value="tekeliler" ${bolge==='tekeliler'?'selected':''}>Tekeliler</option>
+          <option value="kalemli" ${bolge==='kalemli'?'selected':''}>Kalemli</option>
         </select>
       </div>
-      <div class="field"><label>${i18n('Kutu Ağırlığı (kg)')}</label><input id="fKutuKg" type="number" min="0" step="0.1"></div>
+      <div class="field"><label>${i18n('Paketleme Tarihi')}</label><input id="fKbTarih" type="date" value="${todayStr()}"></div>
     </div>
     <div class="row2">
-      <div class="field"><label>${i18n('Kutulanma Tarihi')}</label><input id="fKutuTarih" type="date" value="${todayStr()}"></div>
-      <div class="field"><label>${i18n('Kalite')}</label>
-        <select id="fKutuKalite">
-          <option value="">${i18n('Belirtilmemiş')}</option>
-          <option value="X1">X1</option>
-          <option value="X2">X2</option>
-          <option value="XX1">XX1</option>
-        </select>
-      </div>
+      <div class="field"><label>${i18n('Tavlama Tarihi')}</label><input id="fKbTavlama" type="date"></div>
+      <div class="field"><label>${i18n('Ürün Kodu')}</label><input id="fKbKod" type="text" placeholder="kod 1"></div>
     </div>
-    <div class="field"><label>${i18n('Kutu Adedi (aynı bilgilerle kaç kutu eklenecek)')}</label><input id="fKutuAdet" type="number" inputmode="numeric" min="1" step="1" value="1"></div>
+    <div class="field"><label>${i18n('Kutu Başına Kg')}</label>
+      <input id="fKbKg" type="number" min="0" step="0.1" value="${sonKutuKg(bolge)}" oninput="kutuBasimOzet()"></div>
+    <label class="alan-basligi">${i18n('Kalite Başına Kutu Adedi')}</label>
+    <div class="row3">
+      ${KUTU_KALITELERI.map(kal=>`<div class="field"><label>${kal}</label>
+        <input id="fKb_${kal}" type="number" inputmode="numeric" min="0" step="1" value="0" oninput="kutuBasimOzet()"></div>`).join('')}
+    </div>
+    <div class="hint-box" id="kbOzet"></div>
     <div class="modal-actions">
       <button class="btn btn-muted" onclick="closeModal()">${i18n('Vazgeç')}</button>
-      <button class="btn btn-primary" onclick="submitKutuEkle()">${i18n('Ekle')}</button>
+      <button class="btn btn-primary" onclick="submitKutuBasim()">${i18n('Ekle')}</button>
     </div>
   `);
+  kutuBasimOzet();
 }
-function submitKutuEkle(){
-  const bolge = document.getElementById('fKutuBolge').value;
-  const kg = Number(document.getElementById('fKutuKg').value)||0;
-  const tarih = document.getElementById('fKutuTarih').value || todayStr();
-  const kalite = document.getElementById('fKutuKalite').value || '';
-  // Kutu adedi: aynı bilgilerle birden çok kutu tek seferde eklenebilir (varsayılan 1, tam sayı)
-  const adetEl = document.getElementById('fKutuAdet');
-  const adet = Math.max(1, Math.floor(Number(adetEl && adetEl.value)||1));
-  if(kg<=0){ alert('Kutu ağırlığı girin.'); return; }
-  const bolgedekiler = state.depoKutulari.filter(k=>k.bolge===bolge);
-  const ilkKutuNo = bolgedekiler.length ? Math.max(...bolgedekiler.map(k=>k.kutuNo)) + 1 : 1;
-  // Her kutu AYRI kayıt olur; kutuNo bölgedeki en büyük numaradan ardışık devam eder
-  for(let i=0; i<adet; i++){
-    state.depoKutulari.push({
-      id: uid(), bolge, kutuNo: ilkKutuNo + i, kg, tarih, kalite,
-      olusturma: Date.now(), ...sonIslemDamgasi()
-    });
-  }
+function kutuBasimOkuAdetler(){
+  const adet = {};
+  KUTU_KALITELERI.forEach(kal=>{
+    adet[kal] = Math.max(0, Math.floor(Number(document.getElementById('fKb_'+kal).value)||0));
+  });
+  return adet;
+}
+function kutuBasimOzet(){
+  const el = document.getElementById('kbOzet');
+  if(!el) return;
+  const adet = kutuBasimOkuAdetler();
+  const kg = Number(document.getElementById('fKbKg').value)||0;
+  const toplam = KUTU_KALITELERI.reduce((s,k)=>s+adet[k],0);
+  const parcalar = KUTU_KALITELERI.filter(k=>adet[k]>0).map(k=>`<b>${adet[k]}</b> ${k}`);
+  const bolge = document.getElementById('fKbBolge').value;
+  const mevcut = state.depoKutulari.filter(k=>k.bolge===bolge);
+  const ilkNo = mevcut.length ? Math.max(...mevcut.map(k=>k.kutuNo||0)) + 1 : 1;
+  el.innerHTML = toplam
+    ? `${parcalar.join(' · ')} → ${i18n('Toplam')}: <b>${toplam}</b> ${i18n('kutu')}${kg>0?` / <b>${fmt(toplam*kg,0)}</b> kg`:''}
+       <br><span class="metin-pasif">${i18n('Kutu No')}: #${ilkNo}–#${ilkNo+toplam-1}</span>`
+    : `<span class="metin-pasif">${i18n('Kalite başına kutu adedi girin.')}</span>`;
+}
+function submitKutuBasim(){
+  const bolge = document.getElementById('fKbBolge').value;
+  const tarih = document.getElementById('fKbTarih').value || todayStr();
+  const tavlamaTarihi = document.getElementById('fKbTavlama').value || '';
+  const urunKodu = document.getElementById('fKbKod').value.trim();
+  const kg = Number(document.getElementById('fKbKg').value)||0;
+  const adet = kutuBasimOkuAdetler();
+  const toplam = KUTU_KALITELERI.reduce((s,k)=>s+adet[k],0);
+  if(!toplam){ alert('Kalite başına kutu adedi girin.'); return; }
+  if(kg<=0){ alert('Kutu başına kg girin.'); return; }
+  if(tavlamaTarihi && tavlamaTarihi > tarih){ alert('Tavlama tarihi paketleme tarihinden sonra olamaz.'); return; }
+  const mevcut = state.depoKutulari.filter(k=>k.bolge===bolge);
+  let kutuNo = mevcut.length ? Math.max(...mevcut.map(k=>k.kutuNo||0)) + 1 : 1;
+  const ilkNo = kutuNo;
+  KUTU_KALITELERI.forEach(kalite=>{
+    for(let i=0; i<adet[kalite]; i++){
+      state.depoKutulari.push({
+        id: uid(), bolge, kutuNo: kutuNo++, kg, tarih, kalite, tavlamaTarihi, urunKodu,
+        olusturma: Date.now(), ...sonIslemDamgasi()
+      });
+    }
+  });
   closeModal(); renderAll();
-  if(adet>1){
-    const bolgeAd = bolge==='tekeliler' ? 'Tekeliler' : 'Kalemli';
-    alert(`${adet} kutu eklendi (Kutu #${ilkKutuNo}–#${ilkKutuNo+adet-1}, ${fmt(kg,1)} kg${kalite?', '+kalite:''}, ${bolgeAd})`);
-  }
+  const bolgeAd = bolge==='tekeliler' ? 'Tekeliler' : 'Kalemli';
+  const dokum = KUTU_KALITELERI.filter(k=>adet[k]>0).map(k=>`${adet[k]} ${k}`).join(' + ');
+  alert(`${escapeHtml(tarih)} — ${dokum} = ${toplam} kutu eklendi (#${ilkNo}–#${kutuNo-1}, ${fmt(toplam*kg,0)} kg, ${bolgeAd})`);
 }
 function kutuSil(id){
   const k = state.depoKutulari.find(x=>x.id===id);
@@ -6117,6 +6185,7 @@ function renderDepo(){
       kaliteOzetEl.classList.remove('hidden');
     }
   }
+  renderDepoGunluk(bolgedekiler);
   listeEl.innerHTML = depoda.map(k=>`
     <div class="mini-kirim" title="${i18n('Son İşlem')}: ${sonIslemEtiket(k)}">
       <div class="sw"></div>
@@ -6144,6 +6213,64 @@ function renderDepo(){
       </div>
     `).join('') || `<div class="item">${i18n('Henüz çıkış kaydı yok')}</div>`;
   }
+}
+
+/* Günlük kutu basımı tablosu: "hangi gün kaç kutu basıldı" sorusunun tek
+   bakışta cevabı. Kâğıttaki kayıt gün bazlı tutuluyor, liste ise kutu bazlı —
+   775 kutuyu tek tek okumak yerine gün satırlarına toplanıyor.
+   Depodan çıkmış kutular da sayılır: bu bir ÜRETİM dökümü, stok değil. */
+function renderDepoGunluk(kutular){
+  const el = document.getElementById('depoGunlukTablo');
+  if(!el) return;
+  const gunler = {};
+  (kutular||[]).forEach(k=>{
+    const t = k.tarih || '-';
+    if(!gunler[t]) gunler[t] = { adet:{}, toplam:0, kg:0, kodlar:new Set(), cikan:0 };
+    const g = gunler[t];
+    const kal = k.kalite || '';
+    g.adet[kal] = (g.adet[kal]||0) + 1;
+    g.toplam++; g.kg += Number(k.kg)||0;
+    if(k.urunKodu) g.kodlar.add(k.urunKodu);
+    if(k.cikisTarihi) g.cikan++;
+  });
+  const tarihler = Object.keys(gunler).sort((a,b)=>b.localeCompare(a)); // en yeni gün üstte
+  if(!tarihler.length){
+    el.innerHTML = `<tbody><tr><td class="iklim-table-empty">${i18n('Henüz kutu kaydı yok')}</td></tr></tbody>`;
+    return;
+  }
+  // "Belirtilmemiş" sütunu yalnızca gerçekten öyle kutu varsa açılır
+  const belirsizVar = tarihler.some(t=>gunler[t].adet['']);
+  const sutunlar = KUTU_KALITELERI.concat(belirsizVar ? [''] : []);
+  const gen = t => sutunlar.reduce((s,kal)=>s+(gunler[t].adet[kal]||0),0);
+  const toplamlar = { kg:0, genel:0 };
+  sutunlar.forEach(kal=>toplamlar[kal]=0);
+  tarihler.forEach(t=>{
+    sutunlar.forEach(kal=>toplamlar[kal] += gunler[t].adet[kal]||0);
+    toplamlar.kg += gunler[t].kg; toplamlar.genel += gen(t);
+  });
+  const basliklar = sutunlar.map(kal=>`<th class="num">${kal||i18n('Belirtilmemiş')}</th>`).join('');
+  el.innerHTML = `
+    <thead><tr>
+      <th>${i18n('Paketleme')}</th>${basliklar}
+      <th class="num">${i18n('Toplam')}</th><th class="num">Kg</th>
+    </tr></thead>
+    <tbody>${tarihler.map(t=>{
+      const g = gunler[t];
+      const kodNot = g.kodlar.size ? ` <span class="kod-not">${escapeHtml([...g.kodlar].join(', '))}</span>` : '';
+      const cikanNot = g.cikan ? ` <span class="kod-not">(${g.cikan} ${i18n('çıktı')})</span>` : '';
+      return `<tr>
+        <td>${escapeHtml(t)}${kodNot}${cikanNot}</td>
+        ${sutunlar.map(kal=>`<td class="num">${g.adet[kal]||'–'}</td>`).join('')}
+        <td class="num toplam">${gen(t)}</td>
+        <td class="num">${fmt(g.kg,0)}</td>
+      </tr>`;
+    }).join('')}</tbody>
+    <tfoot><tr>
+      <td>${i18n('Toplam')} (${tarihler.length} ${i18n('gün')})</td>
+      ${sutunlar.map(kal=>`<td class="num">${toplamlar[kal]||'–'}</td>`).join('')}
+      <td class="num">${toplamlar.genel}</td>
+      <td class="num">${fmt(toplamlar.kg,0)}</td>
+    </tr></tfoot>`;
 }
 
 /* =========================================================
@@ -7899,10 +8026,13 @@ function renderRapor(){
   if(!ozetEl) return;
   const toplamDekar = state.tarlalar.reduce((s,t)=>s+(Number(t.dekar)||0),0);
   const toplamTahmini = state.tarlalar.reduce((s,t)=>s+(Number(t.tahminiHasatKg)||0),0);
-  // tarla belirtilmeyen/çoklu tarlalı kırım kayıtlarının kg'ı belirli bir tarlaya yazılamaz,
-  // ama gerçekleşen toplam hasada dahil edilmezse üretim eksik görünür.
+  // Tarlası hiç girilmemiş kırımların kg'ı hiçbir tarlaya yazılamaz, ama gerçekleşen
+  // toplam hasada eklenmezse üretim eksik görünür. Ölçüt tarlaIds'in BOŞ olması:
+  // çoklu tarlalı kayıtlarda tarlaId zaten null olduğu için `!k.tarlaId` demek
+  // onları da "tarlasız" sayıp tarla paylarının üstüne bir kez daha ekliyordu
+  // (aynı veride 269.295 yerine 305.175 kg).
   const tarlaBazliKg = state.tarlalar.reduce((s,t)=>s+tarlaStats(t.id).toplamKg,0);
-  const tarlasizKg = state.kirimlar.filter(k=>!k.tarlaId).reduce((s,k)=>s+kirimTurev(k).toplamKg,0);
+  const tarlasizKg = state.kirimlar.filter(k=>!kirimTarlaIdListesi(k).length).reduce((s,k)=>s+kirimTurev(k).toplamKg,0);
   const toplamGercek = tarlaBazliKg + tarlasizKg;
   const kgDekar = toplamDekar>0 ? toplamGercek/toplamDekar : null;
   const toplamSulamaSaat = state.sulamaKayitlari.reduce((s,k)=>s+(Number(k.saat)||0),0);
