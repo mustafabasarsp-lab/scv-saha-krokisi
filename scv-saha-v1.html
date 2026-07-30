@@ -1808,7 +1808,7 @@ const AYARLAR = {
   UNITE_PX: 40                // referans kapasitedeki sera-box genişliği (px) — kroki oranı
 };
 const STORAGE_KEY = 'scvSahaKrokiV1';
-const APP_SURUM = 'v83'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
+const APP_SURUM = 'v84'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
 
 /* =========================================================
    HATA / DONMA GÜNLÜĞÜ — "bazen donuyor" şikayetini araştırmak için.
@@ -2038,7 +2038,8 @@ const I18N_EN = {
   'Seçili aralığın/filtrenin dışında':'Outside the selected range/filter:',
   'yevmiye kaydı var':'daily wage record(s)',
   'tanesi gelecek tarihli':'of them future-dated',
-  'Tema':'Theme', 'Otomatik':'Auto', 'Açık':'Light', 'Koyu':'Dark',
+  // "Açık" hava durumunda Clear, temada Light — bağlam ön ekiyle ayrıldı
+  'Tema':'Theme', 'Otomatik':'Auto', 'tema|Açık':'Light', 'Koyu':'Dark',
   // Çalışma işareti (bugün kırım yapılıyor / sera dolduruluyor)
   'KIRIM YAPILIYOR':'HARVEST IN PROGRESS', 'SERALAR DOLDURULUYOR':'GREENHOUSES BEING FILLED', 'DOLUYOR':'FILLING',
   'SERALAR BOŞALTILIYOR':'GREENHOUSES BEING EMPTIED', 'BOŞALIYOR':'EMPTYING',
@@ -2063,7 +2064,16 @@ const I18N_EN = {
   'Başlangıç tarihi bitişten sonra.':'Start date is after the end date.', 'Bu aralıkta kayıt yok.':'No records in this range.',
   'kayıt silinecek':'record(s) will be deleted',
 };
-function i18n(tr){ return currentLang==='en' ? (I18N_EN[tr] || tr) : tr; }
+/* Aynı Türkçe kelimenin iki ayrı İngilizce karşılığı olabiliyor: hava
+   durumunda "Açık" = Clear, temada "Açık" = Light. Sözlük anahtarı Türkçe
+   metnin kendisi olduğu için ikisi tek anahtarda çakışıyor ve sonraki tanım
+   öncekini eziyordu (hava durumu İngilizcede "Light" görünüyordu). Bağlam
+   verilirse önce "baglam|metin" anahtarı aranır, bulunamazsa düz metne
+   düşülür. Türkçede her iki durumda da ekrana yine aynı Türkçe metin çıkar. */
+function i18n(tr, baglam){
+  if(currentLang!=='en') return tr;
+  return (baglam && I18N_EN[baglam+'|'+tr]) || I18N_EN[tr] || tr;
+}
 function dilDegistir(){
   currentLang = currentLang==='tr' ? 'en' : 'tr';
   localStorage.setItem('scvLang', currentLang);
@@ -2087,7 +2097,7 @@ function temaButonuGuncelle(){
   if(!el) return;
   const tercih = temaTercihi();
   const koyuMu = document.documentElement.getAttribute('data-theme') === 'dark';
-  el.textContent = tercih==='auto' ? i18n('Otomatik') : (tercih==='dark' ? i18n('Koyu') : i18n('Açık'));
+  el.textContent = tercih==='auto' ? i18n('Otomatik') : (tercih==='dark' ? i18n('Koyu') : i18n('Açık','tema'));
   const btn = document.getElementById('temaBtn');
   // Otomatikte simge o an hangi tema geçerliyse onu gösterir.
   if(btn) btn.firstChild.textContent = (tercih==='auto' ? '🌗' : (koyuMu ? '🌙' : '☀️')) + ' ';
