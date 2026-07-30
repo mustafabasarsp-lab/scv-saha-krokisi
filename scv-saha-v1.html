@@ -1223,7 +1223,18 @@ body.has-fullscreen-panel{overflow:hidden;}
   .header .page-tabs{display:none;}
   .bolge-tabs{overflow-x:auto;flex-wrap:nowrap;-webkit-overflow-scrolling:touch;gap:6px;}
   .bolge-tabs .tab-btn{padding:7px 12px;font-size:12.5px;min-height:34px;white-space:nowrap;flex:0 0 auto;}
-  body{padding-bottom:calc(60px + env(safe-area-inset-bottom,0px));}
+  /* Alta sabitlenen iki katmanın ölçüsü tek yerden gelir: FAB'ın konumu da
+     gövdenin alt boşluğu da bunlardan türetilir, biri değişince öteki kaymaz. */
+  :root{ --alt-nav-h:61px; --fab-h:50px; --alt-aralik:4px; --alt-nefes:8px; }
+  /* Sayfanın son satırı sabit çubukların altında kalmasın. Boşluk body'ye
+     DEĞİL .app'e veriliyor: mobilde kaydırma kabı body'nin kendisi
+     (height:100% + overflow-y:auto) ve kaydırma kabının alt dolgusu kaydırma
+     alanını uzatmıyor, yalnızca görünür alanı daraltıyor — içerik yine
+     butonun altında kalıyordu. .app kaydırılan içeriğin kendisi olduğu için
+     oradaki dolgu gerçekten yer açıyor. */
+  .app{padding-bottom:calc(var(--alt-nav-h) + var(--alt-nefes) + env(safe-area-inset-bottom,0px));}
+  /* Saha sayfasında alt navigasyonun ÜSTÜNDE bir de "Kırım Gir" butonu var. */
+  body.fab-acik .app{padding-bottom:calc(var(--alt-nav-h) + var(--alt-aralik) + var(--fab-h) + var(--alt-nefes) + env(safe-area-inset-bottom,0px));}
   .bottom-nav{
     display:flex; position:fixed; left:0; right:0; bottom:0; z-index:90;
     background:var(--panel); border-top:1px solid var(--border);
@@ -1237,7 +1248,8 @@ body.has-fullscreen-panel{overflow:hidden;}
   .bottom-nav-tab span:last-child{font-size:9.5px; font-weight:700;}
   .bottom-nav-tab.active{color:var(--green-700);}
   .kirim-fab{
-    position:fixed; left:12px; right:12px; bottom:calc(58px + env(safe-area-inset-bottom,0px)); z-index:80;
+    position:fixed; left:12px; right:12px; z-index:80;
+    bottom:calc(var(--alt-nav-h) + var(--alt-aralik) + env(safe-area-inset-bottom,0px));
     display:flex; align-items:center; justify-content:center; gap:8px;
     background:var(--tobacco); color:var(--on-tobacco); border:none; border-radius:14px;
     padding:13px; font-weight:800; font-size:15px;
@@ -1248,7 +1260,7 @@ body.has-fullscreen-panel{overflow:hidden;}
   .kirim-fab.hidden{display:none;}
   .odeme-table-wrap{display:none;}
   .odeme-card-list{display:block;}
-  .odeme-genel-toplam-sticky{bottom:calc(60px + env(safe-area-inset-bottom,0px));}
+  .odeme-genel-toplam-sticky{bottom:calc(var(--alt-nav-h) + var(--alt-aralik) + env(safe-area-inset-bottom,0px));}
   /* İklim grafiği: telefonda okunaklı olması için modalı tam ekran aç */
   .modal-iklim-grafik{
     width:calc(100% + 32px);max-width:calc(100% + 32px);
@@ -1349,7 +1361,9 @@ input.dayibasi-ad-alani{flex:1;min-width:110px;border:1px solid var(--border);bo
 .gecmis-onay-dugmesi:disabled{opacity:.5;}
 </style>
 </head>
-<body>
+<!-- fab-acik: açılış sayfası Saha, yani "Kırım Gir" butonu görünür durumda.
+     sayfaGecis() sayfa değiştikçe bu sınıfı FAB ile birlikte açıp kapatıyor. -->
+<body class="fab-acik">
 
 <div class="app">
 
@@ -1770,7 +1784,7 @@ const AYARLAR = {
   UNITE_PX: 40                // referans kapasitedeki sera-box genişliği (px) — kroki oranı
 };
 const STORAGE_KEY = 'scvSahaKrokiV1';
-const APP_SURUM = 'v81'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
+const APP_SURUM = 'v82'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
 
 /* =========================================================
    HATA / DONMA GÜNLÜĞÜ — "bazen donuyor" şikayetini araştırmak için.
@@ -5667,6 +5681,8 @@ function sayfaGecis(sayfaId){
   });
   const fab = document.getElementById('kirimFab');
   if(fab) fab.classList.toggle('hidden', sayfaId!=='pageSaha');
+  // gövdenin alt boşluğu FAB'ın varlığına göre değişiyor (bkz. body.fab-acik)
+  document.body.classList.toggle('fab-acik', sayfaId==='pageSaha');
   if(sayfaId==='pageSaha'){ renderSahaSayfasi(); }
   if(sayfaId==='pageHaritalar'){ haritaMapBaslat(); renderHaritalar(); }
   if(sayfaId==='pageDepo'){ renderDepo(); }
