@@ -1766,7 +1766,7 @@ const AYARLAR = {
   UNITE_PX: 40                // referans kapasitedeki sera-box genişliği (px) — kroki oranı
 };
 const STORAGE_KEY = 'scvSahaKrokiV1';
-const APP_SURUM = 'v79'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
+const APP_SURUM = 'v80'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
 
 /* =========================================================
    HATA / DONMA GÜNLÜĞÜ — "bazen donuyor" şikayetini araştırmak için.
@@ -1907,6 +1907,7 @@ const I18N_EN = {
   'İlaç kaydı yok':'No pesticide records', 'Güvenli':'Safe', 'gün kaldı':'days left',
   'Zararlı kaydı yok':'No pest records', 'Gübre kaydı yok':'No fertilizer records', 'kırım':'harvest', 'Henüz kırım kaydı yok':'No harvest records yet',
   'Fide Yöntemi':'Seedling Method', 'Kırım Durumu':'Harvest Status', 'kırım yapıldı':'harvest(s) done', 'Henüz kırım yok':'No harvest yet', 'kayıt':'records',
+  'ile ortak':'shared with',
   'Toplam Dizi':'Total Strings',
   'İlaç Adı':'Pesticide Name', 'Uygulama Tarihi':'Application Date', 'PHI (gün)':'PHI (days)',
   'Zararlı Adı':'Pest Name', 'Tarih':'Date', 'Yüzde %':'Percent %',
@@ -2480,14 +2481,23 @@ function seralarSirali(liste){ return [...(liste||state.seralar)].sort((a,b)=>se
 function seraAktifDonem(sera){ return (sera && sera.donemler || []).find(d=>d.aktif) || null; }
 function seraGuncelDolu(sera){ const d = seraAktifDonem(sera); return d ? (Number(d.dolu)||0) : 0; }
 function seraGuncelDizilmisKg(sera){ const d = seraAktifDonem(sera); return d ? (d.kaynaklar||[]).reduce((s,k)=>s+(Number(k.diziKg)||0),0) : 0; }
+/* Aynı gün aynı kodlu birden çok tarla birlikte kırıldığında tek ortak kayıt
+   girilir (kg tarlalara bölünmez, sahada zaten ayrı tartılmıyor). Toplamlarda
+   ortak kaydın payı tarla sayısına EŞİT bölünür — dekara göre oranlanmaz:
+   tarlaların toplamı gerçek hasadı aşmasın diye. Kayıt, tarla listesinde
+   yine tam miktarıyla görünür. */
+function kirimTarlaPayi(k, tarlaId){
+  const idler = kirimTarlaIdListesi(k);
+  return idler.includes(tarlaId) ? 1/idler.length : 0;
+}
 function tarlaStats(tarlaId){
-  const kayitlar = state.kirimlar.filter(k=>k.tarlaId===tarlaId);
+  const kayitlar = state.kirimlar.filter(k=>kirimTarlaIdListesi(k).includes(tarlaId));
   let maxKirimNo = 0, toplamKg = 0, toplamDizi = 0;
   kayitlar.forEach(k=>{
     if(Number(k.kirimNo) > maxKirimNo) maxKirimNo = Number(k.kirimNo);
-    const tr = kirimTurev(k);
-    toplamKg += tr.toplamKg;
-    toplamDizi += tr.diziSayisi;
+    const tr = kirimTurev(k), pay = kirimTarlaPayi(k, tarlaId);
+    toplamKg += tr.toplamKg * pay;
+    toplamDizi += tr.diziSayisi * pay;
   });
   return { kayitSayisi: kayitlar.length, maxKirimNo, toplamKg, toplamDizi };
 }
@@ -2593,7 +2603,7 @@ function seraDurumSinifiExact(pct){
    ========================================================= */
 function hesaplaRozetler(){
   // kg/dekar: kirim yapılmış tarlaların kg/dekar ortalaması
-  const aktifTarlalar = state.tarlalar.filter(t => state.kirimlar.some(k=>k.tarlaId===t.id) && Number(t.dekar)>0);
+  const aktifTarlalar = state.tarlalar.filter(t => state.kirimlar.some(k=>kirimTarlaIdListesi(k).includes(t.id)) && Number(t.dekar)>0);
   let kgDekarOrt = null;
   if(aktifTarlalar.length){
     const toplam = aktifTarlalar.reduce((s,t)=> s + (tarlaStats(t.id).toplamKg / Number(t.dekar)), 0);
@@ -3723,11 +3733,15 @@ function openTarlaDetay(id){
       <div class="stat"><b>${fmt(g.miktar,1)}</b><span>kg</span></div>
     </div>`
   ).join('') || `<div class="item">${i18n('Gübre kaydı yok')}</div>`;
-  const tarlaKirimlari = state.kirimlar.filter(k=>k.tarlaId===t.id).sort((a,b)=>b.tarih.localeCompare(a.tarih));
+  const tarlaKirimlari = state.kirimlar.filter(k=>kirimTarlaIdListesi(k).includes(t.id)).sort((a,b)=>b.tarih.localeCompare(a.tarih));
   const kirimListHtml = tarlaKirimlari.map(k=>{
     const tr = kirimTurev(k);
     const bekleyenNot = tr.kalanDizi>0 ? ` <span class="metin-kehribar">(${fmt(tr.kalanDizi,0)} dizi ${i18n('bekliyor')})</span>` : '';
-    return `<div class="item">${escapeHtml(k.tarih)} — ${kirimNoEtiket(k)} · ${fmt(tr.diziSayisi,0)} dizi · ${fmt(tr.toplamKg,0)} kg → ${escapeHtml(seraDagilimiEtiket(k.seraDagilimi))}${bekleyenNot}
+    // Ortak kırımda miktar tam gösterilir; hangi tarlalarla ortak olduğu yazılmazsa
+    // aynı kg iki tarlada da görünüp çift kayıt sanılıyor (toplamlara payı bölünerek girer).
+    const digerleri = kirimTarlaIdListesi(k).filter(id=>id!==t.id).map(id=>{ const x=tarlaBul(id); return x?x.ad:null; }).filter(Boolean);
+    const ortakNot = digerleri.length ? ` <span class="metin-pasif">(${escapeHtml(digerleri.join(', '))} ${i18n('ile ortak')})</span>` : '';
+    return `<div class="item">${escapeHtml(k.tarih)} — ${kirimNoEtiket(k)} · ${fmt(tr.diziSayisi,0)} dizi · ${fmt(tr.toplamKg,0)} kg${ortakNot} → ${escapeHtml(seraDagilimiEtiket(k.seraDagilimi))}${bekleyenNot}
       <span class="saga-yasla">
         <button class="btn btn-muted dugme-cok-kucuk" onclick="openKirimDuzenleModal('${k.id}','${t.id}')">✎</button>
         <button class="btn btn-muted dugme-cok-kucuk" onclick="kirimSil('${k.id}');openTarlaDetay('${t.id}')">×</button>
@@ -3931,7 +3945,7 @@ function kirimTarlaSecildi(tarlaId){
   kirimAdim2Ac();
 }
 function kirimSonOrtDiziKg(tarlaId){
-  const buTarla = state.kirimlar.filter(k=>k.tarlaId===tarlaId).sort((a,b)=>b.olusturma-a.olusturma);
+  const buTarla = state.kirimlar.filter(k=>kirimTarlaIdListesi(k).includes(tarlaId)).sort((a,b)=>b.olusturma-a.olusturma);
   if(buTarla.length) return buTarla[0].ortDiziKg;
   const tumu = [...state.kirimlar].sort((a,b)=>b.olusturma-a.olusturma);
   return tumu.length ? tumu[0].ortDiziKg : '';
