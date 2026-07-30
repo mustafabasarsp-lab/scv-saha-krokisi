@@ -721,8 +721,13 @@ body.has-fullscreen-panel{overflow:hidden;}
 }
 /* tarlada sağ alttaki silme düğmesinin altında kalmasın */
 .tarla-box .calisma-serit-kutu{padding-right:15px;}
-/* sera kutusu kapasiteyle orantılı ve en darı ~33px; şerit orada da kırpılmasın */
-.sera-box .calisma-serit-kutu{font-size:6px;letter-spacing:0;padding:1px 1px;}
+/* Sera kutusunun genişliği kapasiteyle orantılı: 400 dizilik seralar 33px ve
+   Kalemli'nin B/C/D/E blokları bu ölçüde, yani dar hâl istisna değil kural.
+   Yatay dolgu yok (33px'in tamamı metne kalsın) ve "BOŞALIYOR" gibi iki harf
+   uzun metinler bir tık küçülür. Tam ibare zaten panelin üstündeki bantta
+   yazılı; kutudaki şerit destekleyici bir işaret. */
+.sera-box .calisma-serit-kutu{font-size:6px;letter-spacing:0;padding:1px 0;}
+.sera-box .calisma-serit-kutu.serit-uzun{font-size:5.1px;letter-spacing:-.03em;}
 @keyframes calismaSolma{50%{opacity:.4;}}
 .calisma-bant{
   display:flex;align-items:baseline;gap:6px;flex-wrap:wrap;
@@ -910,7 +915,9 @@ body.has-fullscreen-panel{overflow:hidden;}
 }
 .stepper-num::-webkit-outer-spin-button,.stepper-num::-webkit-inner-spin-button{-webkit-appearance:none;margin:0;}
 .stepper-sub{font-size:11.5px;color:var(--muted);}
-.modal-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:14px;}
+/* Sarma zorunlu: sera detayında eylem sayısı 8'e çıktı ve sarmayan bir satırda
+   baştaki düğmeler (Kapat dahil) kartın dışına taşıp tıklanamaz oluyordu. */
+.modal-actions{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end;margin-top:14px;}
 /* Düğmeler: 1px sınır (2px'lik çerçeveler ekranı forma çeviriyordu),
    sahada rahat basılsın diye en az 42px yükseklik. */
 .btn{
@@ -1759,7 +1766,7 @@ const AYARLAR = {
   UNITE_PX: 40                // referans kapasitedeki sera-box genişliği (px) — kroki oranı
 };
 const STORAGE_KEY = 'scvSahaKrokiV1';
-const APP_SURUM = 'v78'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
+const APP_SURUM = 'v79'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
 
 /* =========================================================
    HATA / DONMA GÜNLÜĞÜ — "bazen donuyor" şikayetini araştırmak için.
@@ -1985,10 +1992,15 @@ const I18N_EN = {
   'Tema':'Theme', 'Otomatik':'Auto', 'Açık':'Light', 'Koyu':'Dark',
   // Çalışma işareti (bugün kırım yapılıyor / sera dolduruluyor)
   'KIRIM YAPILIYOR':'HARVEST IN PROGRESS', 'SERALAR DOLDURULUYOR':'GREENHOUSES BEING FILLED', 'DOLUYOR':'FILLING',
+  'SERALAR BOŞALTILIYOR':'GREENHOUSES BEING EMPTIED', 'BOŞALIYOR':'EMPTYING',
   '🔴 Bugün Kırım Yapılıyor':'🔴 Harvesting Today', '🔴 Kırım İşaretini Kaldır':'🔴 Clear Harvest Mark',
   '🔴 Bugün Dolduruluyor':'🔴 Being Filled Today', '🔴 Doldurma İşaretini Kaldır':'🔴 Clear Filling Mark',
+  '🔴 Bugün Boşaltılıyor':'🔴 Being Emptied Today', '🔴 Boşaltma İşaretini Kaldır':'🔴 Clear Emptying Mark',
   '🔴 Kırım Yapılıyor İşaretle':'🔴 Mark as Harvesting', '🔴 Dolduruluyor İşaretle':'🔴 Mark as Being Filled',
-  'İşareti Kaldır':'Clear Mark', 'kırım yapılıyor':'harvesting', 'dolduruluyor':'being filled',
+  '🔴 Boşaltılıyor İşaretle':'🔴 Mark as Being Emptied',
+  'İşareti Kaldır':'Clear Mark', 'kırım yapılıyor':'harvesting', 'dolduruluyor':'being filled', 'boşaltılıyor':'being emptied',
+  'Doldur (dönem başlat)':'Fill (start cycle)', 'Toplu Doldur':'Bulk Fill', 'Dönemleri Başlat':'Start Cycles',
+  'Bu seraları "bugün dolduruluyor" olarak işaretle':'Mark these greenhouses as "being filled today"',
   // Toplu işlemler
   'Toplu İşlem':'Bulk Action', 'Seralar — Toplu İşlem':'Greenhouses — Bulk Action', 'Tarlalar — Toplu İşlem':'Fields — Bulk Action',
   'Tümünü Seç':'Select All', 'Seçimi Temizle':'Clear Selection', 'Boşalt (dönemi arşivle)':'Empty (archive cycle)',
@@ -2488,11 +2500,22 @@ function tarlaStats(tarlaId){
    işaretin amacı zaten "kayıt henüz girilmedi" penceresidir. */
 function tarlaKirimYapiliyorMu(t){ return !!t && t.kirimIsaretTarihi === todayStr(); }
 function seraDolduruluyorMu(s){ return !!s && s.doldurmaIsaretTarihi === todayStr(); }
+function seraBosaltiliyorMu(s){ return !!s && s.bosaltmaIsaretTarihi === todayStr(); }
 function calismaIsaretiUygula(kayit, alan, acikMi){
   if(!kayit) return;
   if(acikMi) kayit[alan] = todayStr();
   else delete kayit[alan];
   Object.assign(kayit, sonIslemDamgasi());
+}
+/* Seranın iki işareti birbirini dışlar: aynı gün hem doldurulup hem boşaltılmaz.
+   tur: 'doldurma' | 'bosaltma' | null (ikisini de kaldırır). */
+function seraIsaretiUygula(sera, tur){
+  if(!sera) return;
+  delete sera.doldurmaIsaretTarihi;
+  delete sera.bosaltmaIsaretTarihi;
+  if(tur==='doldurma') sera.doldurmaIsaretTarihi = todayStr();
+  else if(tur==='bosaltma') sera.bosaltmaIsaretTarihi = todayStr();
+  Object.assign(sera, sonIslemDamgasi());
 }
 function tarlaKirimIsaretiToggle(id){
   const t = tarlaBul(id);
@@ -2503,7 +2526,13 @@ function tarlaKirimIsaretiToggle(id){
 function seraDoldurmaIsaretiToggle(id){
   const s = seraBul(id);
   if(!s) return;
-  calismaIsaretiUygula(s, 'doldurmaIsaretTarihi', !seraDolduruluyorMu(s));
+  seraIsaretiUygula(s, seraDolduruluyorMu(s) ? null : 'doldurma');
+  renderAll(); openSeraDetay(id);
+}
+function seraBosaltmaIsaretiToggle(id){
+  const s = seraBul(id);
+  if(!s) return;
+  seraIsaretiUygula(s, seraBosaltiliyorMu(s) ? null : 'bosaltma');
   renderAll(); openSeraDetay(id);
 }
 /* Kırım kaydı girilen tarlaların o güne ait işaretini düşürür. */
@@ -2810,7 +2839,9 @@ function renderSeralar(){
   liste = [...liste].sort((a,b)=>(a.ad||'').localeCompare(b.ad||'','tr',{numeric:true}));
   // Bant filtreden bağımsızdır: işaretli sera arama/bölge filtresi yüzünden gizlenmiş olsa da görünür kalır
   const bantEl = document.getElementById('seraCalismaBant');
-  if(bantEl) bantEl.innerHTML = calismaBandiHtml(seralarSirali(state.seralar.filter(seraDolduruluyorMu)), 'SERALAR DOLDURULUYOR');
+  if(bantEl) bantEl.innerHTML =
+      calismaBandiHtml(seralarSirali(state.seralar.filter(seraDolduruluyorMu)), 'SERALAR DOLDURULUYOR')
+    + calismaBandiHtml(seralarSirali(state.seralar.filter(seraBosaltiliyorMu)), 'SERALAR BOŞALTILIYOR');
   if(!liste.length){
     let msg = 'Henüz sera yok. "+" ile ekleyin.';
     if(state.seralar.length && arama) msg = 'Arama sonucu bulunamadı.';
@@ -2823,12 +2854,13 @@ function renderSeralar(){
     const cls = seraDurumSinifiExact(pct);
     const width = (s.kapasite/AYARLAR.UNITE_KAPASITE) * AYARLAR.UNITE_PX;
     const fillH = Math.min(pct,100);
-    const dolduruluyor = seraDolduruluyorMu(s);
-    return `<div class="sera-box${dolduruluyor?' calisma-isaretli':''}" style="width:${width}px" onclick="openSeraDetay('${s.id}')">
+    // Kutuya sığan kısa şerit; tam ibare panelin üstündeki bantta (bkz. calismaBandiHtml)
+    const seritMetni = seraDolduruluyorMu(s) ? i18n('DOLUYOR') : (seraBosaltiliyorMu(s) ? i18n('BOŞALIYOR') : '');
+    return `<div class="sera-box${seritMetni?' calisma-isaretli':''}" style="width:${width}px" onclick="openSeraDetay('${s.id}')">
       <button class="sera-close" title="Sil" onclick="event.stopPropagation();seraSil('${s.id}')">×</button>
       <div class="label">${escapeHtml(s.ad)}</div>
       <div class="fill ${cls}" style="height:${fillH}%"></div>
-      ${dolduruluyor ? `<div class="calisma-serit-kutu">${i18n('DOLUYOR')}</div>` : `<div class="pct">${fmt(pct,0)}%</div>`}
+      ${seritMetni ? `<div class="calisma-serit-kutu${seritMetni.length>7?' serit-uzun':''}">${seritMetni}</div>` : `<div class="pct">${fmt(pct,0)}%</div>`}
     </div>`;
   }).join('');
 }
@@ -3134,13 +3166,16 @@ function donemFormOku(){
     sulananGunSayisi: Number(document.getElementById('dSulananGun').value)||0
   };
 }
+function yeniDonemNesnesi(f){
+  return { id: uid(), ...f, dolu: 0, kaynaklar: [], aktif: true, baslangic: Date.now(), bitis: null };
+}
 function submitDonemBaslat(seraId){
   const s = seraBul(seraId);
   if(!s) return;
   if(seraAktifDonem(s)){ alert('Zaten aktif bir dönem var.'); return; }
-  const f = donemFormOku();
   s.donemler = s.donemler || [];
-  s.donemler.push({ id: uid(), ...f, dolu: 0, kaynaklar: [], aktif: true, baslangic: Date.now(), bitis: null });
+  s.donemler.push(yeniDonemNesnesi(donemFormOku()));
+  seraIsaretiUygula(s, 'doldurma'); // dönem açılan sera o gün doldurulmaya başlanmıştır
   renderAll(); openSeraDetay(seraId);
 }
 function submitDonemGuncelle(seraId){
@@ -3158,6 +3193,7 @@ function seraBosalt(id){
   if(!d){ alert('Aktif dönem yok.'); return; }
   if(!confirm('Bu dönem tamamlanıp arşivlensin mi? (Sera boşalacak, geçmiş dönem verisi saklanır)')) return;
   d.aktif = false; d.bitis = Date.now();
+  seraIsaretiUygula(s, null); // boşaltma kaydı girildi: "boşaltılıyor"/"dolduruluyor" işareti düşer
   renderAll(); openSeraDetay(id);
 }
 /* =========================================================
@@ -3213,7 +3249,10 @@ function topluSecimListesiHtml(kayitlar, listeId, notHtml){
   return html || `<div class="item">${i18n('Kayıt yok')}</div>`;
 }
 
-function openSeraTopluModal(){
+/* Toplu doldurma formuna geçerken seçim kaybolmasın diye ayrıca tutulur:
+   form ayrı bir modal olduğu için onay kutuları DOM'dan siliniyor. */
+let seraTopluSecim = [];
+function openSeraTopluModal(seciliIdler){
   const liste = seralarSirali();
   if(!liste.length){ alert('Önce en az bir sera ekleyin.'); return; }
   const notHtml = s=>{
@@ -3221,6 +3260,7 @@ function openSeraTopluModal(){
     const pct = (d && s.kapasite>0) ? Math.round(d.dolu/s.kapasite*100) : 0;
     const parcalar = [d ? '%'+pct : i18n('boş')];
     if(seraDolduruluyorMu(s)) parcalar.push('🔴 '+i18n('dolduruluyor'));
+    if(seraBosaltiliyorMu(s)) parcalar.push('🔴 '+i18n('boşaltılıyor'));
     return ` <span class="metin-pasif">· ${parcalar.join(' · ')}</span>`;
   };
   openModal(`
@@ -3233,20 +3273,69 @@ function openSeraTopluModal(){
       <button class="btn btn-muted dugme-cok-kucuk" onclick="topluTumunuSec('seraTopluListe',false)">${i18n('Seçimi Temizle')}</button>
     </div>
     <div class="secim-listesi" id="seraTopluListe">${topluSecimListesiHtml(liste,'seraTopluListe',notHtml)}</div>
-    <div class="hint-box ust-bosluk-6">Arama yalnızca listeyi daraltır; eylemler görünmeyen ama işaretli kalan seralara da uygulanır.</div>
+    <div class="hint-box ust-bosluk-6">Arama yalnızca listeyi daraltır; eylemler görünmeyen ama işaretli kalan seralara da uygulanır. İşaretler bugün için geçerlidir, ertesi gün kendiliğinden düşer.</div>
     <div class="modal-actions eylem-sola-sarmali">
-      <button class="btn" onclick="seraTopluIsaret(true)">${i18n('🔴 Dolduruluyor İşaretle')}</button>
-      <button class="btn" onclick="seraTopluIsaret(false)">${i18n('İşareti Kaldır')}</button>
+      <button class="btn btn-primary" onclick="seraTopluDoldurFormuAc()">${i18n('Doldur (dönem başlat)')}</button>
       <button class="btn btn-danger" onclick="seraTopluBosalt()">${i18n('Boşalt (dönemi arşivle)')}</button>
+      <button class="btn" onclick="seraTopluIsaret('doldurma')">${i18n('🔴 Dolduruluyor İşaretle')}</button>
+      <button class="btn" onclick="seraTopluIsaret('bosaltma')">${i18n('🔴 Boşaltılıyor İşaretle')}</button>
+      <button class="btn" onclick="seraTopluIsaret(null)">${i18n('İşareti Kaldır')}</button>
       <button class="btn btn-muted" onclick="closeModal()">${i18n('Kapat')}</button>
     </div>
   `, true);
+  (seciliIdler||[]).forEach(id=>{ const el = document.getElementById('seraTopluListe_'+id); if(el) el.checked = true; });
 }
-function seraTopluIsaret(acikMi){
+function seraTopluIsaret(tur){
   const idler = topluSecilenIdler('seraTopluListe');
   if(!idler.length){ alert('Sera seçin.'); return; }
-  idler.forEach(id=>calismaIsaretiUygula(seraBul(id), 'doldurmaIsaretTarihi', acikMi));
+  idler.forEach(id=>seraIsaretiUygula(seraBul(id), tur));
   closeModal(); renderAll();
+}
+/* ---- Toplu doldurma: boşaltmanın karşıtı ----
+   Seçilen seralarda aynı anda yeni dönem açar. Tür/çeşit/giriş tarihi/branda
+   bir kez girilir; tek tek dönem başlatmak 40+ serada sahada yapılamıyordu.
+   Zaten aktif dönemi olan seralar atlanır (üzerine yazmak geçmişi bozardı). */
+function seraTopluDoldurFormuAc(){
+  const idler = topluSecilenIdler('seraTopluListe');
+  if(!idler.length){ alert('Sera seçin.'); return; }
+  const uygun = seralarSirali(idler.map(seraBul).filter(s=>s && !seraAktifDonem(s)));
+  const atlanan = idler.length - uygun.length;
+  if(!uygun.length){ alert('Seçilen seraların hepsinde zaten aktif dönem var. Önce boşaltın.'); return; }
+  seraTopluSecim = idler;
+  const adlar = uygun.map(s=>s.ad).join(', ');
+  openModal(`
+    <h2>${i18n('Toplu Doldur')} — ${uygun.length} ${i18n('sera')}</h2>
+    <div class="hint-box">${escapeHtml(adlar)}${atlanan?`<br><b>${atlanan}</b> serada zaten aktif dönem olduğu için atlandı.`:''}</div>
+    ${donemFormFieldsHtml()}
+    <div class="check-row">
+      <input type="checkbox" id="fTopluDoldurIsaret" checked>
+      <label for="fTopluDoldurIsaret" class="etiket-normal">${i18n('Bu seraları "bugün dolduruluyor" olarak işaretle')}</label>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-muted" onclick="seraTopluDoldurVazgec()">${i18n('Vazgeç')}</button>
+      <button class="btn btn-primary" onclick="submitSeraTopluDoldur()">${i18n('Dönemleri Başlat')}</button>
+    </div>
+  `, true);
+}
+function seraTopluDoldurVazgec(){
+  openSeraTopluModal(seraTopluSecim);
+}
+function submitSeraTopluDoldur(){
+  const f = donemFormOku();
+  const isaretle = document.getElementById('fTopluDoldurIsaret').checked;
+  let sayi = 0;
+  seraTopluSecim.forEach(id=>{
+    const s = seraBul(id);
+    if(!s || seraAktifDonem(s)) return; // form açıkken başka cihazdan dönem açılmış olabilir
+    s.donemler = s.donemler || [];
+    s.donemler.push(yeniDonemNesnesi(f));
+    if(isaretle) seraIsaretiUygula(s, 'doldurma');
+    else { delete s.bosaltmaIsaretTarihi; Object.assign(s, sonIslemDamgasi()); } // dolan sera artık boşaltılmıyor
+    sayi++;
+  });
+  seraTopluSecim = [];
+  closeModal(); renderAll();
+  if(!sayi) alert('Dönem başlatılabilecek sera kalmadı.');
 }
 function seraTopluBosalt(){
   const idler = topluSecilenIdler('seraTopluListe');
@@ -3259,8 +3348,7 @@ function seraTopluBosalt(){
   bosaltilacak.forEach(s=>{
     const d = seraAktifDonem(s);
     d.aktif = false; d.bitis = Date.now();
-    delete s.doldurmaIsaretTarihi; // boşalan sera artık "dolduruluyor" değil
-    Object.assign(s, sonIslemDamgasi());
+    seraIsaretiUygula(s, null); // boşaltma kaydı girildi: her iki işaret de düşer
   });
   closeModal(); renderAll();
   if(atlanan) alert(`${bosaltilacak.length} sera boşaltıldı. ${atlanan} serada aktif dönem olmadığı için atlandı.`);
@@ -3390,6 +3478,7 @@ function openSeraDetay(id){
       <button class="btn btn-muted" onclick="closeModal()">${i18n('Kapat')}</button>
       <button class="btn btn-primary" onclick="openSeraDizimModal('${s.id}')">${i18n('+ Tütün Dizimi Ekle')}</button>
       <button class="btn" onclick="seraDoldurmaIsaretiToggle('${s.id}')">${seraDolduruluyorMu(s)?i18n('🔴 Doldurma İşaretini Kaldır'):i18n('🔴 Bugün Dolduruluyor')}</button>
+      <button class="btn" onclick="seraBosaltmaIsaretiToggle('${s.id}')">${seraBosaltiliyorMu(s)?i18n('🔴 Boşaltma İşaretini Kaldır'):i18n('🔴 Bugün Boşaltılıyor')}</button>
       <button class="btn" onclick="openSeraDuzenleModal('${s.id}')">${i18n('Düzenle')}</button>
       <button class="btn" onclick="seraTermometreToggle('${s.id}')">${s.termometreVar?i18n('🌡️ Termometre Çıkar'):i18n('🌡️ Termometre Ekle')}</button>
       ${d? `<button class="btn" onclick="seraBosalt('${s.id}')">${i18n('Boşalt')}</button>` : ''}
