@@ -30,10 +30,11 @@ fi
 # commit'te ikisi karşılaştırılıyor, eksik varsa commit engelleniyor.
 if echo "$CHANGED" | grep -qE '^(scv-saha-v1\.html|firestore\.rules)$' && [ -f scv-saha-v1.html ] && [ -f firestore.rules ]; then
   KOD_LISTESI=$(grep -oE "SYNC_KOLEKSIYONLARI *= *\[[^]]*\]" scv-saha-v1.html | grep -oE "'[a-zA-Z0-9_]+'" | tr -d "'")
-  # Liste rules'ta iki biçimde yazılabiliyor: doğrudan "collection in [...]" ya da
-  # tek kaynak olsun diye bir yardımcı fonksiyonun "return [...]"ü. İkisi de taranır,
-  # yoksa listeyi fonksiyona taşımak bu kontrolü sessizce devre dışı bırakıyordu.
-  RULES_LISTESI=$(grep -oE "collection in *\[[^]]*\]|return *\[[^]]*\]" firestore.rules | grep -oE "'[a-zA-Z0-9_]+'" | tr -d "'")
+  # firestore.rules'taki liste satırlara bölünmüş durumda (Console'a yapıştırırken
+  # uzun satır sarıp tırnak ortasından kesiliyordu), bu yüzden karşılaştırmadan
+  # önce satır sonları boşluğa çevrilir — yoksa satır bazlı grep listeyi hiç
+  # bulamaz ve kontrol sessizce boşa düşer.
+  RULES_LISTESI=$(tr '\n' ' ' < firestore.rules | grep -oE "collection in *\[[^]]*\]" | grep -oE "'[a-zA-Z0-9_]+'" | tr -d "'")
   EKSIK=""
   for koleksiyon in $KOD_LISTESI; do
     if ! echo "$RULES_LISTESI" | grep -qx "$koleksiyon"; then

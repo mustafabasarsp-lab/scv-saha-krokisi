@@ -6,17 +6,19 @@ service cloud.firestore {
     // koleksiyon adına hiçbir işlem yapılamaz — yanlış yazılmış bir koleksiyon
     // adı sessizce yeni bir çöp koleksiyon açmasın.
     //
-    // Liste iki kez yazılıyor (okuma ve yazma kuralı için) ve her ikisi de TEK
-    // SATIRDA kalmalı: githooks/pre-commit bunu scv-saha-v1.html'deki
-    // SYNC_KOLEKSIYONLARI ile satır bazlı karşılaştırıyor, satıra bölünürse
-    // karşılaştırma sessizce boşa düşer.
-    //
-    // Not: liste bir yardımcı fonksiyona taşınıp "collection in fonksiyon()"
-    // biçiminde kullanılınca Firebase Console ayrıştırıcısı hata veriyor
-    // ("Unexpected '&&'"), bu yüzden bilerek satır içi bırakıldı.
+    // DİKKAT — liste neden böyle bölünmüş: hepsi tek satıra yazılınca metin
+    // Firebase Console'a yapıştırılırken satır sonuna sarıyor ve sarma noktası
+    // bir tırnağın ORTASINA denk geldiğinde kural ayrıştırılamıyor
+    // ("Unexpected 'amaKayitlari'"). Satır başına birkaç öğe konarak her metin
+    // kendi satırında bütün kalıyor. Öğe aralarından bölmek geçerli sözdizimi.
     match /{collection}/{docId} {
       allow read, delete: if request.auth != null
-        && collection in ['tarlalar','seralar','kirimlar','haritaPinleri','tesisPinleri','depoKutulari','sulamaKayitlari','iklimKayitlari','dayibasilar','yevmiyeKayitlari','odemeKayitlari','odemeAyarlari'];
+        && collection in [
+          'tarlalar', 'seralar', 'kirimlar',
+          'haritaPinleri', 'tesisPinleri', 'depoKutulari',
+          'sulamaKayitlari', 'iklimKayitlari', 'dayibasilar',
+          'yevmiyeKayitlari', 'odemeKayitlari', 'odemeAyarlari'
+        ];
 
       // create/update: uygulama her zaman belge id'sini kaydın kendi 'id'
       // alanıyla aynı tutar (bkz. scv-saha-v1.html syncOutgoingNow) — bu
@@ -26,7 +28,12 @@ service cloud.firestore {
       // en geniş kayıt bile 100 alanın çok altında, bozuk bir döngünün belgeyi
       // 1 MiB'lik Firestore sınırına dayamasını erkenden durdurur.
       allow create, update: if request.auth != null
-        && collection in ['tarlalar','seralar','kirimlar','haritaPinleri','tesisPinleri','depoKutulari','sulamaKayitlari','iklimKayitlari','dayibasilar','yevmiyeKayitlari','odemeKayitlari','odemeAyarlari']
+        && collection in [
+          'tarlalar', 'seralar', 'kirimlar',
+          'haritaPinleri', 'tesisPinleri', 'depoKutulari',
+          'sulamaKayitlari', 'iklimKayitlari', 'dayibasilar',
+          'yevmiyeKayitlari', 'odemeKayitlari', 'odemeAyarlari'
+        ]
         && request.resource.data.id == docId
         && request.resource.data.keys().size() <= 200;
     }
