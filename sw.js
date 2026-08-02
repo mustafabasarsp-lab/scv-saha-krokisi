@@ -1,4 +1,4 @@
-const CACHE_NAME = 'scv-saha-v1-cache-84';
+const CACHE_NAME = 'scv-saha-v1-cache-87';
 const CORE_ASSETS = [
   './scv-saha-v1.html',
   './manifest.json',
@@ -50,14 +50,32 @@ self.addEventListener('fetch', (event) => {
   // ilk açılışta gelir, eski sürüm takılı kalmaz.
   const isHtmlNavigation = event.request.mode === 'navigate' || url.endsWith('.html') || url.endsWith('/');
   if (isHtmlNavigation) {
+    const agdan = fetch(event.request).then(response => {
+      if (response && response.status === 200) {
+        const clone = response.clone();
+        caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone));
+      }
+      return response;
+    });
+    // Ağ isteği reddedilirse ve yarış çoktan önbellekle sonuçlanmışsa, bu
+    // reddin sahipsiz kalmaması için ayrı bir tüketici bağlanır.
+    agdan.catch(() => {});
+
+    // "Ağ yok" ile "ağ çok yavaş" tarayıcı için aynı şey değil: şebeke zayıfken
+    // fetch reddedilmez, dakikalarca askıda kalır ve uygulama o süre boyunca boş
+    // ekranda beklerdi (sahada en sık şikayet edilen davranış). Süre dolduğunda
+    // önbellekteki sürüm gösterilir. Ağ isteği İPTAL EDİLMEZ: arka planda
+    // tamamlanıp önbelleği tazeler, böylece bir sonraki açılış güncel gelir ve
+    // otomatik güncelleme düzeni bozulmaz.
+    const AG_ZAMAN_ASIMI_MS = 4000;
+    const zamanAsiminda = new Promise(cozumle => {
+      setTimeout(() => cozumle(caches.match(event.request).then(onbellekli => onbellekli || agdan)), AG_ZAMAN_ASIMI_MS);
+    });
+
     event.respondWith(
-      fetch(event.request).then(response => {
-        if (response && response.status === 200) {
-          const clone = response.clone();
-          caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone));
-        }
-        return response;
-      }).catch(() => caches.match(event.request))
+      Promise.race([agdan, zamanAsiminda])
+        // Çevrimdışı (fetch anında reddedilir): doğrudan önbelleğe düş.
+        .catch(() => caches.match(event.request))
     );
     return;
   }

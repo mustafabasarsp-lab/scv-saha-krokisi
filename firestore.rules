@@ -1,16 +1,60 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+
+    // Uygulamanın senkronize ettiği veri koleksiyonları. Listede olmayan bir
+    // koleksiyon adına hiçbir işlem yapılamaz — yanlış yazılmış bir koleksiyon
+    // adı sessizce yeni bir çöp koleksiyon açmasın.
+    // Liste TEK SATIRDA kalmalı: githooks/pre-commit bunu scv-saha-v1.html'deki
+    // SYNC_KOLEKSIYONLARI ile satır bazlı karşılaştırıyor. Satıra bölünürse
+    // karşılaştırma sessizce boşa düşer ve rules'a eklenmeyi unutulan bir
+    // koleksiyon canlıda "izin yok" hatasıyla senkronu bozar.
+    function veriKoleksiyonlari() {
+      return ['tarlalar','seralar','kirimlar','haritaPinleri','tesisPinleri','depoKutulari','sulamaKayitlari','iklimKayitlari','dayibasilar','yevmiyeKayitlari','odemeKayitlari','odemeAyarlari'];
+    }
+
+    function girisli() { return request.auth != null; }
+    function yeni() { return request.resource.data; }
+
+    // Belge id'si her zaman kaydın kendi 'id' alanına eşittir (bkz.
+    // scv-saha-v1.html syncOutgoingNow). Bu eşleşmeyi zorunlu kılmak, bozuk ya
+    // da kötü niyetli bir yazmanın id'siz veya BAŞKA bir kayda ait id ile belge
+    // oluşturmasını engeller.
+    function idTutarli(docId) {
+      return yeni().id is string
+          && yeni().id == docId
+          && yeni().id.size() > 0
+          && yeni().id.size() <= 200;
+    }
+
+    // Kaba akıl sağlığı sınırı: uygulamanın ürettiği en geniş kayıt bile 100
+    // alanın çok altında. Sert bir üst sınır, bozuk bir döngünün belgeyi
+    // şişirip 1 MiB'lik Firestore sınırına dayanmasını erkenden durdurur.
+    function boyutMakul() { return yeni().keys().size() <= 200; }
+
     match /{collection}/{docId} {
-      allow read, delete: if request.auth != null
-        && collection in ['tarlalar','seralar','kirimlar','haritaPinleri','tesisPinleri','depoKutulari','sulamaKayitlari','iklimKayitlari','dayibasilar','yevmiyeKayitlari','odemeKayitlari','odemeAyarlari'];
-      // create/update: uygulama her zaman belge id'sini kaydın kendi 'id'
-      // alanıyla aynı tutar (bkz. scv-saha-v1.html syncOutgoingNow) — bu
-      // eşleşmeyi zorunlu kılmak, bozuk/kötü niyetli bir yazmanın id'siz
-      // veya başka bir kayda ait id ile belge oluşturmasını engeller.
-      allow create, update: if request.auth != null
-        && collection in ['tarlalar','seralar','kirimlar','haritaPinleri','tesisPinleri','depoKutulari','sulamaKayitlari','iklimKayitlari','dayibasilar','yevmiyeKayitlari','odemeKayitlari','odemeAyarlari']
-        && request.resource.data.id == docId;
+      allow read, delete: if girisli() && collection in veriKoleksiyonlari();
+      allow create, update: if girisli()
+        && collection in veriKoleksiyonlari()
+        && idTutarli(docId)
+        && boyutMakul();
+    }
+
+    // ---- Otomatik günlük yedekler ----
+    // Asıl veriden AYRI durur ve uygulama tarafından dinlenmez; normal senkronun
+    // silme tespiti buraya ulaşamaz, yani veriyi silen bir hata yedekleri silmez.
+    //
+    // Yedekler DEĞİŞTİRİLEMEZ (update yasak): bir günün yedeği bir kez yazılır.
+    // Uygulama zaten yazmadan önce o günün künyesi var mı diye bakar; buradaki
+    // yasak, bir hatanın alınmış yedeğin üzerine yazıp onu bozmasını engeller.
+    // Silme serbesttir çünkü 30 günden eski yedekleri uygulama kendisi temizler.
+    match /yedekler/{docId} {
+      allow read, delete: if girisli();
+      allow create: if girisli()
+        && idTutarli(docId)
+        && yeni().tarih is string
+        && yeni().tarih.size() == 10;   // YYYY-MM-DD
+      allow update: if false;
     }
   }
 }

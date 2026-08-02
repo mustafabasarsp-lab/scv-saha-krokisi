@@ -41,9 +41,13 @@ if(window.matchMedia){
 <meta name="apple-mobile-web-app-title" content="SCV Saha">
 <link rel="apple-touch-icon" href="icon-192.png">
 <link rel="icon" href="icon-192.png">
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
-<script src="https://unpkg.com/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<!-- Leaflet (harita, ~150 KB + CSS) ve xlsx (Excel dışa aktarım, ~880 KB) burada
+     SENKRON yükleniyordu: her açılışta indirilip ayrıştırılıyor, hem de uygulama
+     çizilmeden önce. İkisi de tek bir ekranda gerekiyor (Haritalar / Veri Yönetimi),
+     bu yüzden artık ilk ihtiyaç anında kutuphaneYukle ile alınıyorlar. Önden bağlantı
+     kurulması indirmenin kendisini hızlandırır. Service worker ikisini de CORE_ASSETS
+     içinde önbelleğe aldığı için çevrimdışı da çalışmaya devam ederler. -->
+<link rel="preconnect" href="https://unpkg.com" crossorigin="">
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
@@ -370,6 +374,23 @@ input[type=number],.num,td,th,.badge b,.quickstats b{font-variant-numeric:tabula
 }
 .btn-csv:hover{background:var(--panel-2);color:var(--ink);}
 .btn-csv:focus-visible{outline:2px solid var(--green-500);outline-offset:2px;}
+/* Sezon seçici, diğer başlık düğmeleriyle aynı yükseklikte dursun; native
+   <select> olduğu için tarayıcı varsayılan görünümü sıfırlanır. */
+.sezon-secici{
+  appearance:none;-webkit-appearance:none;
+  padding-right:26px;cursor:pointer;
+  background-image:linear-gradient(45deg,transparent 50%,currentColor 50%),linear-gradient(135deg,currentColor 50%,transparent 50%);
+  background-position:calc(100% - 14px) 50%,calc(100% - 9px) 50%;
+  background-size:5px 5px,5px 5px;background-repeat:no-repeat;
+}
+/* Geçmiş bir sezon görüntülenirken seçici belirgin dursun: ekrandaki sayıların
+   bugüne ait OLMADIĞI fark edilmeden kalmasın. */
+.sezon-secici.gecmis-sezon{background-color:var(--tobacco);color:var(--on-tobacco);border-color:var(--tobacco);}
+/* Anahtar gibi davranan düğme (bildirimler): açıkken metin okumak zorunda
+   kalmadan bir bakışta görülsün — kapalı hali sönük çerçeve, açık hali dolu. */
+.btn-csv.acik{background:var(--green-700);border-color:var(--green-700);color:#fff;}
+.btn-csv.acik:hover{background:var(--green-700);color:#fff;}
+.btn-csv:disabled{opacity:.5;}
 
 /* ---------- MIDDLE ROW ---------- */
 /* Sol sütun 220px'ti; yazı tipi eskisinden geniş olduğu için içerik taşıyordu. */
@@ -871,6 +892,32 @@ body.has-fullscreen-panel{overflow:hidden;}
   background:var(--red-soft);border:1px solid var(--red);border-radius:6px;
   padding:8px 10px;font-size:12.5px;font-weight:700;color:var(--red);margin:0 0 10px;
 }
+
+/* ---------- Tek seferlik güncellemeler (katlanır arşiv) ----------
+   Varsayılan olarak KAPALI: geçmişe dönük tamir işleri günlük kullanımın
+   önünde durmasın, yanlışlıkla basılma ihtimali azalsın. */
+.ts-bolum{
+  border:1px solid var(--border);border-radius:var(--r-sm);
+  padding:8px 10px;margin:14px 0;background:var(--panel-2);
+}
+.ts-bolum>summary{
+  cursor:pointer;font-weight:800;font-size:13px;color:var(--muted);
+  display:flex;align-items:center;gap:8px;list-style:revert;
+}
+.ts-bolum[open]>summary{margin-bottom:10px;color:var(--ink);}
+.ts-ozet{font-weight:700;font-size:11.5px;color:var(--muted);margin-left:auto;}
+.ts-madde{padding:6px 0;border-top:1px solid var(--border);}
+.ts-madde:first-of-type{border-top:0;}
+/* Uygulanmış madde sönükleşir ama gizlenmez: geçmişte ne yapıldığı okunabilir kalsın */
+.ts-madde-tamam{opacity:.55;}
+.ts-rozet{font-size:11.5px;font-weight:700;border-radius:999px;padding:3px 9px;white-space:nowrap;}
+.ts-uygulandi{background:var(--green-100);color:var(--green-900);border:1px solid var(--green-300);}
+.ts-bekliyor{background:var(--red-soft);color:var(--red);border:1px solid var(--red);}
+.ts-bilinmiyor{background:var(--panel);color:var(--muted);border:1px solid var(--border);}
+
+/* Otomatik yedek listesi satırı */
+.oto-yedek-satiri{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;}
+.btn-sm{padding:5px 10px;font-size:12px;min-height:32px;}
 /* ---- Kırım Gir: 2 dokunuşluk akış (tarla kare seçimi + dizi sayacı) ---- */
 .step-eyebrow{font-size:11px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);margin-bottom:8px;}
 .tarla-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;max-height:340px;overflow-y:auto;padding:2px;}
@@ -1191,7 +1238,11 @@ body.has-fullscreen-panel{overflow:hidden;}
 .sync-status.offline{background:var(--red);}
 .sync-status.saving{background:var(--tobacco);color:var(--on-tobacco);}
 .sync-status.saving .dot{background:var(--on-tobacco);animation:syncPulse 1.1s ease-in-out infinite;}
-@media (prefers-reduced-motion:reduce){ .sync-status.saving .dot{animation:none;} }
+/* Cihaz deposu dolduğunda: senkron durumundan bağımsız, en yüksek öncelikli
+   uyarı. Çevrimdışı girilen kayıt artık cihazda saklanamıyor demektir. */
+.sync-status.depo-dolu{background:var(--red);color:#fff;}
+.sync-status.depo-dolu .dot{background:#fff;animation:syncPulse 1.1s ease-in-out infinite;}
+@media (prefers-reduced-motion:reduce){ .sync-status.saving .dot,.sync-status.depo-dolu .dot{animation:none;} }
 @keyframes syncPulse{0%,100%{opacity:1;}50%{opacity:.35;}}
 
 .bottom-nav, .kirim-fab{display:none;}
@@ -1401,10 +1452,14 @@ input.dayibasi-ad-alani{flex:1;min-width:110px;border:1px solid var(--border);bo
         <button class="hava-serit" id="havaSerit" onclick="sayfaGecis('pageIklim')" title="İklim Takip" data-i18n-title="İklim Takip">—</button>
         <div class="sync-status" id="syncStatus"><span class="dot"></span><span id="syncStatusText">Bağlanıyor…</span></div>
         <div class="header-actions">
+          <!-- Sezon seçici: kayıtların sezonu tarihlerinden türetilir, ayrı bir
+               alan tutulmaz (bkz. sezonTarihten). Geçmiş bir sezon seçildiğinde
+               ekran o yılın verisini gösterir; yeni kayıtlar yine bugüne yazılır. -->
+          <select class="btn-csv sezon-secici" id="sezonSecici" onchange="sezonSecildi(this.value)" title="Sezon" data-i18n-title="Sezon"></select>
           <button class="btn-csv" id="temaBtn" onclick="temaDegistir()" title="Tema" data-i18n-title="Tema">🌗 <span id="temaBtnText">Otomatik</span></button>
           <button class="btn-csv" onclick="dilDegistir()">🌐 <span id="dilBtnText">EN</span></button>
           <button class="btn-csv" id="installBtn" style="display:none;" onclick="pwaYukle()" data-i18n="⬇️ Uygulamayı Yükle">⬇️ Uygulamayı Yükle</button>
-          <button class="btn-csv" id="bildirimBtn" onclick="bildirimIzniIste()">🔔 <span id="bildirimBtnText">Bildirimleri Aç</span></button>
+          <button class="btn-csv" id="bildirimBtn" onclick="bildirimAcKapa()">🔔 <span id="bildirimBtnText">Bildirimleri Aç</span></button>
           <button class="btn-csv" onclick="openVeriYonetimiModal()" data-i18n="💾 Veri Yönetimi">💾 Veri Yönetimi</button>
           <div class="user-menu" id="userMenu">
             <button class="btn-csv" onclick="kullaniciMenusuAcKapa(event)">👤 <span id="userMenuBtnAd"></span></button>
@@ -1808,7 +1863,7 @@ const AYARLAR = {
   UNITE_PX: 40                // referans kapasitedeki sera-box genişliği (px) — kroki oranı
 };
 const STORAGE_KEY = 'scvSahaKrokiV1';
-const APP_SURUM = 'v84'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
+const APP_SURUM = 'v87'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
 
 /* =========================================================
    HATA / DONMA GÜNLÜĞÜ — "bazen donuyor" şikayetini araştırmak için.
@@ -1824,13 +1879,21 @@ const APP_SURUM = 'v84'; // pre-commit hook her kod güncellemesinde bu sayıyı
    ========================================================= */
 const HATA_GUNLUGU_ANAHTAR = 'scvHataGunlugu';
 const HATA_GUNLUGU_MAX = 40;
+/* Cihaz deposu dolduğunda günlük de yazılamaz — yani teşhisin en çok gerektiği
+   anda kaybolur. Yazılamayan kayıtlar hiç değilse bu oturum boyunca bellekte
+   tutulur; "Günlüğü Göster / Kopyala" akışı böyle bir durumda da iş görür. */
+let bellekHataKaydi = [];
 function hataKaydet(tip, mesaj, detay){
+  const kayit = { zaman: Date.now(), tip, mesaj: String(mesaj||'').slice(0,500), detay: String(detay||'').slice(0,2000) };
   try{
     const liste = JSON.parse(localStorage.getItem(HATA_GUNLUGU_ANAHTAR) || '[]');
-    liste.push({ zaman: Date.now(), tip, mesaj: String(mesaj||'').slice(0,500), detay: String(detay||'').slice(0,2000) });
+    liste.push(kayit);
     while(liste.length > HATA_GUNLUGU_MAX) liste.shift();
     localStorage.setItem(HATA_GUNLUGU_ANAHTAR, JSON.stringify(liste));
-  }catch(e){ /* localStorage dolu/erişilemez olabilir, sessizce yut */ }
+  }catch(e){
+    bellekHataKaydi.push(kayit);
+    while(bellekHataKaydi.length > HATA_GUNLUGU_MAX) bellekHataKaydi.shift();
+  }
 }
 window.addEventListener('error', e=>{
   hataKaydet('hata', e.message, (e.error && e.error.stack) || (e.filename+':'+e.lineno+':'+e.colno));
@@ -1839,11 +1902,20 @@ window.addEventListener('unhandledrejection', e=>{
   const r = e.reason;
   hataKaydet('red', (r && r.message) || String(r), r && r.stack);
 });
+/* Donma izleyicisi.
+   Eskiden her KAREDE requestAnimationFrame ile ölçüyordu: hiçbir şey olmasa bile
+   tarayıcıyı saniyede 60 kez uyandırıyor, telefonda boşuna pil harcıyordu — üstelik
+   ölçtüğü şey uzun takılmalar olduğu için kare hassasiyetine hiç ihtiyacı yok.
+   Artık saniyede bir örnekleme yapılıyor: zamanlayıcı gecikmesi eşiği aşarsa ana
+   iş parçacığı o kadar süre tepkisiz kalmış demektir. */
 (function(){
-  let sonKareZamani = performance.now();
+  const ORNEKLEME_MS = 1000;
+  const DONMA_ESIGI_MS = 2500;
+  let sonOlcum = performance.now();
   // Sayfa gizlenme/görünür olma, arka plana alınma/öne gelme ile ilgili
-  // olaylardan herhangi biri tetiklendiğinde bu bayrak işaretlenir; bir
-  // sonraki kare bu yüzden loglanmadan atlanır (süre sınırı aranmaz).
+  // olaylardan herhangi biri tetiklendiğinde bu bayrak işaretlenir; bir sonraki
+  // ölçüm bu yüzden loglanmadan atlanır (arka planda zamanlayıcı kısılır, bu
+  // gecikme gerçek bir arayüz donması değildir).
   let gorunurlukDegisti = false;
   const gorunurlukDegistiIsaretle = ()=>{ gorunurlukDegisti = true; };
   document.addEventListener('visibilitychange', gorunurlukDegistiIsaretle);
@@ -1853,25 +1925,69 @@ window.addEventListener('unhandledrejection', e=>{
   window.addEventListener('pageshow', gorunurlukDegistiIsaretle);
   window.addEventListener('blur', gorunurlukDegistiIsaretle);
   window.addEventListener('focus', gorunurlukDegistiIsaretle);
-  function donmaGozlemcisi(zaman){
-    if(gorunurlukDegisti){
-      // Bu kare, arka plana alınma/öne gelme geçişinin hemen ardından
-      // geliyor olabilir; rAF bu süre boyunca duraklamış olabileceğinden
-      // aradaki fark gerçek bir arayüz donması değildir — sessizce atlanır.
-      gorunurlukDegisti = false;
-      sonKareZamani = zaman;
-      requestAnimationFrame(donmaGozlemcisi);
-      return;
+  setInterval(()=>{
+    const zaman = performance.now();
+    const gecikme = (zaman - sonOlcum) - ORNEKLEME_MS; // beklenenin ÜSTÜNDEki süre
+    sonOlcum = zaman;
+    if(gorunurlukDegisti){ gorunurlukDegisti = false; return; }
+    if(document.visibilityState!=='visible') return;
+    if(gecikme > DONMA_ESIGI_MS){
+      hataKaydet('donma', `Ana iş parçacığı ~${Math.round(gecikme)}ms tepkisiz kaldı.`, 'sayfa: '+(document.querySelector('.page:not(.hidden)')?.id||'?'));
     }
-    const fark = zaman - sonKareZamani;
-    if(document.visibilityState==='visible' && fark > 2500){
-      hataKaydet('donma', `Ana iş parçacığı ~${Math.round(fark)}ms tepkisiz kaldı.`, 'sayfa: '+(document.querySelector('.page:not(.hidden)')?.id||'?'));
-    }
-    sonKareZamani = zaman;
-    requestAnimationFrame(donmaGozlemcisi);
-  }
-  requestAnimationFrame(donmaGozlemcisi);
+  }, ORNEKLEME_MS);
 })();
+
+/* =========================================================
+   TEMBEL KÜTÜPHANE YÜKLEME
+   Harita (Leaflet) ve Excel (xlsx) kütüphaneleri <head>'de senkron duruyordu:
+   toplam ~1 MB, her açılışta, uygulama çizilmeden ÖNCE. Oysa harita yalnızca
+   Haritalar sekmesinde, xlsx yalnızca Excel dışa aktarımında gerekiyor — çoğu
+   oturumda hiç açılmıyorlar. Artık ilk ihtiyaç anında yükleniyorlar.
+   Service worker ikisini de CORE_ASSETS içinde tuttuğu için çevrimdışıyken de
+   önbellekten gelirler.
+   ========================================================= */
+const KUTUPHANELER = {
+  leaflet: [
+    { tur:'css', url:'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css', butunluk:'sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=' },
+    { tur:'js',  url:'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js',  butunluk:'sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=' }
+  ],
+  xlsx: [
+    { tur:'js', url:'https://unpkg.com/xlsx@0.18.5/dist/xlsx.full.min.js' }
+  ]
+};
+const kutuphaneSozleri = {};
+function kutuphaneKaynagiEkle(k){
+  return new Promise((cozumle, reddet)=>{
+    let el;
+    if(k.tur==='css'){
+      el = document.createElement('link');
+      el.rel = 'stylesheet';
+      el.href = k.url;
+    } else {
+      el = document.createElement('script');
+      el.src = k.url;
+      el.async = false;
+    }
+    if(k.butunluk){ el.integrity = k.butunluk; el.crossOrigin = ''; }
+    el.onload = ()=>cozumle();
+    el.onerror = ()=>reddet(new Error(k.url + ' yüklenemedi'));
+    document.head.appendChild(el);
+  });
+}
+/* Aynı kütüphane iki kez istenirse tek indirme yapılır (söz saklanır). Yükleme
+   BAŞARISIZ olursa söz saklanmaz: bağlantı düzeldiğinde kullanıcı tekrar
+   denediğinde yeni bir istek çıksın, kalıcı olarak "yüklenemedi" durumuna
+   kilitlenmesin. */
+function kutuphaneYukle(ad){
+  if(kutuphaneSozleri[ad]) return kutuphaneSozleri[ad];
+  const kaynaklar = KUTUPHANELER[ad] || [];
+  /* Parçalar PARALEL istenir. Sırayla yüklemenin bir faydası yok (Leaflet'in JS'i
+     CSS'ini beklemez) ama bir zararı var: CSS takılırsa JS hiç istenmiyor, yani
+     tek bir yavaş dosya haritayı komple engelliyordu. */
+  const soz = Promise.all(kaynaklar.map(kutuphaneKaynagiEkle));
+  kutuphaneSozleri[ad] = soz.catch(e=>{ delete kutuphaneSozleri[ad]; throw e; });
+  return kutuphaneSozleri[ad];
+}
 
 /* =========================================================
    DİL (TR/EN) — ana ekran, menü ve buton/etiket metinleri
@@ -1892,6 +2008,23 @@ const I18N_EN = {
   'gündür seraya dizilmedi':'days not yet strung into a greenhouse', 'dolu':'full',
   'Kapasiteye ulaştı, boşaltmayı unutmayın.':'Reached capacity, don\'t forget to empty it.',
   'Kaydediliyor…':'Saving…', 'Kaydedildi · Herkese senkron':'Saved · Synced for everyone', 'Çevrimdışı · Cihazda bekliyor':'Offline · Waiting on this device',
+  'Cihaz deposu dolu · Veri Yönetimi’nden yedek alın':'Device storage full · Back up from Data Management',
+  // Sezon
+  'Sezon':'Season', 'Tüm sezonlar':'All seasons', 'Geçmiş Sezonlar (arşiv)':'Past Seasons (archive)',
+  '🗂️ Sezonu Kapat':'🗂️ Close Season', '🗂️ Tüm Tarlaların Sezonunu Kapat':'🗂️ Close the Season for All Fields',
+  'ilaç':'pesticide', 'gübre':'fertilizer', 'zararlı':'pest',
+  // Otomatik yedekler
+  'Otomatik Yedekler':'Automatic Backups',
+  // Gün sayısı YEDEK_SAKLAMA_GUN sabitinden basılır, metne gömülmez
+  'Otomatik Yedekler (sunucuda, son':'Automatic Backups (on the server, last', 'gün)':'days)',
+  '🕓 Günlük Yedekleri Göster':'🕓 Show Daily Backups', 'Geri Yükle':'Restore',
+  'Uygulama her gün ilk açılışında tüm verinin bir kopyasını sunucuya yazar; son':'Each day, the first time the app opens, it writes a copy of all data to the server; the last',
+  'gün saklanır. Buradan bir güne dönebilirsiniz.':'days are kept. You can roll back to one of these days here.',
+  'Henüz otomatik yedek yok.':'No automatic backups yet.', 'Yedek listesi alınamadı':'Could not load the backup list',
+  'Yükleniyor…':'Loading…',
+  // Tek seferlik güncellemeler
+  'Tek Seferlik Güncellemeler':'One-Time Updates', 'uygulandı':'applied',
+  'Bunlar geçmişe dönük düzeltmelerdir ve her biri bir kez çalıştırılmak içindir. İkinci kez çalıştırmak kayıtları çiftleyebilir — durumu "uygulandı" olan maddelere dokunmayın.':'These are retroactive fixes, each meant to be run once. Running one a second time can duplicate records — leave the items marked "applied" alone.',
   'Dizi Sayısı':'String Count',
   'Bu tütün hangi seraya dizilecek, hemen seçmek zorunda değilsiniz — daha sonra sera ekranından "Tütün Dizimi Ekle" ile atayabilirsiniz.':'You don\'t have to pick which greenhouse this goes to right away — assign it later from the greenhouse screen with "Add Tobacco Stringing".',
   'Bekleyen Kırımdan Seç':'Choose From Pending Harvest', 'Yeni Giriş':'New Entry',
@@ -2063,6 +2196,75 @@ const I18N_EN = {
   'Tüm seralar':'All greenhouses', 'Seçilenleri Sil':'Delete Selected',
   'Başlangıç tarihi bitişten sonra.':'Start date is after the end date.', 'Bu aralıkta kayıt yok.':'No records in this range.',
   'kayıt silinecek':'record(s) will be deleted',
+
+  /* ---- Onay ve uyarı kutuları (uyar/onayla sarmalayıcıları üzerinden) ----
+     Yalnızca metnin tamamı sabit olan çağrılar buradan çevrilebilir. İçinde
+     tarla adı/sayı gibi değişken taşıyan şablon metinler araya değer basıldığı
+     için sözlükte anahtar bulamaz ve Türkçe kalır — bu bilinçli bir sınır. */
+  // Zorunlu alan uyarıları
+  'Ad girin.':'Enter a name.', 'Sera adı girin.':'Enter a greenhouse name.', 'Tarla adı girin.':'Enter a field name.',
+  'Çeşit girin.':'Enter a variety.', 'Sera seçin.':'Select a greenhouse.', 'Tarla seçin.':'Select a field.',
+  'Kırım seçin.':'Select a harvest.', 'Dizi sayısı girin.':'Enter the number of strings.',
+  'Dizim tarihi girin.':'Enter the stringing date.', 'Hasat tarihi girin.':'Enter the harvest date.',
+  'Ort. Dizi Ağırlığı girin.':'Enter the average string weight.', 'Sulama saatini girin.':'Enter the irrigation hours.',
+  'Sıcaklık girin.':'Enter the temperature.', 'Nem girin.':'Enter the humidity.', 'Saat girin.':'Enter the time.',
+  'Tutar girin.':'Enter an amount.', 'Enlem ve boylam girin.':'Enter latitude and longitude.',
+  'İlaç adı ve tarih girin.':'Enter the pesticide name and date.',
+  'Gübre adı ve tarih girin.':'Enter the fertilizer name and date.',
+  'Zararlı adı ve tarih girin.':'Enter the pest name and date.',
+  'Kutu başına kg girin.':'Enter the kg per box.', 'Kalite başına kutu adedi girin.':'Enter the box count per grade.',
+  'En az bir sera adı girin.':'Enter at least one greenhouse name.',
+  'Kaydedilecek satır yok — en az bir satırı doldurun.':'No rows to save — fill in at least one row.',
+  // Ön koşul uyarıları
+  'Önce en az bir sera ekleyin.':'Add at least one greenhouse first.',
+  'Önce en az bir tarla ekleyin.':'Add at least one field first.',
+  'Aktif dönem yok.':'No active cycle.', 'Zaten aktif bir dönem var.':'There is already an active cycle.',
+  'Dönem başlatılabilecek sera kalmadı.':'No greenhouses left that can start a cycle.',
+  'Seçilen seraların hepsinde zaten aktif dönem var. Önce boşaltın.':'All selected greenhouses already have an active cycle. Empty them first.',
+  'Seçilen seraların hiçbirinde aktif dönem yok.':'None of the selected greenhouses have an active cycle.',
+  'Henüz sıcaklık/nem kaydı yok.':'No temperature/humidity records yet.',
+  'Bu aralıkta silinecek kayıt yok.':'No records to delete in this range.',
+  'Bu isimde bir dayıbaşı zaten var.':'A crew leader with this name already exists.',
+  'Bu bölgede aynı isimde bir dayıbaşı zaten var.':'A crew leader with this name already exists in this region.',
+  'Başlangıç tarihi bitişten sonra olamaz.':'The start date cannot be after the end date.',
+  'Tavlama tarihi paketleme tarihinden sonra olamaz.':'The curing date cannot be after the packing date.',
+  'Uygulanacak madde kalmadı; işlem yapıldı.':'No items left to apply; nothing was done.',
+  'Uygulanacak madde kalmadı; işlem yapılmadı.':'No items left to apply; nothing was done.',
+  // Silme onayları
+  'Bu tarla silinsin mi?':'Delete this field?',
+  'Bu sera silinsin mi? Tüm dönem geçmişi de silinecek.':'Delete this greenhouse? Its entire cycle history will be deleted too.',
+  'Bu kırım kaydı silinsin mi? İlgili sera dönemlerinin doluluğu da buna göre geri alınacak.':'Delete this harvest record? The fill levels of the related greenhouse cycles will be reverted accordingly.',
+  'Bu kutu kaydı silinsin mi?':'Delete this box record?',
+  'Bu sulama kaydı silinsin mi?':'Delete this irrigation record?',
+  'Bu sıcaklık/nem kaydı silinsin mi?':'Delete this temperature/humidity record?',
+  'Bu ödeme kaydı silinsin mi?':'Delete this payment record?',
+  'Bu pin silinsin mi?':'Delete this pin?',
+  'Hata günlüğü temizlensin mi?':'Clear the error log?',
+  'Bu kutu tekrar depoya alınsın mı? (çıkış kaydı silinecek)':'Return this box to storage? (the shipment record will be deleted)',
+  'Bu dönem tamamlanıp arşivlensin mi? (Sera boşalacak, geçmiş dönem verisi saklanır)':'Complete and archive this cycle? (The greenhouse will be emptied; past cycle data is kept.)',
+  // Veri yönetimi
+  'Panoya kopyalandı.':'Copied to clipboard.',
+  'Yedek başarıyla geri yüklendi.':'Backup restored successfully.',
+  'Geçersiz yedek dosyası.':'Invalid backup file.',
+  'Dosya okunamadı, geçerli bir JSON yedeği değil.':'Could not read the file; it is not a valid JSON backup.',
+  'Bu yedek yüklenirse bu cihazdaki MEVCUT tüm veriler bunun üzerine yazılacak. Emin misiniz?':'Restoring this backup will OVERWRITE all current data on this device. Are you sure?',
+  'Sera seçilmedi ve elle dizi sayısı girilmedi — kayıt 0 dizi ile oluşturulacak, sonradan düzenleyebilirsiniz. Devam edilsin mi?':'No greenhouse was selected and no string count was entered — the record will be created with 0 strings and can be edited later. Continue?',
+  // Cihaz / tarayıcı yetenekleri
+  'Bu tarayıcı bildirimleri desteklemiyor.':'This browser does not support notifications.',
+  'Tarayıcınız konum özelliğini desteklemiyor.':'Your browser does not support location services.',
+  'Bildirimler tarayıcı ayarlarından engellenmiş. Açmak için tarayıcının site ayarlarından bu sayfaya bildirim izni verin.':'Notifications are blocked in your browser settings. To enable them, allow notifications for this site in your browser’s site settings.',
+  'Excel kütüphanesi yüklenemedi. İnternet bağlantınızı kontrol edip tekrar deneyin.':'The Excel library could not be loaded. Check your internet connection and try again.',
+  'Harita kütüphanesi yüklenemedi. İnternet bağlantınızı kontrol edip sayfayı yenileyin.':'The map library could not be loaded. Check your internet connection and reload the page.',
+  // Tek seferlik aktarım onayları (yalnızca yönetici kullanır)
+  'Kalemli bölgesine B1-B41, C1-C37, D1-D35, E1-E35 seraları (400 dizi kapasiteli) eklenecek. Aynı isimde sera zaten varsa atlanacak, eksikler tamamlanacak. Devam edilsin mi?':'Greenhouses B1-B41, C1-C37, D1-D35 and E1-E35 (400-string capacity) will be added to the Kalemli region. Greenhouses that already exist by name will be skipped and only the missing ones added. Continue?',
+  'DİKKAT: Bu aktarım daha önce çalıştırılmış görünüyor (geçmiş import işaretli kayıtlar mevcut). Tekrar çalıştırılırsa kayıtlar İKİNCİ KEZ eklenir. Yine de devam edilsin mi?':'WARNING: This import appears to have been run before (records flagged as historical imports already exist). Running it again will add those records A SECOND TIME. Continue anyway?',
+  'Kağıt defterden okunan geçmiş veriler aktarılacak:\n• 30 kırım/dizim satırı (kırım tarihine göre eşleşen tarlalar kayda çoklu tarla olarak bağlanır)\n• 2. tur dolan seraların önceki dönemi kapatılır\n• 14 depo/kutulama kaydı (Kalemli deposu)\n\nDevam edilsin mi?':'Historical data read from the paper ledger will be imported:\n• 30 harvest/stringing rows (fields matched by harvest date are linked to the record as multiple fields)\n• the previous cycle is closed for greenhouses filled in the 2nd round\n• 14 storage/packing records (Kalemli storage)\n\nContinue?',
+  'Tekeliler ve Kalemli krokilerindeki tarlalar + pompa/kuyu noktaları yaklaşık konumlarıyla eklenecek. Zaten aynı isimde tarla varsa atlanacak, tekrar tekrar çalıştırmak güvenlidir. Devam edilsin mi?':'Fields from the Tekeliler and Kalemli sketches plus pump/well points will be added at their approximate locations. Fields that already exist by name are skipped, so running this repeatedly is safe. Continue?',
+  // Bildirim düğmesi durumları
+  'Bildirimler Engelli':'Notifications Blocked',
+  'Bildirimleri açmak için dokunun':'Tap to turn notifications on',
+  'Bildirimleri kapatmak için dokunun':'Tap to turn notifications off',
+  'Tarayıcı ayarlarından izin verilmesi gerekiyor':'Permission must be granted in your browser settings',
 };
 /* Aynı Türkçe kelimenin iki ayrı İngilizce karşılığı olabiliyor: hava
    durumunda "Açık" = Clear, temada "Açık" = Light. Sözlük anahtarı Türkçe
@@ -2074,6 +2276,13 @@ function i18n(tr, baglam){
   if(currentLang!=='en') return tr;
   return (baglam && I18N_EN[baglam+'|'+tr]) || I18N_EN[tr] || tr;
 }
+/* Onay ve uyarı kutuları da çeviriden geçsin. Doğrudan uyar()/onayla() çağrılınca
+   İngilizce moddaki kullanıcı arayüzü İngilizce, uyarıları Türkçe görüyordu. Metin
+   çoğu yerde şablon dizesi olduğu için (içinde tarla adı, sayı vb.) sözlükte birebir
+   karşılığı bulunmayabilir — i18n zaten bulamadığında Türkçesine düşer, yani sarmalayıcı
+   hiçbir çağrıyı bozmaz, yalnızca çevrilebilenleri çevirir. */
+function uyar(mesaj){ return alert(i18n(mesaj)); }
+function onayla(mesaj){ return confirm(i18n(mesaj)); }
 function dilDegistir(){
   currentLang = currentLang==='tr' ? 'en' : 'tr';
   localStorage.setItem('scvLang', currentLang);
@@ -2124,6 +2333,17 @@ function uygulaStatikDil(){
    STORE
    ========================================================= */
 function bosState(){ return { tarlalar: [], seralar: [], kirimlar: [], haritaPinleri: [], tesisPinleri: [], depoKutulari: [], sulamaKayitlari: [], iklimKayitlari: [], dayibasilar: [], yevmiyeKayitlari: [], odemeKayitlari: [], odemeAyarlari: [] }; }
+/* Geri yükleme yollarının ortak girişi. Eski bir sürümden alınmış yedekte
+   sonradan eklenen koleksiyonlar bulunmayabilir; gelen nesne doğrudan atanırsa
+   state.seralar gibi bir alan undefined kalır ve ilk .forEach'te uygulama
+   çöker. Boş iskelet üzerine yazmak bunu baştan imkânsız kılar; dizi olmayan
+   bir alan da yok sayılır (bozuk yedek uygulamayı kilitlemesin). */
+function stateYerineKoy(yeni){
+  const temiz = bosState();
+  Object.keys(temiz).forEach(k=>{ if(Array.isArray(yeni && yeni[k])) temiz[k] = yeni[k]; });
+  state = temiz;
+  stateNormalizeEt();
+}
 function stateNormalizeEt(){
   state.haritaPinleri = state.haritaPinleri || [];
   state.tesisPinleri = state.tesisPinleri || [];
@@ -2141,6 +2361,10 @@ function stateNormalizeEt(){
       else t.bolge = '';
     }
     t.zararlilar = t.zararlilar || [];
+    // Sezon arşivi (bkz. tarlaSezonuKapat). Eski kayıtlarda yok; boş dizi olarak
+    // BAŞLATILMAZ — Firestore'a gereksiz bir alan yazılmasın diye yalnızca
+    // gerçekten arşiv varsa dizi olduğundan emin olunur.
+    if(t.gecmisSezonlar && !Array.isArray(t.gecmisSezonlar)) t.gecmisSezonlar = [];
     const eskiSiddetYuzde = { hafif:25, orta:50, yogun:80 };
     t.zararlilar.forEach(z=>{
       if(z.yuzde==null && z.siddet){ z.yuzde = eskiSiddetYuzde[z.siddet] ?? 50; }
@@ -2204,9 +2428,28 @@ let state = bosState();
    yazım hemen boşaltılır — yoksa son değişiklikler cihazda kaybolur. */
 const LOCALSTORAGE_YAZ_GECIKME_MS = 800;
 let localStorageYazTimer = null;
+/* Cihaz deposu dolduğunda bu bayrak kalkar. Eskiden hata sessizce yutuluyordu:
+   kullanıcı kayıt girmeye devam ediyor, ekran normal görünüyor, ama cihazdaki
+   kopya artık güncellenmiyordu — sekme çevrimdışıyken kapanırsa o kayıtlar
+   geri dönüşsüz gidiyordu. Artık hem hata günlüğüne yazılır hem de senkron
+   rozeti kırmızıya döner. */
+let cihazaKaydedilemiyor = false;
 function localStorageYaz(){
-  try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
-  catch(e){ /* sessizce yut, veri bu oturum için bellekte kalmaya devam eder */ }
+  try{
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    if(cihazaKaydedilemiyor){ // yer açılmış (ör. hata günlüğü temizlenmiş): uyarıyı kaldır
+      cihazaKaydedilemiyor = false;
+      setSyncStatus(sonSyncDurumu);
+    }
+  }catch(e){
+    if(!cihazaKaydedilemiyor){
+      cihazaKaydedilemiyor = true;
+      let boyut = '?';
+      try{ boyut = Math.round(JSON.stringify(state).length/1024)+' KB'; }catch(e2){ /* state devasa: ölçemiyoruz */ }
+      hataKaydet('depo', 'Cihaz deposuna yazılamadı: '+((e && e.name) || e), 'state boyutu: '+boyut);
+      setSyncStatus(sonSyncDurumu);
+    }
+  }
 }
 function scheduleLocalStorageYaz(){
   if(localStorageYazTimer) return;
@@ -2222,6 +2465,7 @@ window.addEventListener('pagehide', localStorageYazFlush);
 document.addEventListener('visibilitychange', ()=>{ if(document.visibilityState==='hidden') localStorageYazFlush(); });
 
 function saveState(){
+  rozetOnbellek = null; // veri değişti: bir sonraki tur rozetleri yeniden hesaplasın
   scheduleLocalStorageYaz();
   pushStateToFirestore();
 }
@@ -2322,10 +2566,24 @@ function syncOutgoingNow(){
   }
 }
 
+/* localStorageYaz uyarıyı kaldırırken rozeti eski haline döndürebilsin diye
+   son senkron durumu hatırlanır. */
+let sonSyncDurumu = null;
 function setSyncStatus(durum){
+  sonSyncDurumu = durum;
   const el = document.getElementById('syncStatus');
   const txt = document.getElementById('syncStatusText');
   if(!el || !txt) return;
+  /* Cihaz deposu dolu uyarısı senkron durumunun ÜSTÜNDE: Firestore'a yazma
+     çalışıyor olsa bile ("Kaydedildi" yazsa bile) çevrimdışı kalındığında veri
+     tutunamayacağı için kullanıcının bunu görmesi gerekiyor. */
+  if(cihazaKaydedilemiyor){
+    el.classList.remove('offline','saving');
+    el.classList.add('depo-dolu');
+    txt.textContent = i18n('Cihaz deposu dolu · Veri Yönetimi’nden yedek alın');
+    return;
+  }
+  el.classList.remove('depo-dolu');
   el.classList.toggle('offline', durum===false);
   el.classList.toggle('saving', durum==='saving');
   txt.textContent = durum==='saving' ? i18n('Kaydediliyor…') : (durum ? i18n('Kaydedildi · Herkese senkron') : i18n('Çevrimdışı · Cihazda bekliyor'));
@@ -2366,6 +2624,7 @@ function baglamFirestoreDinleyici(){
         }
       });
       setSyncStatus(true);
+      firestoreIlkVeriGeldi = true;
       if(degisti){
         stateNormalizeEt();
         scheduleRenderAll();
@@ -2373,6 +2632,23 @@ function baglamFirestoreDinleyici(){
     }, ()=>{ setSyncStatus(false); });
     firestoreUnsubscribes.push(unsub);
   });
+}
+/* Otomatik yedek, sunucudan EN AZ BİR anlık görüntü geldikten sonra alınır.
+   Aksi halde uygulama çevrimdışı açıldığında cihazdaki (belki eski) kopya
+   "bugünün yedeği" diye yazılır ve günün gerçek yedeğinin yerini alırdı. */
+let firestoreIlkVeriGeldi = false;
+let otomatikYedekZamanlandi = false;
+function otomatikYedekZamanla(){
+  if(otomatikYedekZamanlandi) return;
+  otomatikYedekZamanlandi = true;
+  let deneme = 0;
+  const dene = ()=>{
+    if(!fbAuth.currentUser){ otomatikYedekZamanlandi = false; return; }
+    if(firestoreIlkVeriGeldi){ otomatikYedekAl(); return; }
+    if(++deneme < 5) setTimeout(dene, 20000);
+    else otomatikYedekZamanlandi = false; // bağlantı gelmedi: sonraki açılışta yeniden denenir
+  };
+  setTimeout(dene, 20000);
 }
 function kopukFirestoreDinleyici(){
   firestoreUnsubscribes.forEach(u=>u());
@@ -2395,6 +2671,7 @@ fbAuth.onAuthStateChanged(user=>{
   if(user){
     loginOverlay.classList.add('hidden');
     baglamFirestoreDinleyici();
+    otomatikYedekZamanla();
   } else {
     loginOverlay.classList.remove('hidden');
     kopukFirestoreDinleyici();
@@ -2464,6 +2741,63 @@ function tarihUzunGoster(iso){
   if(isNaN(d)) return iso;
   return d.toLocaleDateString(currentLang==='en'?'en-GB':'tr-TR', {day:'numeric', month:'short', year:'numeric'});
 }
+/* =========================================================
+   SEZON
+   Sezon = takvim yılı. Tütünde dikim ilkbaharda, hasat Temmuz–Eylül'de olur;
+   bir sezon takvim yılını taşmadığı için kayıtlara AYRI bir sezon alanı
+   EKLENMEDİ — sezon, kaydın zaten var olan `tarih` alanından türetiliyor.
+   Böylece tek bir kayıt bile taşınmadı, formlara yeni alan gelmedi ve geçmiş
+   veri kendiliğinden doğru sezona düştü.
+
+   Tarla ve sera birer VARLIK, olay değil: yıllar boyunca aynı tarla kalır,
+   yalnızca o yıla ait bilgileri (dekar, çeşit, ilaç, gübre, zararlı, tahmini
+   hasat) değişir. Onlar için "Sezonu Kapat" var (bkz. tarlaSezonuKapat):
+   o yılın bilgileri tarlanın gecmisSezonlar dizisine arşivlenir, tarla yeni
+   sezona temiz girer. Seradaki `donemler` yapısıyla aynı fikir.
+   ========================================================= */
+const SEZON_ANAHTAR = 'scvSeciliSezon';
+const SEZON_TUMU = 'tum';
+const SEZON_OLAY_KOLEKSIYONLARI = ['kirimlar','depoKutulari','sulamaKayitlari','iklimKayitlari','yevmiyeKayitlari','odemeKayitlari'];
+function sezonTarihten(tarih){
+  const y = parseInt(String(tarih||'').slice(0,4), 10);
+  return (y>=2000 && y<=2100) ? y : null;
+}
+function bugunkuSezon(){ return sezonTarihten(todayStr()); }
+let seciliSezon = (function(){
+  try{
+    const v = localStorage.getItem(SEZON_ANAHTAR);
+    if(v===SEZON_TUMU) return SEZON_TUMU;
+    const y = parseInt(v, 10);
+    if(y>=2000 && y<=2100) return y;
+  }catch(e){ /* depo kapalı: içinde bulunulan sezonla başla */ }
+  return bugunkuSezon();
+})();
+/* Veride görünen tüm sezonlar (+ içinde bulunulan yıl), yeniden eskiye. */
+function mevcutSezonlar(){
+  const kume = new Set();
+  SEZON_OLAY_KOLEKSIYONLARI.forEach(c=>{
+    (state[c]||[]).forEach(k=>{ const s = sezonTarihten(k.tarih); if(s) kume.add(s); });
+  });
+  (state.tarlalar||[]).forEach(t=>(t.gecmisSezonlar||[]).forEach(g=>{ if(g.sezon) kume.add(g.sezon); }));
+  kume.add(bugunkuSezon());
+  return [...kume].sort((a,b)=>b-a);
+}
+function sezonSecildi(deger){
+  seciliSezon = (deger===SEZON_TUMU) ? SEZON_TUMU : (parseInt(deger,10) || bugunkuSezon());
+  rozetOnbellek = null; // rozetler yeni sezonla yeniden hesaplansın
+  try{ localStorage.setItem(SEZON_ANAHTAR, String(seciliSezon)); }catch(e){}
+  renderAll();
+}
+/* Olay kayıtlarını seçili sezona göre süzer. "Tümü" seçiliyken liste olduğu
+   gibi döner — yani sezon ayrımı kapatılmış gibi, eski davranışın aynısı. */
+function sezonSuz(liste, sezon){
+  const s = (sezon===undefined) ? seciliSezon : sezon;
+  if(s===SEZON_TUMU) return liste||[];
+  return (liste||[]).filter(k=>sezonTarihten(k.tarih)===s);
+}
+function sezonKirimlari(sezon){ return sezonSuz(state.kirimlar, sezon); }
+function sezonEtiketi(){ return seciliSezon===SEZON_TUMU ? i18n('Tüm sezonlar') : String(seciliSezon); }
+
 function mevcutKullaniciAdi(){
   const email = fbAuth.currentUser && fbAuth.currentUser.email;
   if(!email) return 'Bilinmeyen';
@@ -2548,8 +2882,11 @@ function kirimTarlaPayi(k, tarlaId){
   const idler = kirimTarlaIdListesi(k);
   return idler.includes(tarlaId) ? 1/idler.length : 0;
 }
-function tarlaStats(tarlaId){
-  const kayitlar = state.kirimlar.filter(k=>kirimTarlaIdListesi(k).includes(tarlaId));
+/* sezon: verilmezse SEÇİLİ sezon kullanılır. Kırım numarası varsayılanı gibi
+   "yeni kayıt" hesaplarında bilerek bugunkuSezon() geçilir — kullanıcı geçmiş
+   bir sezonu görüntülerken girdiği yeni kayıt o yılın numarasını almasın. */
+function tarlaStats(tarlaId, sezon){
+  const kayitlar = sezonKirimlari(sezon).filter(k=>kirimTarlaIdListesi(k).includes(tarlaId));
   let maxKirimNo = 0, toplamKg = 0, toplamDizi = 0;
   kayitlar.forEach(k=>{
     if(Number(k.kirimNo) > maxKirimNo) maxKirimNo = Number(k.kirimNo);
@@ -2659,7 +2996,15 @@ function seraDurumSinifiExact(pct){
 /* =========================================================
    BADGE / ROZET HESAPLARI
    ========================================================= */
+/* hesaplaRozetler tüm kırım ve tarla listelerini baştan sona tarar ve TEK bir
+   çizim turunda iki kez çağrılıyordu: renderBadges (üst rozet şeridi) ve
+   renderQuickStats (Saha Genel paneli). Sonuç tur boyunca değişmediği için ilk
+   hesap saklanır. Önbellek saveState'te atılır; saveState her renderAll turunun
+   SONUNDA çalıştığı için önbellek pratikte yalnızca tek tur boyunca yaşar —
+   yani veri değişip de eski rozet gösterme ihtimali yok. */
+let rozetOnbellek = null;
 function hesaplaRozetler(){
+  if(rozetOnbellek) return rozetOnbellek;
   /* Dekar başına verim. Oranların ortalaması DEĞİL, ağırlıklı toplam: eskiden
      her tarlanın kg/dekar'ı ayrı hesaplanıp ortalanıyordu, bu da küçük ama
      verimli tarlaları büyükler kadar ağırlıklandırıp sayıyı şişiriyordu.
@@ -2670,7 +3015,7 @@ function hesaplaRozetler(){
      Pay her iki durumda da tarlalara DÜŞEN kg; ortak kırımın payı tarla
      sayısına bölünür (bkz. kirimTarlaPayi), tarlası girilmemiş kayıt sayılmaz. */
   const tarlaKg = new Map();
-  state.kirimlar.forEach(k=>{
+  sezonKirimlari().forEach(k=>{
     const idler = kirimTarlaIdListesi(k);
     if(!idler.length) return;
     const pay = kirimTurev(k).toplamKg / idler.length;
@@ -2692,7 +3037,7 @@ function hesaplaRozetler(){
 
   // TL/kg: toplam isci maliyeti / toplam kg
   let toplamMaliyet = 0, toplamKgTum = 0;
-  state.kirimlar.forEach(k=>{
+  sezonKirimlari().forEach(k=>{
     toplamMaliyet += (Number(k.isciSayisi)||0) * (Number(k.yevmiye)||0);
     toplamKgTum += kirimTurev(k).toplamKg;
   });
@@ -2705,15 +3050,16 @@ function hesaplaRozetler(){
 
   // Bu haftanın ort. dizi kg
   const haftaBasi = new Date(); haftaBasi.setDate(haftaBasi.getDate()-6);
-  const haftaKirimleri = state.kirimlar.filter(k => new Date(k.tarih) >= haftaBasi && Number(k.ortDiziKg)>0);
+  const haftaKirimleri = sezonKirimlari().filter(k => new Date(k.tarih) >= haftaBasi && Number(k.ortDiziKg)>0);
   const ortDizi = haftaKirimleri.length ? (haftaKirimleri.reduce((s,k)=>s+Number(k.ortDiziKg),0)/haftaKirimleri.length) : null;
 
   // Kayıp oranı
-  const toplamDiziTum = state.kirimlar.reduce((s,k)=>s+kirimTurev(k).diziSayisi,0);
-  const toplamKayip = state.kirimlar.reduce((s,k)=>s+(Number(k.kayipDizi)||0),0);
+  const toplamDiziTum = sezonKirimlari().reduce((s,k)=>s+kirimTurev(k).diziSayisi,0);
+  const toplamKayip = sezonKirimlari().reduce((s,k)=>s+(Number(k.kayipDizi)||0),0);
   const kayipOrani = toplamDiziTum>0 ? (toplamKayip/toplamDiziTum*100) : null;
 
-  return { verimKirilan, verimTum, doluSera, bosSera, tlKg, seraDoluluk, ortDizi, kayipOrani };
+  rozetOnbellek = { verimKirilan, verimTum, doluSera, bosSera, tlKg, seraDoluluk, ortDizi, kayipOrani };
+  return rozetOnbellek;
 }
 
 /* =========================================================
@@ -2733,9 +3079,19 @@ function renderSahaSayfasi(){
   populateCesitFiltre();
   renderToplamIstatistik();
 }
+function renderSezonSecici(){
+  const el = document.getElementById('sezonSecici');
+  if(!el) return;
+  const sezonlar = mevcutSezonlar();
+  el.innerHTML = sezonlar.map(y=>`<option value="${y}"${String(seciliSezon)===String(y)?' selected':''}>${y}</option>`).join('')
+    + `<option value="${SEZON_TUMU}"${seciliSezon===SEZON_TUMU?' selected':''}>${i18n('Tüm sezonlar')}</option>`;
+  el.value = String(seciliSezon);
+  el.classList.toggle('gecmis-sezon', seciliSezon!==SEZON_TUMU && seciliSezon!==bugunkuSezon());
+}
 function renderAll(){
   document.getElementById('bugunTarih').textContent = new Date().toLocaleDateString('tr-TR');
   document.getElementById('appSurum').textContent = APP_SURUM;
+  renderSezonSecici();
   renderBadges();
   renderHava(); // dil değişiminde de şerit/kart yeniden yazılsın
   renderSahaSayfasi();
@@ -2752,7 +3108,7 @@ function renderQuickStats(){
   if(sayfaGizliMi('pageSaha')) return;
   document.getElementById('qsTarla').textContent = state.tarlalar.length;
   document.getElementById('qsSera').textContent = state.seralar.length;
-  document.getElementById('qsKirim').textContent = state.kirimlar.length;
+  document.getElementById('qsKirim').textContent = sezonKirimlari().length;
   const r = hesaplaRozetler();
   document.getElementById('qsSeraDoluluk').textContent = r.seraDoluluk==null ? '-' : fmt(r.seraDoluluk,0)+'%';
   document.getElementById('qsDoluSera').textContent = r.doluSera;
@@ -2804,7 +3160,7 @@ function renderBadges(){
 
 function renderDizim(){
   if(sayfaGizliMi('pageSaha')) return;
-  const son = [...state.kirimlar].sort((a,b)=> b.tarih.localeCompare(a.tarih) || b.olusturma-a.olusturma).slice(0,6);
+  const son = [...sezonKirimlari()].sort((a,b)=> b.tarih.localeCompare(a.tarih) || b.olusturma-a.olusturma).slice(0,6);
   if(!son.length){
     document.getElementById('sonKirimlarList').innerHTML = '<div class="empty-hint">Henüz kırım kaydı yok.</div>';
     return;
@@ -2864,7 +3220,7 @@ function renderToplamIstatistik(){
   const bitis = document.getElementById('statBitis').value;
   const cesit = document.getElementById('statCesit').value;
   const tarlaArama = document.getElementById('statTarlaAra') ? document.getElementById('statTarlaAra').value.trim().toLocaleLowerCase('tr') : '';
-  const kayitlar = state.kirimlar.filter(k=>{
+  const kayitlar = sezonKirimlari().filter(k=>{
     if(baslangic && k.tarih < baslangic) return false;
     if(bitis && k.tarih > bitis) return false;
     const t = tarlaBul(k.tarlaId);
@@ -3177,14 +3533,14 @@ function seraAdListesiCoz(metin){
 }
 function submitSeraEkle(){
   const f = seraFormOku();
-  if(!f.ad){ alert('Sera adı girin.'); return; }
-  if(adCakismaVarMi(state.seralar, f.ad) && !confirm(`"${f.ad}" adında bir sera zaten var. Yine de eklensin mi?`)) return;
+  if(!f.ad){ uyar('Sera adı girin.'); return; }
+  if(adCakismaVarMi(state.seralar, f.ad) && !onayla(`"${f.ad}" adında bir sera zaten var. Yine de eklensin mi?`)) return;
   state.seralar.push(yeniSeraNesnesi(f.ad, f.kapasite, f.bolge));
   closeModal(); renderAll();
 }
 function submitSeraCokluEkle(){
   const adlar = seraAdListesiCoz(document.getElementById('fSeraCokluAdlar').value);
-  if(!adlar.length){ alert('En az bir sera adı girin.'); return; }
+  if(!adlar.length){ uyar('En az bir sera adı girin.'); return; }
   const kapasite = Number(document.getElementById('fSeraCokluKapasite').value);
   const bolge = document.getElementById('fSeraCokluBolge').value || '';
   const eklenecek = [], atlanan = [];
@@ -3195,10 +3551,10 @@ function submitSeraCokluEkle(){
     gorulen.add(anahtar);
     eklenecek.push(ad);
   });
-  if(!eklenecek.length){ alert(`Girilen ${adlar.length} adın tamamı zaten mevcut — hiçbir şey eklenmedi.`); return; }
+  if(!eklenecek.length){ uyar(`Girilen ${adlar.length} adın tamamı zaten mevcut — hiçbir şey eklenmedi.`); return; }
   const ozet = eklenecek.length<=12 ? eklenecek.join(', ') : eklenecek.slice(0,10).join(', ')+` … (+${eklenecek.length-10})`;
   const atlananNot = atlanan.length ? `\n\nAtlanan (zaten var / tekrar): ${atlanan.length} adet` : '';
-  if(!confirm(`${eklenecek.length} sera eklenecek (${kapasite} dizi):\n\n${ozet}${atlananNot}`)) return;
+  if(!onayla(`${eklenecek.length} sera eklenecek (${kapasite} dizi):\n\n${ozet}${atlananNot}`)) return;
   eklenecek.forEach(ad=>state.seralar.push(yeniSeraNesnesi(ad, kapasite, bolge)));
   closeModal(); renderAll();
 }
@@ -3218,8 +3574,8 @@ function submitSeraDuzenle(id){
   const s = seraBul(id);
   if(!s) return;
   const f = seraFormOku();
-  if(!f.ad){ alert('Sera adı girin.'); return; }
-  if(adCakismaVarMi(state.seralar, f.ad, id) && !confirm(`"${f.ad}" adında başka bir sera zaten var. Yine de kaydedilsin mi?`)) return;
+  if(!f.ad){ uyar('Sera adı girin.'); return; }
+  if(adCakismaVarMi(state.seralar, f.ad, id) && !onayla(`"${f.ad}" adında başka bir sera zaten var. Yine de kaydedilsin mi?`)) return;
   s.ad = f.ad; s.kapasite = f.kapasite; s.bolge = f.bolge;
   Object.assign(s, sonIslemDamgasi());
   renderAll(); openSeraDetay(s.id);
@@ -3266,7 +3622,7 @@ function yeniDonemNesnesi(f){
 function submitDonemBaslat(seraId){
   const s = seraBul(seraId);
   if(!s) return;
-  if(seraAktifDonem(s)){ alert('Zaten aktif bir dönem var.'); return; }
+  if(seraAktifDonem(s)){ uyar('Zaten aktif bir dönem var.'); return; }
   s.donemler = s.donemler || [];
   s.donemler.push(yeniDonemNesnesi(donemFormOku()));
   seraIsaretiUygula(s, 'doldurma'); // dönem açılan sera o gün doldurulmaya başlanmıştır
@@ -3284,8 +3640,8 @@ function seraBosalt(id){
   const s = seraBul(id);
   if(!s) return;
   const d = seraAktifDonem(s);
-  if(!d){ alert('Aktif dönem yok.'); return; }
-  if(!confirm('Bu dönem tamamlanıp arşivlensin mi? (Sera boşalacak, geçmiş dönem verisi saklanır)')) return;
+  if(!d){ uyar('Aktif dönem yok.'); return; }
+  if(!onayla('Bu dönem tamamlanıp arşivlensin mi? (Sera boşalacak, geçmiş dönem verisi saklanır)')) return;
   d.aktif = false; d.bitis = Date.now();
   seraIsaretiUygula(s, null); // boşaltma kaydı girildi: "boşaltılıyor"/"dolduruluyor" işareti düşer
   renderAll(); openSeraDetay(id);
@@ -3348,7 +3704,7 @@ function topluSecimListesiHtml(kayitlar, listeId, notHtml){
 let seraTopluSecim = [];
 function openSeraTopluModal(seciliIdler){
   const liste = seralarSirali();
-  if(!liste.length){ alert('Önce en az bir sera ekleyin.'); return; }
+  if(!liste.length){ uyar('Önce en az bir sera ekleyin.'); return; }
   const notHtml = s=>{
     const d = seraAktifDonem(s);
     const pct = (d && s.kapasite>0) ? Math.round(d.dolu/s.kapasite*100) : 0;
@@ -3381,7 +3737,7 @@ function openSeraTopluModal(seciliIdler){
 }
 function seraTopluIsaret(tur){
   const idler = topluSecilenIdler('seraTopluListe');
-  if(!idler.length){ alert('Sera seçin.'); return; }
+  if(!idler.length){ uyar('Sera seçin.'); return; }
   idler.forEach(id=>seraIsaretiUygula(seraBul(id), tur));
   closeModal(); renderAll();
 }
@@ -3391,10 +3747,10 @@ function seraTopluIsaret(tur){
    Zaten aktif dönemi olan seralar atlanır (üzerine yazmak geçmişi bozardı). */
 function seraTopluDoldurFormuAc(){
   const idler = topluSecilenIdler('seraTopluListe');
-  if(!idler.length){ alert('Sera seçin.'); return; }
+  if(!idler.length){ uyar('Sera seçin.'); return; }
   const uygun = seralarSirali(idler.map(seraBul).filter(s=>s && !seraAktifDonem(s)));
   const atlanan = idler.length - uygun.length;
-  if(!uygun.length){ alert('Seçilen seraların hepsinde zaten aktif dönem var. Önce boşaltın.'); return; }
+  if(!uygun.length){ uyar('Seçilen seraların hepsinde zaten aktif dönem var. Önce boşaltın.'); return; }
   seraTopluSecim = idler;
   const adlar = uygun.map(s=>s.ad).join(', ');
   openModal(`
@@ -3429,28 +3785,28 @@ function submitSeraTopluDoldur(){
   });
   seraTopluSecim = [];
   closeModal(); renderAll();
-  if(!sayi) alert('Dönem başlatılabilecek sera kalmadı.');
+  if(!sayi) uyar('Dönem başlatılabilecek sera kalmadı.');
 }
 function seraTopluBosalt(){
   const idler = topluSecilenIdler('seraTopluListe');
-  if(!idler.length){ alert('Sera seçin.'); return; }
+  if(!idler.length){ uyar('Sera seçin.'); return; }
   const bosaltilacak = idler.map(seraBul).filter(s=>s && seraAktifDonem(s));
   const atlanan = idler.length - bosaltilacak.length;
-  if(!bosaltilacak.length){ alert('Seçilen seraların hiçbirinde aktif dönem yok.'); return; }
+  if(!bosaltilacak.length){ uyar('Seçilen seraların hiçbirinde aktif dönem yok.'); return; }
   const adlar = seralarSirali(bosaltilacak).map(s=>s.ad).join(', ');
-  if(!confirm(`${bosaltilacak.length} seranın dönemi tamamlanıp arşivlensin mi?\n\n${adlar}\n\n(Seralar boşalacak, geçmiş dönem verisi saklanır.)`)) return;
+  if(!onayla(`${bosaltilacak.length} seranın dönemi tamamlanıp arşivlensin mi?\n\n${adlar}\n\n(Seralar boşalacak, geçmiş dönem verisi saklanır.)`)) return;
   bosaltilacak.forEach(s=>{
     const d = seraAktifDonem(s);
     d.aktif = false; d.bitis = Date.now();
     seraIsaretiUygula(s, null); // boşaltma kaydı girildi: her iki işaret de düşer
   });
   closeModal(); renderAll();
-  if(atlanan) alert(`${bosaltilacak.length} sera boşaltıldı. ${atlanan} serada aktif dönem olmadığı için atlandı.`);
+  if(atlanan) uyar(`${bosaltilacak.length} sera boşaltıldı. ${atlanan} serada aktif dönem olmadığı için atlandı.`);
 }
 
 function openTarlaTopluModal(){
   const liste = [...state.tarlalar].sort((a,b)=>(a.ad||'').localeCompare(b.ad||'','tr',{numeric:true}));
-  if(!liste.length){ alert('Önce en az bir tarla ekleyin.'); return; }
+  if(!liste.length){ uyar('Önce en az bir tarla ekleyin.'); return; }
   const notHtml = t=>{
     const stats = tarlaStats(t.id);
     const parcalar = [stats.maxKirimNo ? stats.maxKirimNo+'. '+i18n('kırım') : i18n('kırım yok')];
@@ -3477,14 +3833,14 @@ function openTarlaTopluModal(){
 }
 function tarlaTopluIsaret(acikMi){
   const idler = topluSecilenIdler('tarlaTopluListe');
-  if(!idler.length){ alert('Tarla seçin.'); return; }
+  if(!idler.length){ uyar('Tarla seçin.'); return; }
   idler.forEach(id=>calismaIsaretiUygula(tarlaBul(id), 'kirimIsaretTarihi', acikMi));
   closeModal(); renderAll();
 }
 
 function seraSil(id){
   const s = seraBul(id);
-  if(!confirm('Bu sera silinsin mi? Tüm dönem geçmişi de silinecek.')) return;
+  if(!onayla('Bu sera silinsin mi? Tüm dönem geçmişi de silinecek.')) return;
   silmeYedekAl(['seralar'], (s?s.ad:'Sera'));
   state.seralar = state.seralar.filter(s=>s.id!==id);
   closeModal(); renderAll();
@@ -3742,8 +4098,8 @@ function openTarlaEkleModal(bolgeVarsayilan){
 }
 function submitTarlaEkle(){
   const f = tarlaFormOku();
-  if(!f.ad){ alert('Tarla adı girin.'); return; }
-  if(adCakismaVarMi(state.tarlalar, f.ad) && !confirm(`"${f.ad}" adında bir tarla zaten var. Yine de eklensin mi?`)) return;
+  if(!f.ad){ uyar('Tarla adı girin.'); return; }
+  if(adCakismaVarMi(state.tarlalar, f.ad) && !onayla(`"${f.ad}" adında bir tarla zaten var. Yine de eklensin mi?`)) return;
   state.tarlalar.push({ id: uid(), ...f, olusturma: Date.now(), ...sonIslemDamgasi() });
   closeModal(); renderAll();
 }
@@ -3769,8 +4125,8 @@ function submitTarlaDuzenle(id){
   const t = tarlaBul(id);
   if(!t) return;
   const f = tarlaFormOku();
-  if(!f.ad){ alert('Tarla adı girin.'); return; }
-  if(adCakismaVarMi(state.tarlalar, f.ad, id) && !confirm(`"${f.ad}" adında başka bir tarla zaten var. Yine de kaydedilsin mi?`)) return;
+  if(!f.ad){ uyar('Tarla adı girin.'); return; }
+  if(adCakismaVarMi(state.tarlalar, f.ad, id) && !onayla(`"${f.ad}" adında başka bir tarla zaten var. Yine de kaydedilsin mi?`)) return;
   Object.assign(t, f, sonIslemDamgasi());
   renderAll(); openTarlaDetay(t.id);
 }
@@ -3817,7 +4173,7 @@ function openTarlaDetay(id){
       <div class="stat"><b>${fmt(g.miktar,1)}</b><span>kg</span></div>
     </div>`
   ).join('') || `<div class="item">${i18n('Gübre kaydı yok')}</div>`;
-  const tarlaKirimlari = state.kirimlar.filter(k=>kirimTarlaIdListesi(k).includes(t.id)).sort((a,b)=>b.tarih.localeCompare(a.tarih));
+  const tarlaKirimlari = sezonKirimlari().filter(k=>kirimTarlaIdListesi(k).includes(t.id)).sort((a,b)=>b.tarih.localeCompare(a.tarih));
   const kirimListHtml = tarlaKirimlari.map(k=>{
     const tr = kirimTurev(k);
     const bekleyenNot = tr.kalanDizi>0 ? ` <span class="metin-kehribar">(${fmt(tr.kalanDizi,0)} dizi ${i18n('bekliyor')})</span>` : '';
@@ -3868,17 +4224,112 @@ function openTarlaDetay(id){
       <div class="list-small">${kirimListHtml}</div>
       <button class="btn btn-primary ust-bosluk-6" onclick="openKirimModal('${t.id}')">${i18n('+ Yeni Kırım Ekle')}</button>
     </div>
+    ${tarlaGecmisSezonlarHtml(t)}
     <div class="modal-actions">
       <button class="btn btn-muted" onclick="closeModal()">${i18n('Kapat')}</button>
       <button class="btn" onclick="tarlaKirimIsaretiToggle('${t.id}')">${tarlaKirimYapiliyorMu(t)?i18n('🔴 Kırım İşaretini Kaldır'):i18n('🔴 Bugün Kırım Yapılıyor')}</button>
       <button class="btn" onclick="openTarlaDuzenleModal('${t.id}')">${i18n('Düzenle')}</button>
+      <button class="btn" onclick="tarlaSezonuKapat('${t.id}')">${i18n('🗂️ Sezonu Kapat')}</button>
       <button class="btn btn-danger" onclick="tarlaSil('${t.id}')">${i18n('Sil')}</button>
     </div>
   `);
 }
+/* =========================================================
+   TARLADA SEZON KAPATMA
+   Tarla bir VARLIK: yıllar boyunca aynı tarla durur. Ama dekar, çeşit, dikim/çapa
+   tarihi, ilaç/gübre/zararlı geçmişi ve tahmini hasat O SEZONA aittir. Sezon
+   kapatılınca bunlar tarlanın gecmisSezonlar dizisine arşivlenir ve tarla yeni
+   sezona temiz girer — böylece gelecek yıl tarla kartı geçen yılın ilacıyla ve
+   çeşidiyle açılmaz, ama geçmiş de kaybolmaz.
+
+   Kırım/sulama gibi OLAY kayıtlarına dokunulmaz: onların sezonu zaten
+   tarihlerinden geliyor (bkz. sezonTarihten). Arşive o sezonun gerçekleşen kg
+   ve kırım sayısı da yazılır ki tarla geçmişi tek bakışta okunabilsin.
+   ========================================================= */
+const TARLA_SEZONLUK_ALANLAR = ['dekar','cesit','dikimTarihi','capaTarihi','viyolDekar','yerOcagiDekar','tahminiHasatKg','ilaclar','zararlilar','gubreler'];
+
+function tarlaSezonArsivi(t, sezon){
+  const stats = tarlaStats(t.id, sezon);
+  const ozet = { sezon, kapanisTarihi: todayStr(), gerceklesenKg: stats.toplamKg, kirimSayisi: stats.kayitSayisi };
+  TARLA_SEZONLUK_ALANLAR.forEach(a=>{
+    if(t[a] !== undefined && t[a] !== null && t[a] !== '') ozet[a] = JSON.parse(JSON.stringify(t[a]));
+  });
+  return ozet;
+}
+/* Sezonluk alanları temizler. Dekar ve bölge gibi "genelde aynı kalan" bilgiler
+   için karar: DEKAR KORUNUR (tarlanın büyüklüğü sezonla değişmez, değiştiyse
+   kullanıcı düzenler), geri kalan yıllık bilgiler sıfırlanır. */
+function tarlaYeniSezonaHazirla(t){
+  t.cesit = '';
+  t.dikimTarihi = '';
+  t.capaTarihi = '';
+  t.tahminiHasatKg = 0;
+  t.ilaclar = [];
+  t.zararlilar = [];
+  t.gubreler = [];
+  delete t.kirimIsaretTarihi;
+}
+function tarlaSezonuKapat(id){
+  const t = tarlaBul(id);
+  if(!t) return;
+  const sezon = (seciliSezon===SEZON_TUMU) ? bugunkuSezon() : seciliSezon;
+  if((t.gecmisSezonlar||[]).some(g=>g.sezon===sezon)){
+    uyar(t.ad + ' için ' + sezon + ' sezonu zaten kapatılmış.');
+    return;
+  }
+  const arsiv = tarlaSezonArsivi(t, sezon);
+  if(!onayla(t.ad + ' için ' + sezon + ' sezonu kapatılacak.\n\n'
+    + '• ' + sezon + ' bilgileri (çeşit, dikim/çapa tarihi, ilaç/gübre/zararlı geçmişi, tahmini hasat) arşive taşınacak\n'
+    + '• Gerçekleşen: ' + fmt(arsiv.gerceklesenKg,0) + ' kg (' + arsiv.kirimSayisi + ' kırım)\n'
+    + '• Dekar ve bölge bilgisi korunacak\n'
+    + '• Kırım, sulama ve depo kayıtlarına DOKUNULMAYACAK\n\n'
+    + 'Devam edilsin mi?')) return;
+  t.gecmisSezonlar = (t.gecmisSezonlar||[]).concat([arsiv]).sort((a,b)=>b.sezon-a.sezon);
+  tarlaYeniSezonaHazirla(t);
+  Object.assign(t, sonIslemDamgasi());
+  closeModal();
+  renderAll();
+}
+/* Tüm tarlalar için toplu kapatma — sezon sonunda tek tek dolaşmak yerine. */
+function tumTarlalarinSezonunuKapat(){
+  const sezon = (seciliSezon===SEZON_TUMU) ? bugunkuSezon() : seciliSezon;
+  const hedefler = state.tarlalar.filter(t=>!(t.gecmisSezonlar||[]).some(g=>g.sezon===sezon));
+  if(!hedefler.length){ uyar(sezon + ' sezonu tüm tarlalar için zaten kapatılmış.'); return; }
+  const toplamKg = hedefler.reduce((s,t)=>s+tarlaStats(t.id, sezon).toplamKg, 0);
+  if(!onayla(hedefler.length + ' tarla için ' + sezon + ' sezonu kapatılacak (toplam ' + fmt(toplamKg,0) + ' kg).\n\n'
+    + 'Her tarlanın çeşit, dikim/çapa tarihi, ilaç/gübre/zararlı geçmişi ve tahmini hasat bilgisi arşive taşınacak; dekar ve bölge korunacak. '
+    + 'Kırım, sulama ve depo kayıtlarına dokunulmayacak.\n\nDevam edilsin mi?')) return;
+  const damga = sonIslemDamgasi();
+  hedefler.forEach(t=>{
+    t.gecmisSezonlar = (t.gecmisSezonlar||[]).concat([tarlaSezonArsivi(t, sezon)]).sort((a,b)=>b.sezon-a.sezon);
+    tarlaYeniSezonaHazirla(t);
+    Object.assign(t, damga);
+  });
+  closeModal();
+  renderAll();
+  uyar(hedefler.length + ' tarlanın ' + sezon + ' sezonu kapatıldı.');
+}
+function tarlaGecmisSezonlarHtml(t){
+  const gecmis = (t.gecmisSezonlar||[]).slice().sort((a,b)=>b.sezon-a.sezon);
+  if(!gecmis.length) return '';
+  return `
+    <div class="field">
+      <label>${i18n('Geçmiş Sezonlar (arşiv)')}</label>
+      <div class="list-small">${gecmis.map(g=>`
+        <div class="mini-kirim">
+          <div class="sw"></div>
+          <div class="main">
+            <div class="r1"><span><b>${g.sezon}</b>${g.cesit?' · '+escapeHtml(g.cesit):''}</span></div>
+            <div class="r2">${g.dekar?fmt(g.dekar,1)+' da · ':''}${(g.ilaclar||[]).length} ${i18n('ilaç')} · ${(g.gubreler||[]).length} ${i18n('gübre')} · ${(g.zararlilar||[]).length} ${i18n('zararlı')}</div>
+          </div>
+          <div class="stat"><b>${fmt(g.gerceklesenKg,0)}</b><span>kg · ${g.kirimSayisi} ${i18n('kırım')}</span></div>
+        </div>`).join('')}</div>
+    </div>`;
+}
+
 function tarlaSil(id){
   const t = tarlaBul(id);
-  if(!confirm('Bu tarla silinsin mi?')) return;
+  if(!onayla('Bu tarla silinsin mi?')) return;
   silmeYedekAl(['tarlalar'], (t?t.ad:'Tarla'));
   state.tarlalar = state.tarlalar.filter(t=>t.id!==id);
   closeModal(); renderAll();
@@ -3903,7 +4354,7 @@ function submitIlacHizliEkle(tarlaId){
   const ad = document.getElementById('fHizliIlacAd').value.trim();
   const tarih = document.getElementById('fHizliIlacTarih').value;
   const phi = Number(document.getElementById('fHizliIlacPhi').value)||0;
-  if(!ad || !tarih){ alert('İlaç adı ve tarih girin.'); return; }
+  if(!ad || !tarih){ uyar('İlaç adı ve tarih girin.'); return; }
   t.ilaclar = t.ilaclar || [];
   t.ilaclar.push({ ad, tarih, phi });
   Object.assign(t, sonIslemDamgasi());
@@ -3929,7 +4380,7 @@ function submitZararliHizliEkle(tarlaId){
   const ad = document.getElementById('fHizliZararliAd').value.trim();
   const tarih = document.getElementById('fHizliZararliTarih').value;
   const yuzde = Number(document.getElementById('fHizliZararliYuzde').value)||0;
-  if(!ad || !tarih){ alert('Zararlı adı ve tarih girin.'); return; }
+  if(!ad || !tarih){ uyar('Zararlı adı ve tarih girin.'); return; }
   t.zararlilar = t.zararlilar || [];
   t.zararlilar.push({ ad, tarih, yuzde });
   Object.assign(t, sonIslemDamgasi());
@@ -3976,7 +4427,7 @@ function submitGubreHizliEkle(tarlaId){
   const ad = document.getElementById('fHizliGubreAd').value.trim();
   const tarih = document.getElementById('fHizliGubreTarih').value;
   const miktar = Number(document.getElementById('fHizliGubreMiktar').value)||0;
-  if(!ad || !tarih){ alert('Gübre adı ve tarih girin.'); return; }
+  if(!ad || !tarih){ uyar('Gübre adı ve tarih girin.'); return; }
   t.gubreler = t.gubreler || [];
   t.gubreler.push({ ad, tarih, miktar });
   Object.assign(t, sonIslemDamgasi());
@@ -4001,7 +4452,7 @@ function kirimAkisSecimleriSifirla(){
   kirimSeraBolgeAktif = 'tumu';
 }
 function openKirimModal(presetTarlaId){
-  if(!state.tarlalar.length){ alert('Önce en az bir tarla ekleyin.'); return; }
+  if(!state.tarlalar.length){ uyar('Önce en az bir tarla ekleyin.'); return; }
   kirimModalPresetTarlaId = presetTarlaId || null;
   kirimAkisSecimleriSifirla();
   if(presetTarlaId){ kirimAkisTarlaId = presetTarlaId; kirimAdim2Ac(); }
@@ -4037,7 +4488,9 @@ function kirimSonOrtDiziKg(tarlaId){
 function kirimAdim2Ac(){
   const tarlaId = kirimAkisTarlaId;
   const t = tarlaBul(tarlaId);
-  const kirimNoVarsayilan = Math.min(6, (tarlaStats(tarlaId).maxKirimNo||0)+1);
+  // Yeni kayıt her zaman İÇİNDE BULUNULAN sezona girer; ekranda geçmiş bir
+  // sezon seçili olsa bile kırım numarası bu yılın kayıtlarından devam etmeli.
+  const kirimNoVarsayilan = Math.min(6, (tarlaStats(tarlaId, bugunkuSezon()).maxKirimNo||0)+1);
   const sonOrtKg = kirimSonOrtDiziKg(tarlaId);
   const geriBtn = kirimModalPresetTarlaId
     ? `<button class="btn btn-muted" onclick="openTarlaDetay('${kirimModalPresetTarlaId}')">${i18n('Vazgeç')}</button>`
@@ -4233,7 +4686,7 @@ function kirimElleDiziGorunum(){
 function submitKirimEkle(){
   const soldurmaRaw = document.getElementById('k2Soldurma').value;
   const tarlaIds = [kirimAkisTarlaId, ...kirimAkisEkTarlaIds.filter(id=>id!==kirimAkisTarlaId)].filter(Boolean);
-  if(!tarlaIds.length){ alert('Tarla seçin.'); return; }
+  if(!tarlaIds.length){ uyar('Tarla seçin.'); return; }
   const secimler = kirimAkisSeraSecimleri.slice();
   // Dizi sayısı seçilen seralardan hesaplanır (TAM = kapasite, YARIM = kapasite/2);
   // sera seçilmediyse "+ Detaylı bilgi" bölümündeki elle dizi girişi kullanılır (sera seçiliyken o alan yok sayılır).
@@ -4241,13 +4694,13 @@ function submitKirimEkle(){
   const elleDizi = Number(elleDiziEl && elleDiziEl.value)||0;
   const diziSayisi = secimler.length ? secimler.reduce((s,x)=>s+kirimSeraSecimMiktari(x),0) : elleDizi;
   if(!secimler.length && elleDizi<=0){
-    if(!confirm('Sera seçilmedi ve elle dizi sayısı girilmedi — kayıt 0 dizi ile oluşturulacak, sonradan düzenleyebilirsiniz. Devam edilsin mi?')) return;
+    if(!onayla('Sera seçilmedi ve elle dizi sayısı girilmedi — kayıt 0 dizi ile oluşturulacak, sonradan düzenleyebilirsiniz. Devam edilsin mi?')) return;
   }
   // Sayaç "hedef" olarak kullanıldıysa (elle artırıldıysa) seçimle uyuşmazlıkta onay iste
   // (karşılaştırma sera cinsinden yapılır: tam sera 1, yarım sera 0,5 — örn. 3 tam + 1 yarım = 3,5)
   const secimDegeri = kirimSeraSecimDegeri();
   if(kirimSeraHedef>0 && secimler.length && kirimSeraHedef!==secimDegeri){
-    if(!confirm(`${fmt(kirimSeraHedef,1)} sera dediniz ama ${fmt(secimDegeri,1)} sera seçtiniz. Seçtiğiniz ${fmt(secimDegeri,1)} sera ile devam edilsin mi?`)) return;
+    if(!onayla(`${fmt(kirimSeraHedef,1)} sera dediniz ama ${fmt(secimDegeri,1)} sera seçtiniz. Seçtiğiniz ${fmt(secimDegeri,1)} sera ile devam edilsin mi?`)) return;
   }
   const k = {
     id: uid(),
@@ -4339,10 +4792,10 @@ function submitKirimDuzenle(kirimId){
   const yeniKirimNo = kirimNoRaw ? Number(kirimNoRaw) : null;
   const yeniDizi = Number(document.getElementById('kdDiziSayisi').value)||0;
   const yeniOrtKg = Number(document.getElementById('kdOrtDiziKg').value)||0;
-  if(!cesitGirisi && !yeniTarlaIds.length){ alert(i18n('Çeşit girin.')); return; }
-  if(yeniDizi<=0){ alert('Dizi sayısı girin.'); return; }
+  if(!cesitGirisi && !yeniTarlaIds.length){ uyar('Çeşit girin.'); return; }
+  if(yeniDizi<=0){ uyar('Dizi sayısı girin.'); return; }
   const atananDizi = (k.seraDagilimi||[]).reduce((s,d)=>s+(Number(d.diziSayisi)||0),0);
-  if(yeniDizi < atananDizi){ alert('Dizi sayısı, seralara zaten dağıtılmış miktardan ('+fmt(atananDizi,0)+' dizi) az olamaz.'); return; }
+  if(yeniDizi < atananDizi){ uyar('Dizi sayısı, seralara zaten dağıtılmış miktardan ('+fmt(atananDizi,0)+' dizi) az olamaz.'); return; }
 
   const eskiTarlaIds = kirimTarlaIdListesi(k);
   const tarlaDegisti = JSON.stringify([...eskiTarlaIds].sort()) !== JSON.stringify([...yeniTarlaIds].sort());
@@ -4388,7 +4841,7 @@ function seraKapasiteAsimOnayi(seraId, miktar){
   const mevcutDolu = seraGuncelDolu(sera);
   const yeniDolu = mevcutDolu + miktar;
   if(yeniDolu<=sera.kapasite) return true;
-  return confirm(`${sera.ad} kapasitesi ${fmt(sera.kapasite,0)} dizi. Bu ekleme ile ${fmt(yeniDolu,0)} diziye çıkacak (${fmt(yeniDolu-sera.kapasite,0)} dizi fazla). Yine de devam edilsin mi?`);
+  return onayla(`${sera.ad} kapasitesi ${fmt(sera.kapasite,0)} dizi. Bu ekleme ile ${fmt(yeniDolu,0)} diziye çıkacak (${fmt(yeniDolu-sera.kapasite,0)} dizi fazla). Yine de devam edilsin mi?`);
 }
 function dizimUygula(k, seraId, miktar, dizimTarihi){
   const sera = seraBul(seraId);
@@ -4430,7 +4883,7 @@ function dizimKaldir(kirimId, dizimId){
   renderAll();
 }
 function bekleyenKirimlar(){
-  return state.kirimlar.map(k=>({ k, tr: kirimTurev(k) })).filter(x=>x.tr.kalanDizi>0).sort((a,b)=>a.k.tarih.localeCompare(b.k.tarih));
+  return sezonKirimlari().map(k=>({ k, tr: kirimTurev(k) })).filter(x=>x.tr.kalanDizi>0).sort((a,b)=>a.k.tarih.localeCompare(b.k.tarih));
 }
 let seraDizimSekme = 'bekleyen';
 function seraDizimSekmeSec(sekme){
@@ -4448,7 +4901,7 @@ function openSeraDizimModal(seraId){
   const sera = seraBul(seraId);
   if(!sera) return;
   const bekleyen = bekleyenKirimlar();
-  if(!bekleyen.length && !state.tarlalar.length){ alert('Önce en az bir tarla ekleyin.'); return; }
+  if(!bekleyen.length && !state.tarlalar.length){ uyar('Önce en az bir tarla ekleyin.'); return; }
   seraDizimSekme = bekleyen.length ? 'bekleyen' : 'yeni';
   const opts = bekleyen.map(({k,tr})=>{
     return `<option value="${k.id}">${escapeHtml(kirimTarlaEtiket(k))} — ${escapeHtml(k.tarih)} · ${kirimNoEtiket(k)} — ${i18n('Kalan')}: ${fmt(tr.kalanDizi,0)} dizi (~${fmt(tr.kalanDizi*(Number(k.ortDiziKg)||0),0)} kg)</option>`;
@@ -4510,11 +4963,11 @@ function submitSeraDizimEkle(seraId){
     const diziSayisi = Number(document.getElementById('fDizimYeniDizi').value)||0;
     const ortDiziKg = Number(document.getElementById('fDizimYeniOrtKg').value)||0;
     const tarlaIds = Array.from(document.querySelectorAll('.dizimYeniTarlaChk:checked')).map(el=>el.value);
-    if(!cesit){ alert(i18n('Çeşit girin.')); return; }
-    if(!hasatTarih){ alert('Hasat tarihi girin.'); return; }
-    if(!dizimTarih){ alert('Dizim tarihi girin.'); return; }
-    if(diziSayisi<=0){ alert('Dizi sayısı girin.'); return; }
-    if(ortDiziKg<=0){ alert('Ort. Dizi Ağırlığı girin.'); return; }
+    if(!cesit){ uyar('Çeşit girin.'); return; }
+    if(!hasatTarih){ uyar('Hasat tarihi girin.'); return; }
+    if(!dizimTarih){ uyar('Dizim tarihi girin.'); return; }
+    if(diziSayisi<=0){ uyar('Dizi sayısı girin.'); return; }
+    if(ortDiziKg<=0){ uyar('Ort. Dizi Ağırlığı girin.'); return; }
     if(!seraKapasiteAsimOnayi(seraId, diziSayisi)) return;
     const k = {
       id: uid(), tarih: hasatTarih, tarlaId: tarlaIds.length===1?tarlaIds[0]:null, tarlaIds, cesit, kirimNo: null,
@@ -4531,10 +4984,10 @@ function submitSeraDizimEkle(seraId){
   const miktar = Number(document.getElementById('fDizimMiktar').value)||0;
   const tarih = document.getElementById('fDizimTarih').value || todayStr();
   const k = state.kirimlar.find(x=>x.id===kirimId);
-  if(!k){ alert('Kırım seçin.'); return; }
+  if(!k){ uyar('Kırım seçin.'); return; }
   const kalan = kirimTurev(k).kalanDizi;
-  if(miktar<=0){ alert('Dizi sayısı girin.'); return; }
-  if(miktar>kalan){ alert('Girilen dizi sayısı, kalan miktardan fazla olamaz (kalan: '+fmt(kalan,0)+' dizi).'); return; }
+  if(miktar<=0){ uyar('Dizi sayısı girin.'); return; }
+  if(miktar>kalan){ uyar('Girilen dizi sayısı, kalan miktardan fazla olamaz (kalan: '+fmt(kalan,0)+' dizi).'); return; }
   if(!seraKapasiteAsimOnayi(seraId, miktar)) return;
   dizimUygula(k, seraId, miktar, tarih);
   renderAll(); openSeraDetay(seraId);
@@ -4542,7 +4995,7 @@ function submitSeraDizimEkle(seraId){
 function openKirimDizimModal(kirimId){
   const k = state.kirimlar.find(x=>x.id===kirimId);
   if(!k) return;
-  if(!state.seralar.length){ alert('Önce en az bir sera ekleyin.'); return; }
+  if(!state.seralar.length){ uyar('Önce en az bir sera ekleyin.'); return; }
   const kalan = kirimTurev(k).kalanDizi;
   const seraOpts = seralarSirali().map(s=>`<option value="${s.id}">${escapeHtml(s.ad)}</option>`).join('');
   openModal(`
@@ -4565,16 +5018,16 @@ function submitKirimDizimEkle(kirimId){
   const seraId = document.getElementById('fDizimSera2').value;
   const miktar = Number(document.getElementById('fDizimMiktar2').value)||0;
   const tarih = document.getElementById('fDizimTarih2').value || todayStr();
-  if(!seraId){ alert('Sera seçin.'); return; }
+  if(!seraId){ uyar('Sera seçin.'); return; }
   const kalan = kirimTurev(k).kalanDizi;
-  if(miktar<=0){ alert('Dizi sayısı girin.'); return; }
-  if(miktar>kalan){ alert('Girilen dizi sayısı, kalan miktardan fazla olamaz (kalan: '+fmt(kalan,0)+' dizi).'); return; }
+  if(miktar<=0){ uyar('Dizi sayısı girin.'); return; }
+  if(miktar>kalan){ uyar('Girilen dizi sayısı, kalan miktardan fazla olamaz (kalan: '+fmt(kalan,0)+' dizi).'); return; }
   if(!seraKapasiteAsimOnayi(seraId, miktar)) return;
   dizimUygula(k, seraId, miktar, tarih);
   renderAll(); closeModal();
 }
 function kirimSil(id){
-  if(!confirm('Bu kırım kaydı silinsin mi? İlgili sera dönemlerinin doluluğu da buna göre geri alınacak.')) return;
+  if(!onayla('Bu kırım kaydı silinsin mi? İlgili sera dönemlerinin doluluğu da buna göre geri alınacak.')) return;
   const k = state.kirimlar.find(x=>x.id===id);
   if(!k) return;
   silmeYedekAl(['kirimlar','seralar'], 'Kırım kaydı');
@@ -4598,6 +5051,66 @@ function kirimSil(id){
 /* =========================================================
    VERİ YÖNETİMİ (YEDEKLE / GERİ YÜKLE / EXCEL / CSV)
    ========================================================= */
+/* ---- Tek seferlik güncellemeler ----
+   Bunlar geçmişe dönük tamir işleri; her biri bir kez çalıştırılmak üzere yazıldı
+   ama listede kalıcı olarak duruyorlardı. İki sorun: Veri Yönetimi ekranının çoğunu
+   kaplıyorlar ve yanlışlıkla ikinci kez basılmak veri çiftlemesine yol açabiliyor.
+   Bölüm artık KAPALI geliyor ve her madde mümkün olduğunca CANLI VERİDEN kontrol
+   ediliyor — cihaz hafızasından değil, böylece durum başka telefonda da doğru
+   görünür. Veriden anlaşılamayan tek madde açıkça öyle işaretleniyor. */
+function tekSeferlikDurumlari(){
+  const kalemliSeraVar = ad => state.seralar.some(s=>s.bolge==='kalemli' && (s.ad||'').trim().toLocaleUpperCase('tr')===ad);
+  let seraEksik = 0;
+  [['B',41],['C',37],['D',35],['E',35]].forEach(g=>{ for(let i=1;i<=g[1];i++) if(!kalemliSeraVar(g[0]+i)) seraEksik++; });
+
+  const iklimKalan = (state.iklimKayitlari||[]).filter(k=>k.tarih>='2026-07-25' && k.tarih<='2026-07-28').length;
+  const partiKalan = (state.depoKutulari||[]).filter(gecmisDepoPartiKaydiMi).length;
+  const kutuDuzeltilmis = (state.depoKutulari||[]).some(k=>k.gecmisImport===true);
+  const bayrak = gecmisDeltaBayrakOku();
+
+  return {
+    fide:    { uygulandi:null, not:'durumu veriden anlaşılamıyor' },
+    seralar: { uygulandi: seraEksik===0, not: seraEksik===0 ? '148 seranın tamamı mevcut' : seraEksik+' sera eksik' },
+    depo:    { uygulandi: partiKalan===0 && kutuDuzeltilmis, not: partiKalan ? partiKalan+' parti kaydı bekliyor' : (kutuDuzeltilmis ? 'kutu kayıtları yerinde' : 'geçmiş aktarım henüz yapılmamış') },
+    iklim:   { uygulandi: iklimKalan===0, not: iklimKalan ? iklimKalan+' kayıt hâlâ duruyor' : 'aralıkta kayıt kalmamış' },
+    delta:   { uygulandi: !!bayrak, not: bayrak ? new Date(bayrak.zaman).toLocaleDateString('tr-TR')+' (bu cihazda)' : 'bu cihazda çalıştırılmamış' }
+  };
+}
+function tekSeferlikMaddeHtml(durum, cagri, etiket, aciklama){
+  const rozet = durum.uygulandi===true
+    ? `<span class="ts-rozet ts-uygulandi">✓ ${i18n('uygulandı')} · ${escapeHtml(durum.not)}</span>`
+    : durum.uygulandi===false
+      ? `<span class="ts-rozet ts-bekliyor">${escapeHtml(durum.not)}</span>`
+      : `<span class="ts-rozet ts-bilinmiyor">? ${escapeHtml(durum.not)}</span>`;
+  return `
+    <div class="ts-madde${durum.uygulandi===true?' ts-madde-tamam':''}">
+      <div class="modal-actions eylem-sola-sarmali">
+        <button class="btn" onclick="${cagri}">${etiket}</button>
+        ${rozet}
+      </div>
+      <div class="hint-box">${aciklama}</div>
+    </div>`;
+}
+function tekSeferlikBolumHtml(){
+  const d = tekSeferlikDurumlari();
+  const tamamlanan = Object.keys(d).filter(k=>d[k].uygulandi===true).length;
+  return `
+    <details class="ts-bolum">
+      <summary>${i18n('Tek Seferlik Güncellemeler')} <span class="ts-ozet">${tamamlanan}/5 ${i18n('uygulandı')}</span></summary>
+      <div class="hint-box uyari-box">${i18n('Bunlar geçmişe dönük düzeltmelerdir ve her biri bir kez çalıştırılmak içindir. İkinci kez çalıştırmak kayıtları çiftleyebilir — durumu "uygulandı" olan maddelere dokunmayın.')}</div>
+      ${tekSeferlikMaddeHtml(d.fide, 'kalemliFideBilgileriniGuncelle()', '🌱 Kalemli Fide Defteri Verilerini Uygula (2026-07)',
+        'Kalemli bölgesindeki K1-K26 tarlalarının dekar, çeşit ve Viyol/Yer Ocağı fide bilgilerini el yazısı defterden okunan güncel verilerle günceller. Sadece adı K1-K26 olan ve zaten var olan tarlaları günceller, yeni tarla eklemez. Aynı değerleri tekrar yazdığı için ikinci kez çalıştırmak zararsızdır.')}
+      ${tekSeferlikMaddeHtml(d.seralar, 'kalemliSeralariTopluKur()', '🏠 Kalemli B/C/D/E Seralarını Toplu Kur',
+        'Kalemli bölgesine B1-B41, C1-C37, D1-D35, E1-E35 seralarını 400 dizi kapasiteli olarak ekler. Aynı isimde sera zaten varsa dokunmaz, sadece eksik olanları tamamlar.')}
+      ${tekSeferlikMaddeHtml(d.depo, 'gecmisDepoKutulariniDuzelt()', '📦 Depo Kutularını Düzelt (Tek Seferlik)',
+        'Geçmiş veri aktarımında tek kayıt olarak girilen 14 depo/paketleme satırını siler (tüm cihazlardan), yerine kağıttaki adetlere göre her kutuyu ayrı kayıt olarak (kalite + paketleme tarihiyle, Kalemli deposuna) yeniden oluşturur.')}
+      ${tekSeferlikMaddeHtml(d.iklim, "openIklimAralikSilModal('2026-07-25','2026-07-28')", '🌡️ 25–28 Tem 2026 Sıcaklık/Nem Kayıtlarını Sil',
+        'Elle girilirken hatalı olduğu tespit edilen 25.07–28.07.2026 arası sıcaklık/nem kayıtlarını silmek için aralık silme penceresini bu tarihlerle açar. <b>Silmeden önce kaç kaydın gideceğini gösterir</b>; onaylamazsanız hiçbir şey değişmez.')}
+      ${tekSeferlikMaddeHtml(d.delta, 'gecmisDeltaOnizlemeAc()', '🔧 Geçmiş Veri Düzeltme (Önizleme)',
+        'Kağıt defterin yeniden okunmasıyla ortaya çıkan aktarım hatalarını (A41→B41, satır 22\'nin B3/B2/B1 yerine A1–A4 olması, deneme seraları satırının yol açtığı sütun kayması, karalanmış çeşit hücrelerinin koddan çözülmesi) düzeltir. <b>Önce önizleme açılır</b>; onaylamadan hiçbir şey değişmez.')}
+    </details>`;
+}
+
 function openVeriYonetimiModal(){
   openModal(`
     <h2>${i18n('Veri Yönetimi')}</h2>
@@ -4610,35 +5123,27 @@ function openVeriYonetimiModal(){
       <div class="hint-box">Bir cihazda "Yedekle" ile indirin, diğer cihaza aktarıp "Geri Yükle" ile açın — tüm tarla/sera/kırım/depo/sulama/iklim/harita verisi birebir taşınır. Geri yükleme, o cihazdaki mevcut verinin üzerine yazar.</div>
     </div>
     <div class="field">
+      <label>${i18n('Otomatik Yedekler (sunucuda, son')} ${YEDEK_SAKLAMA_GUN} ${i18n('gün)')}</label>
+      <div class="modal-actions eylem-sola-sarmali">
+        <button class="btn" onclick="openOtomatikYedekModal()">${i18n('🕓 Günlük Yedekleri Göster')}</button>
+      </div>
+      <div class="hint-box">Uygulama her gün ilk açılışında tüm verinin bir kopyasını sunucuya yazar; son ${YEDEK_SAKLAMA_GUN} gün saklanır. Yanlışlıkla silinen veya bozulan veride buradan bir önceki güne dönebilirsiniz. Bu yedekler normal senkronizasyondan ayrı durur, silme işlemleri onlara ulaşmaz. <b>Asıl kayıtlarınızın silinme süresi yoktur</b> — burada süresi dolan yalnızca günlük kopyalardır.</div>
+    </div>
+    <div class="field">
+      <label>${i18n('Sezon')}</label>
+      <div class="modal-actions eylem-sola-sarmali">
+        <button class="btn" onclick="tumTarlalarinSezonunuKapat()">${i18n('🗂️ Tüm Tarlaların Sezonunu Kapat')}</button>
+      </div>
+      <div class="hint-box">Sezon sonunda çalıştırın: her tarlanın çeşit, dikim/çapa tarihi, ilaç/gübre/zararlı geçmişi ve tahmini hasat bilgisi o sezonun arşivine taşınır, tarlalar yeni sezona temiz girer. Dekar ve bölge korunur. <b>Kırım, sulama, depo ve iklim kayıtlarına dokunulmaz</b> — onların sezonu zaten tarihlerinden geliyor, üstteki sezon seçicisiyle her zaman görüntülenebilirler.</div>
+    </div>
+    <div class="field">
       <label>${i18n('Rapor (dışa aktarım — geri yüklenemez)')}</label>
       <div class="modal-actions eylem-sola-sarmali">
         <button class="btn" onclick="excelDisaAktar()">${i18n('📊 Excel Raporu (.xlsx)')}</button>
         <button class="btn" onclick="csvDisaAktar()">${i18n('⭳ Kırım Kayıtları (.csv)')}</button>
       </div>
     </div>
-    <div class="field">
-      <label>${i18n('Tek Seferlik Güncellemeler')}</label>
-      <div class="modal-actions eylem-sola-sarmali">
-        <button class="btn" onclick="kalemliFideBilgileriniGuncelle()">🌱 Kalemli Fide Defteri Verilerini Uygula (2026-07)</button>
-      </div>
-      <div class="hint-box">Kalemli bölgesindeki K1-K26 tarlalarının dekar, çeşit ve Viyol/Yer Ocağı fide bilgilerini el yazısı defterden okunan güncel verilerle günceller. Sadece adı K1-K26 olan ve zaten var olan tarlaları günceller, yeni tarla eklemez.</div>
-      <div class="modal-actions eylem-sola-sarmali ust-bosluk-2">
-        <button class="btn" onclick="kalemliSeralariTopluKur()">🏠 Kalemli B/C/D/E Seralarını Toplu Kur</button>
-      </div>
-      <div class="hint-box">Kalemli bölgesine B1-B41, C1-C37, D1-D35, E1-E35 seralarını 400 dizi kapasiteli olarak ekler. Aynı isimde sera zaten varsa dokunmaz, sadece eksik olanları tamamlar.</div>
-      <div class="modal-actions eylem-sola-sarmali ust-bosluk-2">
-        <button class="btn" onclick="gecmisDepoKutulariniDuzelt()">📦 Depo Kutularını Düzelt (Tek Seferlik)</button>
-      </div>
-      <div class="hint-box">Geçmiş veri aktarımında tek kayıt olarak girilen 14 depo/paketleme satırını siler (tüm cihazlardan), yerine kağıttaki adetlere göre her kutuyu ayrı kayıt olarak (kalite + paketleme tarihiyle, Kalemli deposuna) yeniden oluşturur. Daha önce düzeltildiyse uyarı verir.</div>
-      <div class="modal-actions eylem-sola-sarmali ust-bosluk-2">
-        <button class="btn" onclick="openIklimAralikSilModal('2026-07-25','2026-07-28')">🌡️ 25–28 Tem 2026 Sıcaklık/Nem Kayıtlarını Sil</button>
-      </div>
-      <div class="hint-box">Elle girilirken hatalı olduğu tespit edilen 25.07–28.07.2026 arası sıcaklık/nem kayıtlarını silmek için aralık silme penceresini bu tarihlerle açar. <b>Silmeden önce kaç kaydın gideceğini gösterir</b>; onaylamazsanız hiçbir şey değişmez. Aynı pencereye İklim Takip panelindeki 🗑 düğmesinden istediğiniz tarih aralığıyla da ulaşabilirsiniz.</div>
-      <div class="modal-actions eylem-sola-sarmali ust-bosluk-2">
-        <button class="btn" onclick="gecmisDeltaOnizlemeAc()">🔧 Geçmiş Veri Düzeltme (Önizleme)</button>
-      </div>
-      <div class="hint-box">Kağıt defterin yeniden okunmasıyla ortaya çıkan aktarım hatalarını (A41→B41, satır 22'nin B3/B2/B1 yerine A1–A4 olması, deneme seraları satırının yol açtığı sütun kayması, karalanmış çeşit hücrelerinin koddan çözülmesi) düzeltir. <b>Önce önizleme açılır</b>; onaylamadan cihazda da Firestore'da da hiçbir şey değişmez. Zaten uygulanmış veya elle değiştirilmiş kayıtlara dokunmaz.</div>
-    </div>
+    ${tekSeferlikBolumHtml()}
     <div class="field">
       <label>🪲 Hata / Donma Günlüğü</label>
       <div class="modal-actions eylem-sola-sarmali">
@@ -4652,8 +5157,12 @@ function openVeriYonetimiModal(){
   `);
 }
 function hataGunluguOku(){
-  try{ return JSON.parse(localStorage.getItem(HATA_GUNLUGU_ANAHTAR) || '[]'); }
-  catch(e){ return []; }
+  let kalici = [];
+  try{ kalici = JSON.parse(localStorage.getItem(HATA_GUNLUGU_ANAHTAR) || '[]'); }
+  catch(e){ kalici = []; }
+  // Depo dolduğu için diske yazılamamış kayıtlar da listeye katılır (bkz. hataKaydet)
+  if(!bellekHataKaydi.length) return kalici;
+  return kalici.concat(bellekHataKaydi).sort((a,b)=>(a.zaman||0)-(b.zaman||0));
 }
 function hataGunluguMetne(){
   const liste = hataGunluguOku();
@@ -4680,19 +5189,23 @@ function hataGunluguKopyala(){
   const el = document.getElementById('hataGunluguMetin');
   el.select();
   if(navigator.clipboard && navigator.clipboard.writeText){
-    navigator.clipboard.writeText(el.value).then(()=>alert('Panoya kopyalandı.')).catch(()=>document.execCommand('copy'));
+    navigator.clipboard.writeText(el.value).then(()=>uyar('Panoya kopyalandı.')).catch(()=>document.execCommand('copy'));
   } else {
     document.execCommand('copy');
   }
 }
 function hataGunluguTemizle(){
-  if(!confirm('Hata günlüğü temizlensin mi?')) return;
+  if(!onayla('Hata günlüğü temizlensin mi?')) return;
   localStorage.removeItem(HATA_GUNLUGU_ANAHTAR);
+  bellekHataKaydi = [];
+  /* Günlüğü silmek cihazda yer açmış olabilir; bekleyen state yazımını hemen
+     dene ki "depo dolu" uyarısı gerçekten çözüldüyse ekrandan kalksın. */
+  localStorageYaz();
   closeModal();
 }
 function kalemliSeralariTopluKur(){
   const GRUPLAR = [ {harf:'B', adet:41}, {harf:'C', adet:37}, {harf:'D', adet:35}, {harf:'E', adet:35} ];
-  if(!confirm('Kalemli bölgesine B1-B41, C1-C37, D1-D35, E1-E35 seraları (400 dizi kapasiteli) eklenecek. Aynı isimde sera zaten varsa atlanacak, eksikler tamamlanacak. Devam edilsin mi?')) return;
+  if(!onayla('Kalemli bölgesine B1-B41, C1-C37, D1-D35, E1-E35 seraları (400 dizi kapasiteli) eklenecek. Aynı isimde sera zaten varsa atlanacak, eksikler tamamlanacak. Devam edilsin mi?')) return;
   let eklenen = 0, atlanan = 0;
   GRUPLAR.forEach(g=>{
     for(let i=1;i<=g.adet;i++){
@@ -4703,7 +5216,7 @@ function kalemliSeralariTopluKur(){
     }
   });
   renderAll();
-  alert(`Tamamlandı.\nEklenen sera: ${eklenen}\nZaten mevcut olup atlanan: ${atlanan}`);
+  uyar(`Tamamlandı.\nEklenen sera: ${eklenen}\nZaten mevcut olup atlanan: ${atlanan}`);
 }
 function kalemliFideBilgileriniGuncelle(){
   const veriler = [
@@ -4734,7 +5247,7 @@ function kalemliFideBilgileriniGuncelle(){
     {ad:'K25', dekar:75, cesit:'PVH 2310', viyolDekar:0, yerOcagiDekar:75},
     {ad:'K26', dekar:17, cesit:'PVH 2310', viyolDekar:0, yerOcagiDekar:17}
   ];
-  if(!confirm(`Kalemli defterinden okunan veriler K1-K26 tarlalarına uygulanacak (dekar, çeşit, Viyol/Yer Ocağı). Var olan tarlalar güncellenecek, eksik olanlar (haritada yaklaşık konumla) yeni eklenecek. Not: K11'in "Deneme" kısmının fide yöntemi henüz bilinmiyor, boş bırakıldı. Devam edilsin mi?`)) return;
+  if(!onayla(`Kalemli defterinden okunan veriler K1-K26 tarlalarına uygulanacak (dekar, çeşit, Viyol/Yer Ocağı). Var olan tarlalar güncellenecek, eksik olanlar (haritada yaklaşık konumla) yeni eklenecek. Not: K11'in "Deneme" kısmının fide yöntemi henüz bilinmiyor, boş bırakıldı. Devam edilsin mi?`)) return;
   let guncellenen = 0, eklenen = [];
   veriler.forEach((v,i)=>{
     let t = state.tarlalar.find(x=>x.ad===v.ad);
@@ -4752,7 +5265,7 @@ function kalemliFideBilgileriniGuncelle(){
     guncellenen++;
   });
   renderAll(); closeModal();
-  alert(`Güncellenen/eklenen tarla: ${guncellenen}${eklenen.length? '\nYeni eklenen: '+eklenen.join(', ')+' (harita konumu yaklaşıktır, sahada GPS ile düzeltebilirsiniz)' : ''}`);
+  uyar(`Güncellenen/eklenen tarla: ${guncellenen}${eklenen.length? '\nYeni eklenen: '+eklenen.join(', ')+' (harita konumu yaklaşıktır, sahada GPS ile düzeltebilirsiniz)' : ''}`);
 }
 
 /* =========================================================
@@ -4869,8 +5382,8 @@ function gecmisImportTarlaBulKodla(kod){
 
 function gecmisKirimDepoVerisiAktar(){
   const oncedenVar = state.kirimlar.some(k=>k.gecmisImport===true) || state.depoKutulari.some(k=>k.gecmisImport===true);
-  if(oncedenVar && !confirm('DİKKAT: Bu aktarım daha önce çalıştırılmış görünüyor (geçmiş import işaretli kayıtlar mevcut). Tekrar çalıştırılırsa kayıtlar İKİNCİ KEZ eklenir. Yine de devam edilsin mi?')) return;
-  if(!confirm('Kağıt defterden okunan geçmiş veriler aktarılacak:\n• 30 kırım/dizim satırı (kırım tarihine göre eşleşen tarlalar kayda çoklu tarla olarak bağlanır)\n• 2. tur dolan seraların önceki dönemi kapatılır\n• 14 depo/kutulama kaydı (Kalemli deposu)\n\nDevam edilsin mi?')) return;
+  if(oncedenVar && !onayla('DİKKAT: Bu aktarım daha önce çalıştırılmış görünüyor (geçmiş import işaretli kayıtlar mevcut). Tekrar çalıştırılırsa kayıtlar İKİNCİ KEZ eklenir. Yine de devam edilsin mi?')) return;
+  if(!onayla('Kağıt defterden okunan geçmiş veriler aktarılacak:\n• 30 kırım/dizim satırı (kırım tarihine göre eşleşen tarlalar kayda çoklu tarla olarak bağlanır)\n• 2. tur dolan seraların önceki dönemi kapatılır\n• 14 depo/kutulama kaydı (Kalemli deposu)\n\nDevam edilsin mi?')) return;
 
   const ilkKirim = GECMIS_KIRIM_SATIRLARI.reduce((m,s)=>s.kirim<m?s.kirim:m, GECMIS_KIRIM_SATIRLARI[0].kirim);
   const sonKirim = GECMIS_KIRIM_SATIRLARI.reduce((m,s)=>s.kirim>m?s.kirim:m, GECMIS_KIRIM_SATIRLARI[0].kirim);
@@ -4962,7 +5475,7 @@ function gecmisKirimDepoVerisiAktar(){
   });
 
   renderAll(); closeModal();
-  alert('Geçmiş veri aktarımı tamamlandı.\n'
+  uyar('Geçmiş veri aktarımı tamamlandı.\n'
     + '\nKırım kaydı: ' + olusanKirim + ' (' + tarlaliKayit + ' tarlalı, ' + tarlasizKayit + ' tarlasız) — toplam ' + fmt(toplamDizi,0) + ' dizi'
     + '\nEşleşen tarla: ' + (eslesenTarlaKodlari.size ? [...eslesenTarlaKodlari].join(', ') : '-')
     + '\nBulunamayan tarla: ' + (bulunamayanTarlalar.size ? [...bulunamayanTarlalar].join(', ') + ' (kayda bağlanamadı)' : 'yok')
@@ -4995,13 +5508,13 @@ function gecmisDepoKutulariniDuzelt(){
   const partiler = state.depoKutulari.filter(gecmisDepoPartiKaydiMi);
   if(!partiler.length){
     const duzeltilmisVar = state.depoKutulari.some(k=>k.gecmisImport===true);
-    alert(duzeltilmisVar
+    uyar(duzeltilmisVar
       ? 'Bu düzeltme daha önce çalıştırılmış görünüyor: parti tipi kayıt kalmamış, kutu kutu geçmiş kayıtlar zaten mevcut. Tekrar çalıştırılırsa kayıtlar çiftlenir; işlem yapılmadı.'
       : 'Düzeltilecek geçmiş depo aktarım kaydı bulunamadı. Önce geçmiş veri aktarımının çalıştırılmış olması gerekir; işlem yapılmadı.');
     return;
   }
   const beklenenKutu = GECMIS_DEPO_SATIRLARI.reduce((s,r)=> s + (r.xx1==null ? r.toplam : (r.xx1 + r.x1 + r.x2)), 0);
-  if(!confirm('Geçmiş depo aktarımı kutu kutu düzeltilecek:\n• ' + partiler.length + ' parti tipi kayıt silinecek (tüm cihazlardan)\n• Yerine kağıttaki adetlere göre ' + beklenenKutu + ' ayrı kutu kaydı oluşturulacak (Kalemli deposu)\n\nDevam edilsin mi?')) return;
+  if(!onayla('Geçmiş depo aktarımı kutu kutu düzeltilecek:\n• ' + partiler.length + ' parti tipi kayıt silinecek (tüm cihazlardan)\n• Yerine kağıttaki adetlere göre ' + beklenenKutu + ' ayrı kutu kaydı oluşturulacak (Kalemli deposu)\n\nDevam edilsin mi?')) return;
 
   /* 1) Parti tipi kayıtları sil — kutuSil() ile aynı mekanizma:
      state'ten çıkarılan id'ler syncOutgoingNow'da doc delete olarak
@@ -5035,7 +5548,7 @@ function gecmisDepoKutulariniDuzelt(){
   });
 
   renderAll(); closeModal();
-  alert('Depo kutuları düzeltildi.\n'
+  uyar('Depo kutuları düzeltildi.\n'
     + '\nSilinen parti kaydı: ' + silinen
     + '\nOluşturulan kutu: ' + kutuIndex
     + '\n  XX1: ' + kaliteSayilari['XX1'] + ' · X1: ' + kaliteSayilari['X1'] + ' · X2: ' + kaliteSayilari['X2'] + ' · Belirtilmemiş: ' + kaliteSayilari['']
@@ -5549,8 +6062,8 @@ function gecmisDeltaOnayla(){
     kirimlar: JSON.parse(JSON.stringify(state.kirimlar||[])),
     seralar:  JSON.parse(JSON.stringify(state.seralar||[]))
   });
-  if(!onizleme.hazir){ alert('Uygulanacak madde kalmadı; işlem yapılmadı.'); return; }
-  if(!confirm('Önizlemedeki ' + onizleme.hazir + ' madde şimdi uygulanacak ve mevcut senkronizasyonla sahadaki tüm cihazlara gidecek.\n\n'
+  if(!onizleme.hazir){ uyar('Uygulanacak madde kalmadı; işlem yapılmadı.'); return; }
+  if(!onayla('Önizlemedeki ' + onizleme.hazir + ' madde şimdi uygulanacak ve mevcut senkronizasyonla sahadaki tüm cihazlara gidecek.\n\n'
     + '• Zaten uygulanmış ' + onizleme.uygulanmis + ' madde tekrar yazılmayacak\n'
     + '• Beklenen halinde bulunmayan ' + onizleme.atlanan + ' madde atlanacak\n\n'
     + 'Devam edilsin mi?')) return;
@@ -5569,7 +6082,7 @@ function gecmisDeltaOnayla(){
 
   renderAll(); // → saveState() → pushStateToFirestore() → syncOutgoingNow()
   closeModal();
-  alert('Geçmiş veri düzeltmesi uygulandı.\n'
+  uyar('Geçmiş veri düzeltmesi uygulandı.\n'
     + '\nUygulanan madde: ' + s.hazir
     + '\nZaten uygulanmış (dokunulmadı): ' + s.uygulanmis
     + '\nAtlanan (bulunamadı/farklı): ' + s.atlanan
@@ -5579,6 +6092,161 @@ function gecmisDeltaOnayla(){
     + '\nSilinen sera dolumu: ' + s.silmeler.length
     + '\nSera dönemi işlemi: ' + s.donemler.length
     + '\n\nDeğişiklikler senkronizasyonla tüm cihazlara gönderiliyor.');
+}
+
+/* =========================================================
+   OTOMATİK GÜNLÜK YEDEK
+   Elle indirilen JSON tek savunma hattıydı: kimse indirmezse hiçbir yedek yok,
+   ve yanlış bir toplu silme senkron yoluyla saniyeler içinde bütün cihazlara
+   yayılıyor. Bu yüzden uygulama her gün ilk açılışında tüm verinin anlık bir
+   kopyasını Firestore'da AYRI bir koleksiyona yazar.
+
+   Neden ayrı koleksiyon: 'yedekler' SYNC_KOLEKSIYONLARI içinde DEĞİL, yani
+   dinlenmiyor ve state'e karışmıyor. Normal senkronun silme tespiti buraya
+   dokunamaz — asıl veriyi silen bir hata yedeği silmez.
+
+   Neden parçalı: Firestore belge sınırı 1 MiB. Veri büyüdükçe tek belgeye
+   sığmayacağı için gövde parçalara bölünüp ayrı belgelere yazılır; tarih adlı
+   "künye" belgesi kaç parça olduğunu söyler.
+   ========================================================= */
+const YEDEK_KOLEKSIYON = 'yedekler';
+/* Saklama süresi. Bir sezonun büyük kısmını (dikimden hasat sonuna) kapsasın
+   diye 90 gün: geç fark edilen bir bozulmada da geriye dönülebilsin. Arayüzdeki
+   metinler bu sabitten besleniyor, sayı burada değişince orası da değişir. */
+const YEDEK_SAKLAMA_GUN = 90;
+const YEDEK_PARCA_BOYUT = 700000;  // 1 MiB sınırına karşı güvenli pay
+const YEDEK_SON_TARIH_ANAHTAR = 'scvSonOtomatikYedek';
+
+function yedekParcaId(tarih, sira){ return tarih + '__p' + sira; }
+function yedekGovdesiUret(){
+  return JSON.stringify({ surum: APP_SURUM, tarih: todayStr(), zaman: Date.now(), veri: state });
+}
+function yedekGunEkle(tarihStr, gun){
+  const d = new Date(tarihStr + 'T00:00:00');
+  d.setDate(d.getDate() + gun);
+  return d.toISOString().slice(0,10);
+}
+
+async function otomatikYedekAl(){
+  if(!fbAuth.currentUser) return;
+  const bugun = todayStr();
+  // Bu cihaz bugün zaten yazdıysa Firestore'a hiç sorma (okuma kotası boşa gitmesin)
+  try{ if(localStorage.getItem(YEDEK_SON_TARIH_ANAHTAR) === bugun) return; }catch(e){ /* depo kapalı: her açılışta kontrol edilir */ }
+  // Boş state'i yedeklemek anlamsız ve TEHLİKELİ olurdu: veri henüz Firestore'dan
+  // gelmemişken yazılan "boş" yedek, o günün gerçek yedeğinin yerine geçerdi.
+  const doluMu = SYNC_KOLEKSIYONLARI.some(c=>(state[c]||[]).length > 0);
+  if(!doluMu) return;
+
+  try{
+    const kunye = await fbDb.collection(YEDEK_KOLEKSIYON).doc(bugun).get();
+    if(kunye.exists){
+      // Başka bir cihaz bugünkü yedeği almış; tekrar yazmaya gerek yok
+      try{ localStorage.setItem(YEDEK_SON_TARIH_ANAHTAR, bugun); }catch(e){}
+      return;
+    }
+
+    const govde = yedekGovdesiUret();
+    const parcalar = [];
+    for(let i=0; i<govde.length; i+=YEDEK_PARCA_BOYUT) parcalar.push(govde.slice(i, i+YEDEK_PARCA_BOYUT));
+
+    const batch = fbDb.batch();
+    parcalar.forEach((metin, sira)=>{
+      const id = yedekParcaId(bugun, sira);
+      batch.set(fbDb.collection(YEDEK_KOLEKSIYON).doc(id), { id, tarih: bugun, sira, metin });
+    });
+    // Künye EN SON yazılır (aynı batch içinde atomik): künye varsa parçaların
+    // tamamı da vardır, yarım yedek "tamam" gibi görünmez.
+    batch.set(fbDb.collection(YEDEK_KOLEKSIYON).doc(bugun), {
+      id: bugun, tarih: bugun, kunye: true, zaman: Date.now(),
+      kullanici: mevcutKullaniciAdi(), surum: APP_SURUM,
+      parcaSayisi: parcalar.length, boyut: govde.length
+    });
+    await batch.commit();
+    try{ localStorage.setItem(YEDEK_SON_TARIH_ANAHTAR, bugun); }catch(e){}
+    await eskiYedekleriTemizle();
+  }catch(e){
+    // Yedek alınamaması uygulamayı durdurmaz, ama sessiz de kalmaz
+    hataKaydet('yedek', 'Otomatik yedek alınamadı: ' + ((e && e.message) || e), '');
+  }
+}
+
+async function eskiYedekleriTemizle(){
+  const sinir = yedekGunEkle(todayStr(), -YEDEK_SAKLAMA_GUN);
+  try{
+    const snap = await fbDb.collection(YEDEK_KOLEKSIYON).where('tarih','<',sinir).get();
+    if(snap.empty) return;
+    const belgeler = [];
+    snap.forEach(d=>belgeler.push(d.id));
+    for(let i=0; i<belgeler.length; i+=FIRESTORE_BATCH_LIMIT){
+      const batch = fbDb.batch();
+      belgeler.slice(i, i+FIRESTORE_BATCH_LIMIT).forEach(id=>batch.delete(fbDb.collection(YEDEK_KOLEKSIYON).doc(id)));
+      await batch.commit();
+    }
+  }catch(e){
+    hataKaydet('yedek', 'Eski yedekler temizlenemedi: ' + ((e && e.message) || e), '');
+  }
+}
+
+/* Yedeklerin listesi — künye belgeleri, en yeni en üstte */
+async function otomatikYedekListesi(){
+  const snap = await fbDb.collection(YEDEK_KOLEKSIYON).where('kunye','==',true).get();
+  const liste = [];
+  snap.forEach(d=>liste.push(d.data()));
+  return liste.sort((a,b)=>String(b.tarih).localeCompare(String(a.tarih)));
+}
+
+/* Bir yedeği parçalarından yeniden kurar. Eksik parça varsa YARIM veri
+   döndürmez — hata verir; yarım geri yükleme, hiç geri yüklememekten kötüdür. */
+async function otomatikYedekOku(tarih){
+  const kunye = await fbDb.collection(YEDEK_KOLEKSIYON).doc(tarih).get();
+  if(!kunye.exists) throw new Error('Yedek künyesi bulunamadı: ' + tarih);
+  const adet = Number(kunye.data().parcaSayisi) || 0;
+  const parcalar = [];
+  for(let i=0; i<adet; i++){
+    const p = await fbDb.collection(YEDEK_KOLEKSIYON).doc(yedekParcaId(tarih, i)).get();
+    if(!p.exists) throw new Error(tarih + ' yedeğinin ' + (i+1) + '. parçası eksik');
+    parcalar.push(p.data().metin || '');
+  }
+  const paket = JSON.parse(parcalar.join(''));
+  if(!paket || !paket.veri) throw new Error('Yedek içeriği okunamadı');
+  return paket;
+}
+
+function openOtomatikYedekModal(){
+  openModal(`
+    <h2>${i18n('Otomatik Yedekler')}</h2>
+    <div class="hint-box">${i18n('Uygulama her gün ilk açılışında tüm verinin bir kopyasını sunucuya yazar; son')} ${YEDEK_SAKLAMA_GUN} ${i18n('gün saklanır. Buradan bir güne dönebilirsiniz.')}</div>
+    <div id="otoYedekListe"><div class="empty-hint">${i18n('Yükleniyor…')}</div></div>
+    <div class="modal-actions">
+      <button class="btn btn-muted" onclick="closeModal()">${i18n('Kapat')}</button>
+    </div>
+  `);
+  otomatikYedekListesi().then(liste=>{
+    const el = document.getElementById('otoYedekListe');
+    if(!el) return;
+    if(!liste.length){ el.innerHTML = `<div class="empty-hint">${i18n('Henüz otomatik yedek yok.')}</div>`; return; }
+    el.innerHTML = liste.map(y=>`
+      <div class="item oto-yedek-satiri">
+        <span><b>${escapeHtml(tarihUzunGoster(y.tarih))}</b> · ${fmt(Math.round((y.boyut||0)/1024),0)} KB${y.kullanici?' · '+escapeHtml(y.kullanici):''}${y.surum?' · '+escapeHtml(y.surum):''}</span>
+        <button class="btn btn-sm" onclick="otomatikYedektenGeriYukle('${escapeHtml(y.tarih)}')">${i18n('Geri Yükle')}</button>
+      </div>`).join('');
+  }).catch(e=>{
+    const el = document.getElementById('otoYedekListe');
+    if(el) el.innerHTML = `<div class="empty-hint">${i18n('Yedek listesi alınamadı')}: ${escapeHtml((e&&e.message)||'')}</div>`;
+  });
+}
+
+async function otomatikYedektenGeriYukle(tarih){
+  if(!onayla(tarih + ' tarihli yedek geri yüklenecek. Bu cihazdaki VE sunucudaki mevcut veriler bunun üzerine yazılacak. Emin misiniz?')) return;
+  try{
+    const paket = await otomatikYedekOku(tarih);
+    stateYerineKoy(paket.veri);
+    closeModal();
+    renderAll();
+    uyar('Yedek geri yüklendi: ' + tarih);
+  }catch(e){
+    uyar('Yedek geri yüklenemedi: ' + ((e && e.message) || e));
+  }
 }
 
 function tumVerileriYedekle(){
@@ -5603,22 +6271,23 @@ function yedekDosyaYuklendi(input){
   reader.onload = function(e){
     let yeniState;
     try{ yeniState = JSON.parse(e.target.result); }
-    catch(err){ alert('Dosya okunamadı, geçerli bir JSON yedeği değil.'); input.value=''; return; }
+    catch(err){ uyar('Dosya okunamadı, geçerli bir JSON yedeği değil.'); input.value=''; return; }
     if(!yeniState || !Array.isArray(yeniState.tarlalar)){
-      alert('Geçersiz yedek dosyası.'); input.value=''; return;
+      uyar('Geçersiz yedek dosyası.'); input.value=''; return;
     }
-    if(!confirm('Bu yedek yüklenirse bu cihazdaki MEVCUT tüm veriler bunun üzerine yazılacak. Emin misiniz?')){ input.value=''; return; }
-    state = yeniState;
-    stateNormalizeEt();
+    if(!onayla('Bu yedek yüklenirse bu cihazdaki MEVCUT tüm veriler bunun üzerine yazılacak. Emin misiniz?')){ input.value=''; return; }
+    stateYerineKoy(yeniState);
     input.value = '';
     closeModal();
     renderAll();
-    alert('Yedek başarıyla geri yüklendi.');
+    uyar('Yedek başarıyla geri yüklendi.');
   };
   reader.readAsText(file);
 }
-function excelDisaAktar(){
-  if(typeof XLSX==='undefined'){ alert('Excel kütüphanesi yüklenemedi. İnternet bağlantınızı kontrol edip tekrar deneyin.'); return; }
+async function excelDisaAktar(){
+  // Kütüphane artık açılışta değil, tam burada indiriliyor (bkz. kutuphaneYukle)
+  try{ await kutuphaneYukle('xlsx'); }catch(e){ /* aşağıdaki kontrol uyarıyı verir */ }
+  if(typeof XLSX==='undefined'){ uyar('Excel kütüphanesi yüklenemedi. İnternet bağlantınızı kontrol edip tekrar deneyin.'); return; }
   const wb = XLSX.utils.book_new();
 
   const tarlaRows = state.tarlalar.map(t=>{
@@ -5642,7 +6311,7 @@ function excelDisaAktar(){
   });
   XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(seraRows), 'Seralar');
 
-  const kirimRows = state.kirimlar.map(k=>{
+  const kirimRows = sezonKirimlari().map(k=>{
     const tr = kirimTurev(k);
     return {
       Tarih:k.tarih, Tarla:kirimTarlaEtiket(k), Çeşit:k.cesit||'', 'Kırım No':k.kirimNo, 'Dizi Sayısı':tr.diziSayisi,
@@ -5653,25 +6322,26 @@ function excelDisaAktar(){
   });
   XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(kirimRows), 'Kırımlar');
 
-  const depoRows = state.depoKutulari.map(k=>({
+  const depoRows = sezonSuz(state.depoKutulari).map(k=>({
     Bölge: k.bolge==='tekeliler'?'Tekeliler':'Kalemli', 'Kutu No':k.kutuNo, Tarih:k.tarih, Kg:k.kg, Kalite: k.kalite||'',
     Durum: k.cikisTarihi?'Çıkmış':'Depoda', 'Çıkış Tarihi':k.cikisTarihi||'', 'Alıcı / Not':k.cikisNot||''
   }));
   XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(depoRows), 'Depo');
 
-  const sulamaRows = state.sulamaKayitlari.map(s=>{
+  const sulamaRows = sezonSuz(state.sulamaKayitlari).map(s=>{
     const t = tarlaBul(s.tarlaId);
     return { Tarih:s.tarih, Tarla:t?t.ad:'', Saat:s.saat };
   });
   XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(sulamaRows), 'Sulama');
 
-  const iklimRows = state.iklimKayitlari.map(k=>{
+  const iklimRows = sezonSuz(state.iklimKayitlari).map(k=>{
     const s = seraBul(k.seraId);
     return { Tarih:k.tarih, Sera: s?s.ad:'', Saat:k.saat, 'Sıcaklık (°C)':k.sicaklik, 'Nem (%)':k.nem };
   });
   XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(iklimRows), 'İklim');
 
-  XLSX.writeFile(wb, 'scv-rapor-' + todayStr() + '.xlsx');
+  // Dosya adı hangi sezonu içerdiğini söylesin: rapor artık seçili sezona göre süzülüyor
+  XLSX.writeFile(wb, 'scv-rapor-' + (seciliSezon===SEZON_TUMU?'tum-sezonlar':seciliSezon) + '-' + todayStr() + '.xlsx');
 }
 
 /* =========================================================
@@ -5683,7 +6353,7 @@ function csvDisaAktar(){
     'Toplam Kırılan Kg','İşçi Sayısı','Yevmiye',
     'İşçi Maliyeti','Sera Dağılımı','Bekleyen Dizi','Kayıp Dizi','18 Yaş Altı Yok','Çalışma Saati'
   ];
-  const satirlar = state.kirimlar.map(k=>{
+  const satirlar = sezonKirimlari().map(k=>{
     const t = tarlaBul(k.tarlaId);
     const tr = kirimTurev(k);
     const maliyet = (k.isciSayisi||0)*(k.yevmiye||0);
@@ -5701,7 +6371,7 @@ function csvDisaAktar(){
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = 'scv-kirim-kayitlari-' + todayStr() + '.csv';
+  a.download = 'scv-kirim-kayitlari-' + (seciliSezon===SEZON_TUMU?'tum-sezonlar':seciliSezon) + '-' + todayStr() + '.csv';
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
@@ -5744,9 +6414,20 @@ let haritaMarkerlar = [];
 let haritaPinModuAktif = false;
 let pendingPinLatLng = null;
 
-function haritaMapBaslat(){
+/* Kütüphane yüklemesi beklenirken kullanıcı sekmeler arasında gidip gelirse
+   haritaMapBaslat ikinci kez çağrılabilir; haritaMap henüz atanmadığı için
+   ikisi de kuruluma girer ve Leaflet aynı kapta "already initialized" hatası
+   verir. Bu kilit, yükleme sürerken gelen çağrıları görmezden gelir. */
+let haritaKuruluyor = false;
+async function haritaMapBaslat(){
   if(haritaMap){ setTimeout(()=>haritaMap.invalidateSize(), 50); return; }
-  if(typeof L==='undefined'){ alert('Harita kütüphanesi yüklenemedi. İnternet bağlantınızı kontrol edip sayfayı yenileyin.'); return; }
+  if(haritaKuruluyor) return;
+  haritaKuruluyor = true;
+  // Leaflet artık açılışta değil, Haritalar sekmesi ilk açıldığında yükleniyor
+  try{ await kutuphaneYukle('leaflet'); }catch(e){ /* aşağıdaki kontrol uyarıyı verir */ }
+  haritaKuruluyor = false;
+  if(typeof L==='undefined'){ uyar('Harita kütüphanesi yüklenemedi. İnternet bağlantınızı kontrol edip sayfayı yenileyin.'); return; }
+  if(haritaMap) return; // bekleme sırasında başka bir çağrı kurulumu bitirmiş
   haritaMap = L.map('haritaMap');
   L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
     maxZoom: 19,
@@ -5774,15 +6455,15 @@ function haritaMapTiklandi(e){
   openPinTarlaSecModal();
 }
 function haritaKonumumlaPinEkle(){
-  if(!navigator.geolocation){ alert('Tarayıcınız konum özelliğini desteklemiyor.'); return; }
+  if(!navigator.geolocation){ uyar('Tarayıcınız konum özelliğini desteklemiyor.'); return; }
   navigator.geolocation.getCurrentPosition(
     pos=>{ pendingPinLatLng = { lat: pos.coords.latitude, lng: pos.coords.longitude }; openPinTarlaSecModal(); },
-    err=>alert('Konum alınamadı: ' + err.message),
+    err=>uyar('Konum alınamadı: ' + err.message),
     { enableHighAccuracy:true, timeout:10000 }
   );
 }
 function openPinTarlaSecModal(){
-  if(!state.tarlalar.length){ alert('Önce en az bir tarla ekleyin.'); pendingPinLatLng = null; return; }
+  if(!state.tarlalar.length){ uyar('Önce en az bir tarla ekleyin.'); pendingPinLatLng = null; return; }
   const opts = state.tarlalar.map(t=>`<option value="${t.id}">${escapeHtml(t.ad)}</option>`).join('');
   openModal(`
     <h2>${i18n('Pin Ekle')}</h2>
@@ -5821,10 +6502,10 @@ function openKoordinatTarlaEkleModal(){
 }
 function submitKoordinatTarlaEkle(){
   const f = tarlaFormOku();
-  if(!f.ad){ alert('Tarla adı girin.'); return; }
+  if(!f.ad){ uyar('Tarla adı girin.'); return; }
   const lat = Number(document.getElementById('fKoordLat').value);
   const lng = Number(document.getElementById('fKoordLng').value);
-  if(!lat || !lng){ alert('Enlem ve boylam girin.'); return; }
+  if(!lat || !lng){ uyar('Enlem ve boylam girin.'); return; }
   const tarlaId = uid();
   state.tarlalar.push({ id: tarlaId, ...f, olusturma: Date.now() });
   state.haritaPinleri.push({ id: uid(), tarlaId, lat, lng });
@@ -5875,19 +6556,19 @@ function openPinAksiyonModal(pinId){
   `);
 }
 function haritaPinGpsIleGuncelle(pinId){
-  if(!navigator.geolocation){ alert('Tarayıcınız konum özelliğini desteklemiyor.'); return; }
+  if(!navigator.geolocation){ uyar('Tarayıcınız konum özelliğini desteklemiyor.'); return; }
   navigator.geolocation.getCurrentPosition(
     pos=>{
       const pin = state.haritaPinleri.find(p=>p.id===pinId);
       if(pin){ pin.lat = pos.coords.latitude; pin.lng = pos.coords.longitude; }
       closeModal(); renderAll();
     },
-    err=>alert('Konum alınamadı: ' + err.message),
+    err=>uyar('Konum alınamadı: ' + err.message),
     { enableHighAccuracy:true, timeout:10000 }
   );
 }
 function haritaPinSilOnay(pinId){
-  if(!confirm('Bu pin silinsin mi?')) return;
+  if(!onayla('Bu pin silinsin mi?')) return;
   silmeYedekAl(['haritaPinleri'], 'Harita pini');
   state.haritaPinleri = state.haritaPinleri.filter(p=>p.id!==pinId);
   closeModal(); renderAll();
@@ -5896,7 +6577,7 @@ function tesisPinTiklandi(pinId){
   if(!haritaPinModuAktif) return;
   const p = state.tesisPinleri.find(x=>x.id===pinId);
   if(!p) return;
-  if(!confirm(`"${p.etiket}" silinsin mi?`)) return;
+  if(!onayla(`"${p.etiket}" silinsin mi?`)) return;
   state.tesisPinleri = state.tesisPinleri.filter(x=>x.id!==pinId);
   renderAll();
 }
@@ -5945,7 +6626,7 @@ function krokiKonumHesapla(anchor, index, kolonSayisi, araMetre){
   return { lat: anchor.lat - dLat, lng: anchor.lng + dLng };
 }
 function krokiVerileriniIceAktar(){
-  if(!confirm('Tekeliler ve Kalemli krokilerindeki tarlalar + pompa/kuyu noktaları yaklaşık konumlarıyla eklenecek. Zaten aynı isimde tarla varsa atlanacak, tekrar tekrar çalıştırmak güvenlidir. Devam edilsin mi?')) return;
+  if(!onayla('Tekeliler ve Kalemli krokilerindeki tarlalar + pompa/kuyu noktaları yaklaşık konumlarıyla eklenecek. Zaten aynı isimde tarla varsa atlanacak, tekrar tekrar çalıştırmak güvenlidir. Devam edilsin mi?')) return;
 
   const TEKELILER_TARLA = [
     {ad:'T1', dekar:64}, {ad:'T2', dekar:23}, {ad:'T3', dekar:53}, {ad:'T4', dekar:85},
@@ -6003,7 +6684,7 @@ function krokiVerileriniIceAktar(){
   tesisEkle(HARITA_BOLGELER.kalemli, KALEMLI_TESIS);
 
   renderAll();
-  alert(`İçe aktarma tamamlandı.\nEklenen tarla: ${eklenenTarla}\nZaten mevcut olup atlanan: ${atlananTarla}\nEklenen tesis noktası: ${eklenenTesis}\n\nKonumlar YAKLAŞIKTIR (kroki fotoğrafındaki ölçek + köy merkezi tahminiyle hesaplandı, gerçek GPS ölçümü değildir). Sahaya gittiğinizde pine tıklayıp "Buradaki GPS Konumumu Kullan" ile veya "Buradayım (GPS ile Pin Ekle)" ile gerçek konumu düzeltebilirsiniz.`);
+  uyar(`İçe aktarma tamamlandı.\nEklenen tarla: ${eklenenTarla}\nZaten mevcut olup atlanan: ${atlananTarla}\nEklenen tesis noktası: ${eklenenTesis}\n\nKonumlar YAKLAŞIKTIR (kroki fotoğrafındaki ölçek + köy merkezi tahminiyle hesaplandı, gerçek GPS ölçümü değildir). Sahaya gittiğinizde pine tıklayıp "Buradaki GPS Konumumu Kullan" ile veya "Buradayım (GPS ile Pin Ekle)" ile gerçek konumu düzeltebilirsiniz.`);
 }
 
 /* =========================================================
@@ -6091,9 +6772,9 @@ function submitKutuBasim(){
   const kg = Number(document.getElementById('fKbKg').value)||0;
   const adet = kutuBasimOkuAdetler();
   const toplam = KUTU_KALITELERI.reduce((s,k)=>s+adet[k],0);
-  if(!toplam){ alert('Kalite başına kutu adedi girin.'); return; }
-  if(kg<=0){ alert('Kutu başına kg girin.'); return; }
-  if(tavlamaTarihi && tavlamaTarihi > tarih){ alert('Tavlama tarihi paketleme tarihinden sonra olamaz.'); return; }
+  if(!toplam){ uyar('Kalite başına kutu adedi girin.'); return; }
+  if(kg<=0){ uyar('Kutu başına kg girin.'); return; }
+  if(tavlamaTarihi && tavlamaTarihi > tarih){ uyar('Tavlama tarihi paketleme tarihinden sonra olamaz.'); return; }
   const mevcut = state.depoKutulari.filter(k=>k.bolge===bolge);
   let kutuNo = mevcut.length ? Math.max(...mevcut.map(k=>k.kutuNo||0)) + 1 : 1;
   const ilkNo = kutuNo;
@@ -6108,11 +6789,11 @@ function submitKutuBasim(){
   closeModal(); renderAll();
   const bolgeAd = bolge==='tekeliler' ? 'Tekeliler' : 'Kalemli';
   const dokum = KUTU_KALITELERI.filter(k=>adet[k]>0).map(k=>`${adet[k]} ${k}`).join(' + ');
-  alert(`${escapeHtml(tarih)} — ${dokum} = ${toplam} kutu eklendi (#${ilkNo}–#${kutuNo-1}, ${fmt(toplam*kg,0)} kg, ${bolgeAd})`);
+  uyar(`${escapeHtml(tarih)} — ${dokum} = ${toplam} kutu eklendi (#${ilkNo}–#${kutuNo-1}, ${fmt(toplam*kg,0)} kg, ${bolgeAd})`);
 }
 function kutuSil(id){
   const k = state.depoKutulari.find(x=>x.id===id);
-  if(!confirm('Bu kutu kaydı silinsin mi?')) return;
+  if(!onayla('Bu kutu kaydı silinsin mi?')) return;
   silmeYedekAl(['depoKutulari'], 'Kutu #'+(k?k.kutuNo:''));
   state.depoKutulari = state.depoKutulari.filter(k=>k.id!==id);
   renderAll();
@@ -6144,7 +6825,7 @@ function submitKutuCikis(id){
 function kutuGeriAl(id){
   const k = state.depoKutulari.find(x=>x.id===id);
   if(!k) return;
-  if(!confirm('Bu kutu tekrar depoya alınsın mı? (çıkış kaydı silinecek)')) return;
+  if(!onayla('Bu kutu tekrar depoya alınsın mı? (çıkış kaydı silinecek)')) return;
   delete k.cikisTarihi;
   delete k.cikisNot;
   renderAll();
@@ -6158,7 +6839,7 @@ function renderDepo(){
   const aramaInput = document.getElementById('depoAramaInput');
   const arama = aramaInput ? aramaInput.value.trim().toLocaleLowerCase('tr') : '';
   const kutuEslesiyor = k => !arama || String(k.kutuNo).includes(arama) || (k.tarih||'').includes(arama) || (k.kalite||'').toLocaleLowerCase('tr').includes(arama);
-  const bolgedekiler = state.depoKutulari.filter(k=>k.bolge===depoBolgeAktif && kutuEslesiyor(k));
+  const bolgedekiler = sezonSuz(state.depoKutulari).filter(k=>k.bolge===depoBolgeAktif && kutuEslesiyor(k));
   const depoda = bolgedekiler.filter(k=>!k.cikisTarihi).sort((a,b)=> b.tarih.localeCompare(a.tarih) || b.kutuNo-a.kutuNo);
   const cikmis = bolgedekiler.filter(k=>k.cikisTarihi).sort((a,b)=> b.cikisTarihi.localeCompare(a.cikisTarihi));
   const toplamKg = depoda.reduce((s,k)=>s+(Number(k.kg)||0),0);
@@ -6287,7 +6968,7 @@ function renderDepoGunluk(kutular){
    SULAMA TAKİP
    ========================================================= */
 function openSulamaEkleModal(){
-  if(!state.tarlalar.length){ alert('Önce en az bir tarla ekleyin.'); return; }
+  if(!state.tarlalar.length){ uyar('Önce en az bir tarla ekleyin.'); return; }
   const opts = state.tarlalar.map(t=>`<option value="${t.id}">${escapeHtml(t.ad)}</option>`).join('');
   openModal(`
     <h2>${i18n('Sulama Kaydı Ekle')}</h2>
@@ -6306,13 +6987,13 @@ function submitSulamaEkle(){
   const tarlaId = document.getElementById('fSulamaTarla').value;
   const tarih = document.getElementById('fSulamaTarih').value || todayStr();
   const saat = Number(document.getElementById('fSulamaSaat').value)||0;
-  if(!tarlaId){ alert('Tarla seçin.'); return; }
-  if(saat<=0){ alert('Sulama saatini girin.'); return; }
+  if(!tarlaId){ uyar('Tarla seçin.'); return; }
+  if(saat<=0){ uyar('Sulama saatini girin.'); return; }
   state.sulamaKayitlari.push({ id: uid(), tarlaId, tarih, saat, olusturma: Date.now(), ...sonIslemDamgasi() });
   closeModal(); renderAll();
 }
 function sulamaSil(id){
-  if(!confirm('Bu sulama kaydı silinsin mi?')) return;
+  if(!onayla('Bu sulama kaydı silinsin mi?')) return;
   silmeYedekAl(['sulamaKayitlari'], 'Sulama kaydı');
   state.sulamaKayitlari = state.sulamaKayitlari.filter(s=>s.id!==id);
   renderAll();
@@ -6324,7 +7005,7 @@ function renderSulama(){
   if(!ozetEl || !listeEl) return;
   const aramaInput = document.getElementById('sulamaAramaInput');
   const arama = aramaInput ? aramaInput.value.trim().toLocaleLowerCase('tr') : '';
-  let liste = [...state.sulamaKayitlari].sort((a,b)=>b.tarih.localeCompare(a.tarih));
+  let liste = [...sezonSuz(state.sulamaKayitlari)].sort((a,b)=>b.tarih.localeCompare(a.tarih));
   if(arama){
     liste = liste.filter(s=>{
       const t = tarlaBul(s.tarlaId);
@@ -6377,7 +7058,7 @@ function iklimFormOku(){
   };
 }
 function openIklimEkleModal(){
-  if(!state.seralar.length){ alert('Önce en az bir sera ekleyin.'); return; }
+  if(!state.seralar.length){ uyar('Önce en az bir sera ekleyin.'); return; }
   openModal(`
     <h2>${i18n('Sıcaklık/Nem Kaydı Ekle')}</h2>
     ${iklimFormFieldsHtml({ tarih: todayStr(), saat: new Date().toTimeString().slice(0,5) })}
@@ -6389,15 +7070,15 @@ function openIklimEkleModal(){
 }
 function submitIklimEkle(){
   const f = iklimFormOku();
-  if(!f.seraId){ alert('Sera seçin.'); return; }
-  if(!f.saat){ alert('Saat girin.'); return; }
-  if(document.getElementById('fIklimSicaklik').value===''){ alert('Sıcaklık girin.'); return; }
-  if(document.getElementById('fIklimNem').value===''){ alert('Nem girin.'); return; }
+  if(!f.seraId){ uyar('Sera seçin.'); return; }
+  if(!f.saat){ uyar('Saat girin.'); return; }
+  if(document.getElementById('fIklimSicaklik').value===''){ uyar('Sıcaklık girin.'); return; }
+  if(document.getElementById('fIklimNem').value===''){ uyar('Nem girin.'); return; }
   state.iklimKayitlari.push({ id: uid(), ...f, olusturma: Date.now(), ...sonIslemDamgasi() });
   closeModal(); renderAll();
 }
 function iklimSil(id){
-  if(!confirm('Bu sıcaklık/nem kaydı silinsin mi?')) return;
+  if(!onayla('Bu sıcaklık/nem kaydı silinsin mi?')) return;
   silmeYedekAl(['iklimKayitlari'], 'Sıcaklık/nem kaydı');
   state.iklimKayitlari = state.iklimKayitlari.filter(k=>k.id!==id);
   renderAll();
@@ -6442,7 +7123,7 @@ function iklimTopluSatirEkle(odakla){
   }
 }
 function openIklimTopluEkleModal(){
-  if(!state.seralar.length){ alert('Önce en az bir sera ekleyin.'); return; }
+  if(!state.seralar.length){ uyar('Önce en az bir sera ekleyin.'); return; }
   openModal(`
     <h2>${i18n('Toplu Sıcaklık/Nem Girişi')}</h2>
     <div class="hint-box">Birikmiş ölçümleri tek seferde girin — her satır ayrı bir gün ve saat olabilir. Yeni satır, bir üstteki satırın serasını ve tarihini devralır. Tamamen boş satırlar yok sayılır.</div>
@@ -6472,18 +7153,18 @@ function submitIklimTopluEkle(){
     const nemRaw = r.querySelector('.iklimTopluNem').value;
     if(!saat && sicaklikRaw==='' && nemRaw==='') continue; // dokunulmamış satır
     const no = i+1;
-    if(!seraId){ alert(no+'. satır: sera seçin.'); return; }
-    if(!tarih){ alert(no+'. satır: tarih girin.'); return; }
-    if(!saat){ alert(no+'. satır: saat girin.'); return; }
-    if(sicaklikRaw===''){ alert(no+'. satır: sıcaklık girin.'); return; }
-    if(nemRaw===''){ alert(no+'. satır: nem girin.'); return; }
+    if(!seraId){ uyar(no+'. satır: sera seçin.'); return; }
+    if(!tarih){ uyar(no+'. satır: tarih girin.'); return; }
+    if(!saat){ uyar(no+'. satır: saat girin.'); return; }
+    if(sicaklikRaw===''){ uyar(no+'. satır: sıcaklık girin.'); return; }
+    if(nemRaw===''){ uyar(no+'. satır: nem girin.'); return; }
     const anahtar = seraId+'|'+tarih+'|'+saat;
     if(anahtarlar.has(anahtar)) cakisan++; // hem mevcut kayıtlar hem de listenin kendi içindeki tekrarlar
     anahtarlar.add(anahtar);
     yeniler.push({ id: uid(), seraId, tarih, saat, sicaklik: Number(sicaklikRaw), nem: Number(nemRaw), olusturma: Date.now(), ...sonIslemDamgasi() });
   }
-  if(!yeniler.length){ alert('Kaydedilecek satır yok — en az bir satırı doldurun.'); return; }
-  if(cakisan && !confirm(`${cakisan} satır için aynı sera/tarih/saatte zaten kayıt var. Yine de eklensin mi?`)) return;
+  if(!yeniler.length){ uyar('Kaydedilecek satır yok — en az bir satırı doldurun.'); return; }
+  if(cakisan && !onayla(`${cakisan} satır için aynı sera/tarih/saatte zaten kayıt var. Yine de eklensin mi?`)) return;
   yeniler.forEach(k=>state.iklimKayitlari.push(k));
   closeModal(); renderAll();
 }
@@ -6540,10 +7221,10 @@ function iklimAralikSilOnizle(){
 function submitIklimAralikSil(){
   const bas = document.getElementById('fIklimSilBas').value;
   const bit = document.getElementById('fIklimSilBit').value;
-  if(bas && bit && bas > bit){ alert('Başlangıç tarihi bitişten sonra olamaz.'); return; }
+  if(bas && bit && bas > bit){ uyar('Başlangıç tarihi bitişten sonra olamaz.'); return; }
   const kayitlar = iklimAralikKayitlari(bas, bit, document.getElementById('fIklimSilSera').value);
-  if(!kayitlar.length){ alert('Bu aralıkta silinecek kayıt yok.'); return; }
-  if(!confirm(`${iklimTarihMetni(bas)} – ${iklimTarihMetni(bit)} aralığındaki ${kayitlar.length} sıcaklık/nem kaydı silinsin mi?`)) return;
+  if(!kayitlar.length){ uyar('Bu aralıkta silinecek kayıt yok.'); return; }
+  if(!onayla(`${iklimTarihMetni(bas)} – ${iklimTarihMetni(bit)} aralığındaki ${kayitlar.length} sıcaklık/nem kaydı silinsin mi?`)) return;
   const silinecekIdler = new Set(kayitlar.map(k=>k.id));
   silmeYedekAl(['iklimKayitlari'], kayitlar.length + ' sıcaklık/nem kaydı');
   state.iklimKayitlari = state.iklimKayitlari.filter(k=>!silinecekIdler.has(k.id));
@@ -6646,7 +7327,7 @@ function renderIklim(){
   const listeEl = document.getElementById('iklimListesi');
   if(!ozetEl || !listeEl) return;
   if(listeEl.contains(document.activeElement)) return; // kullanıcı bir hücrede yazarken tabloyu yeniden çizme; başka kullanıcıdan gelen eşzamanlı bir değişiklik girilmekte olan değeri silmesin
-  const liste = [...state.iklimKayitlari].sort((a,b)=> (b.tarih+(b.saat||'')).localeCompare(a.tarih+(a.saat||'')));
+  const liste = [...sezonSuz(state.iklimKayitlari)].sort((a,b)=> (b.tarih+(b.saat||'')).localeCompare(a.tarih+(a.saat||'')));
   const ortSicaklik = liste.length ? liste.reduce((s,k)=>s+(Number(k.sicaklik)||0),0)/liste.length : null;
   const ortNem = liste.length ? liste.reduce((s,k)=>s+(Number(k.nem)||0),0)/liste.length : null;
   const son = liste[0];
@@ -6958,8 +7639,8 @@ function iklimGrafikNoktaBas(hedef){
   }
 }
 function openIklimGrafikModal(){
-  if(!state.iklimKayitlari.length){ alert('Henüz sıcaklık/nem kaydı yok.'); return; }
-  const seraIdleri = [...new Set(state.iklimKayitlari.map(k=>k.seraId))]
+  if(!state.iklimKayitlari.length){ uyar('Henüz sıcaklık/nem kaydı yok.'); return; }
+  const seraIdleri = [...new Set(sezonSuz(state.iklimKayitlari).map(k=>k.seraId))]
     .sort((a,b)=>{ const sa=seraBul(a), sb=seraBul(b); return (sa?sa.ad:'').localeCompare(sb?sb.ad:'','tr',{numeric:true}); });
   const opts = seraIdleri.map(id=>{ const s=seraBul(id); return `<option value="${id}">${escapeHtml(s?s.ad:i18n('(silinmiş sera)'))}</option>`; }).join('');
   openModal(`
@@ -7003,7 +7684,7 @@ function iklimGrafikListesi(){
   if(!seraSel) return [];
   const seraId = seraSel.value;
   const sayi = Number(sayiSel && sayiSel.value) || 40;
-  const liste = state.iklimKayitlari.filter(k=>k.seraId===seraId);
+  const liste = sezonSuz(state.iklimKayitlari).filter(k=>k.seraId===seraId);
   liste.sort((a,b)=> (a.tarih+(a.saat||'')).localeCompare(b.tarih+(b.saat||'')));
   return liste.slice(-sayi);
 }
@@ -7725,8 +8406,8 @@ function submitDayibasiEkle(){
   const ad = input.value.trim();
   // Yeni dayıbaşı varsayılan olarak o an açık olan bölge sekmesine atanır.
   const bolge = bolgeSel && ODEME_BOLGELER.includes(bolgeSel.value) ? bolgeSel.value : '';
-  if(!ad){ alert('Ad girin.'); return; }
-  if(dayibasiAdCakismasi(ad, bolge)){ alert('Bu isimde bir dayıbaşı zaten var.'); return; }
+  if(!ad){ uyar('Ad girin.'); return; }
+  if(dayibasiAdCakismasi(ad, bolge)){ uyar('Bu isimde bir dayıbaşı zaten var.'); return; }
   const yeni = { id: uid(), ad, aktif:true, ts: Date.now(), ...sonIslemDamgasi() };
   if(bolge) yeni.bolge = bolge;
   state.dayibasilar.push(yeni);
@@ -7739,7 +8420,7 @@ function dayibasiAdGuncelle(id, deger){
   if(!d) return;
   const ad = deger.trim();
   if(!ad){ renderAll(); return; }
-  if(dayibasiAdCakismasi(ad, dayibasiBolgesiVar(d)?d.bolge:'', id)){ alert('Bu isimde bir dayıbaşı zaten var.'); renderDayibasiYonetListe(); renderAll(); return; }
+  if(dayibasiAdCakismasi(ad, dayibasiBolgesiVar(d)?d.bolge:'', id)){ uyar('Bu isimde bir dayıbaşı zaten var.'); renderDayibasiYonetListe(); renderAll(); return; }
   d.ad = ad;
   Object.assign(d, sonIslemDamgasi());
   renderAll();
@@ -7755,7 +8436,7 @@ function dayibasiBolgeGuncelle(id, deger){
   // select'te olduğu için önce bırakılır, yoksa satır güncellenmeden kalır.
   if(document.activeElement && document.activeElement.blur) document.activeElement.blur();
   if(dayibasiAdCakismasi(d.ad, bolge, id)){
-    alert('Bu bölgede aynı isimde bir dayıbaşı zaten var.');
+    uyar('Bu bölgede aynı isimde bir dayıbaşı zaten var.');
     renderDayibasiYonetListe();
     return;
   }
@@ -7945,12 +8626,12 @@ function submitOdemeGir(dayibasiId){
   const tutar = Number(document.getElementById('fOdemeTutar').value)||0;
   const tarih = document.getElementById('fOdemeTarih').value || todayStr();
   const notMetni = document.getElementById('fOdemeNot').value.trim();
-  if(tutar<=0){ alert('Tutar girin.'); return; }
+  if(tutar<=0){ uyar('Tutar girin.'); return; }
   state.odemeKayitlari.push({ id: uid(), tarih, dayibasiId, tutar, not: notMetni, olusturma: Date.now(), ...sonIslemDamgasi() });
   closeModal(); renderAll();
 }
 function odemeSil(id){
-  if(!confirm('Bu ödeme kaydı silinsin mi?')) return;
+  if(!onayla('Bu ödeme kaydı silinsin mi?')) return;
   silmeYedekAl(['odemeKayitlari'], 'Ödeme kaydı');
   state.odemeKayitlari = state.odemeKayitlari.filter(x=>x.id!==id);
   renderAll();
@@ -8042,11 +8723,11 @@ function renderRapor(){
   // onları da "tarlasız" sayıp tarla paylarının üstüne bir kez daha ekliyordu
   // (aynı veride 269.295 yerine 305.175 kg).
   const tarlaBazliKg = state.tarlalar.reduce((s,t)=>s+tarlaStats(t.id).toplamKg,0);
-  const tarlasizKg = state.kirimlar.filter(k=>!kirimTarlaIdListesi(k).length).reduce((s,k)=>s+kirimTurev(k).toplamKg,0);
+  const tarlasizKg = sezonKirimlari().filter(k=>!kirimTarlaIdListesi(k).length).reduce((s,k)=>s+kirimTurev(k).toplamKg,0);
   const toplamGercek = tarlaBazliKg + tarlasizKg;
   const kgDekar = toplamDekar>0 ? toplamGercek/toplamDekar : null;
-  const toplamSulamaSaat = state.sulamaKayitlari.reduce((s,k)=>s+(Number(k.saat)||0),0);
-  const toplamDepoKg = state.depoKutulari.filter(k=>!k.cikisTarihi).reduce((s,k)=>s+(Number(k.kg)||0),0);
+  const toplamSulamaSaat = sezonSuz(state.sulamaKayitlari).reduce((s,k)=>s+(Number(k.saat)||0),0);
+  const toplamDepoKg = sezonSuz(state.depoKutulari).filter(k=>!k.cikisTarihi).reduce((s,k)=>s+(Number(k.kg)||0),0);
 
   ozetEl.innerHTML = `
     <div>${i18n('Toplam Tarla')}<b>${state.tarlalar.length}</b></div>
@@ -8067,7 +8748,7 @@ function renderRapor(){
   ]);
 
   const kirimKg = {};
-  state.kirimlar.forEach(k=>{
+  sezonKirimlari().forEach(k=>{
     if(!k.kirimNo) return; // tarla belirtilmeyen partilerde kırım no anlamsız, bu grafikten hariç tutulur
     const tr = kirimTurev(k);
     kirimKg[k.kirimNo] = (kirimKg[k.kirimNo]||0) + tr.toplamKg;
@@ -8084,7 +8765,7 @@ function renderRapor(){
 
   const kaliteKg = {};
   const kaliteRenk = { X1:'var(--green-700)', X2:'var(--green-500)', XX1:'var(--amber)' };
-  state.depoKutulari.filter(k=>!k.cikisTarihi).forEach(k=>{
+  sezonSuz(state.depoKutulari).filter(k=>!k.cikisTarihi).forEach(k=>{
     const key = k.kalite || i18n('Belirtilmemiş');
     kaliteKg[key] = (kaliteKg[key]||0) + (Number(k.kg)||0);
   });
@@ -8157,22 +8838,85 @@ if('serviceWorker' in navigator){
    bildirim gösterir, tamamen kapalıyken göstermez; gerçek push için
    Cloud Functions + Blaze plan gerekir)
    ========================================================= */
+/* Tarayıcının verdiği bildirim İZNİ (Notification.permission) JavaScript ile geri
+   alınamaz — bir kez "izin ver" denince uygulama bunu iptal edemez. Düğme yalnızca
+   izne bakarsa bu yüzden tek yönlü kalıyordu: açılıyor ama kapanmıyordu. Açık/kapalı
+   bilgisi artık ayrıca cihazda tutuluyor; kapalıyken izin duruyor olsa bile hiçbir
+   bildirim gösterilmez ve zamanlayıcı hiç kurulmaz. */
+const BILDIRIM_TERCIH_ANAHTAR = 'scvBildirimTercih';
+const BILDIRIM_KONTROL_ARALIK_MS = 30*60*1000;
+let bildirimTimer = null;
+function bildirimIzniVarMi(){ return ('Notification' in window) && Notification.permission==='granted'; }
+function bildirimTercihi(){
+  try{
+    const v = localStorage.getItem(BILDIRIM_TERCIH_ANAHTAR);
+    // Tercih hiç yazılmamışsa bu, bu sürümden ÖNCE bildirimleri açmış bir kullanıcı
+    // olabilir; izni varsa açık kabul edilir, güncelleme kimsenin bildirimini susturmaz.
+    if(v===null) return bildirimIzniVarMi();
+    return v==='acik';
+  }catch(e){ return false; }
+}
+function bildirimTercihiYaz(acik){
+  try{ localStorage.setItem(BILDIRIM_TERCIH_ANAHTAR, acik?'acik':'kapali'); }catch(e){ /* localStorage yok: bu oturumluk kalır */ }
+}
+function bildirimAcikMi(){ return bildirimIzniVarMi() && bildirimTercihi(); }
+/* Zamanlayıcı yalnızca bildirimler AÇIKKEN kurulur; kapatılınca durdurulur —
+   kapalıyken yarım saatte bir tüm tarla/sera/kırım listesini taramanın anlamı yok. */
+function bildirimZamanlayiciKur(){
+  if(bildirimTimer){ clearInterval(bildirimTimer); bildirimTimer = null; }
+  if(!bildirimAcikMi()) return;
+  bildirimKontrolEt();
+  bildirimTimer = setInterval(bildirimKontrolEt, BILDIRIM_KONTROL_ARALIK_MS);
+}
 function bildirimDurumGuncelle(){
+  const btn = document.getElementById('bildirimBtn');
   const txt = document.getElementById('bildirimBtnText');
   if(!txt) return;
-  if(!('Notification' in window)){ txt.textContent = i18n('Desteklenmiyor'); return; }
-  txt.textContent = Notification.permission==='granted' ? i18n('Bildirimler Açık') : i18n('Bildirimleri Aç');
+  if(!('Notification' in window)){
+    txt.textContent = i18n('Desteklenmiyor');
+    if(btn){ btn.classList.remove('acik'); btn.disabled = true; }
+    return;
+  }
+  if(Notification.permission==='denied'){
+    // Tarayıcı düzeyinde reddedilmiş: uygulama izni yeniden isteyemez, ancak
+    // kullanıcı site ayarlarından açabilir.
+    txt.textContent = i18n('Bildirimler Engelli');
+    if(btn){ btn.classList.remove('acik'); btn.title = i18n('Tarayıcı ayarlarından izin verilmesi gerekiyor'); }
+    return;
+  }
+  const acik = bildirimAcikMi();
+  txt.textContent = acik ? i18n('Bildirimler Açık') : i18n('Bildirimleri Aç');
+  if(btn){
+    btn.classList.toggle('acik', acik);
+    btn.title = acik ? i18n('Bildirimleri kapatmak için dokunun') : i18n('Bildirimleri açmak için dokunun');
+  }
 }
-function bildirimIzniIste(){
-  if(!('Notification' in window)){ alert('Bu tarayıcı bildirimleri desteklemiyor.'); return; }
-  if(Notification.permission==='granted'){ bildirimKontrolEt(); return; }
-  Notification.requestPermission().then(()=>{
+function bildirimAcKapa(){
+  if(!('Notification' in window)){ uyar('Bu tarayıcı bildirimleri desteklemiyor.'); return; }
+  if(bildirimAcikMi()){ // AÇIK → kapat
+    bildirimTercihiYaz(false);
     bildirimDurumGuncelle();
-    if(Notification.permission==='granted') bildirimKontrolEt();
-  });
+    bildirimZamanlayiciKur();
+    return;
+  }
+  if(Notification.permission==='denied'){
+    uyar('Bildirimler tarayıcı ayarlarından engellenmiş. Açmak için tarayıcının site ayarlarından bu sayfaya bildirim izni verin.');
+    return;
+  }
+  if(Notification.permission==='granted'){ // izin duruyor, sadece tercih kapalıydı
+    bildirimTercihiYaz(true);
+    bildirimDurumGuncelle();
+    bildirimZamanlayiciKur();
+    return;
+  }
+  Notification.requestPermission().then(()=>{
+    bildirimTercihiYaz(Notification.permission==='granted');
+    bildirimDurumGuncelle();
+    bildirimZamanlayiciKur();
+  }).catch(()=>{ bildirimDurumGuncelle(); });
 }
 function bildirimGoster(id, baslik, govde){
-  if(!('Notification' in window) || Notification.permission!=='granted') return;
+  if(!bildirimAcikMi()) return;
   const gunluk = JSON.parse(localStorage.getItem('scvBildirimGunlugu')||'{}');
   const bugun = todayStr();
   if(gunluk[id]===bugun) return; // bu uyarı bugün zaten bildirildi
@@ -8186,7 +8930,7 @@ function bildirimGoster(id, baslik, govde){
   }
 }
 function bildirimKontrolEt(){
-  if(!('Notification' in window) || Notification.permission!=='granted') return;
+  if(!bildirimAcikMi()) return;
   state.tarlalar.forEach(t=>{
     const phi = tarlaPhiDurum(t);
     if(phi && phi.kalanGun<=1){
@@ -8225,10 +8969,7 @@ havaBaslat();
 document.addEventListener('pointerup', iklimGrafikEtiketKapat);
 document.addEventListener('pointercancel', iklimGrafikEtiketKapat);
 bildirimDurumGuncelle();
-if('Notification' in window && Notification.permission==='granted'){
-  bildirimKontrolEt();
-  setInterval(bildirimKontrolEt, 30*60*1000);
-}
+bildirimZamanlayiciKur();
 </script>
 </body>
 </html>

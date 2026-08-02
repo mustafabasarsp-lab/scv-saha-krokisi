@@ -1,0 +1,522 @@
+/* SCV Saha — regresyon testleri.
+ *
+ * Çalıştırma:  node tests/run.js
+ *
+ * Otomatik test çerçevesi yok (bağımlılık eklemeye değmez); aşağıdaki minik
+ * assertion yardımcıları yeterli. Kapsam bilinçli olarak SAF HESAPLAR ve
+ * DURUM GEÇİŞLERİ üzerinde: kg/dizi toplamları, sezon türetme, senkron patch
+ * üretimi, bildirim aç/kapa gibi yanlış giderse veriyi ya da güveni bozan yerler.
+ * Görsel/CSS davranışı buranın işi değil.
+ */
+'use strict';
+const fs = require('fs');
+const path = require('path');
+const { kur } = require('./harness');
+
+let gecen = 0, kalan = [];
+function esit(gercek, beklenen, baslik) {
+  const a = JSON.stringify(gercek), b = JSON.stringify(beklenen);
+  if (a === b) { gecen++; return; }
+  kalan.push(`${baslik}\n     beklenen: ${b}\n     gerçek  : ${a}`);
+}
+function dogru(deger, baslik) { esit(!!deger, true, baslik); }
+function yanlis(deger, baslik) { esit(!!deger, false, baslik); }
+function bolum(ad) { console.log('\n' + ad); }
+
+/* ---------------------------------------------------------------
+   Bildirim aç/kapa
+   Tarayıcı izni geri alınamadığı için düğmenin tek yönlü kalması hatasıydı;
+   testler "kapatılabiliyor mu" ve "kapalıyken susuyor mu" sorularını sorar.
+   --------------------------------------------------------------- */
+bolum('Bildirimler');
+{
+  // İzin verilmiş, tercih hiç yazılmamış: eski sürümden gelen kullanıcı açık sayılır
+  const app = kur({ bildirimIzni: 'granted' });
+  dogru(app.bildirimAcikMi(), 'izin var + tercih yok → açık (eski kullanıcı susturulmaz)');
+
+  // Kapat
+  app.bildirimAcKapa();
+  yanlis(app.bildirimAcikMi(), 'kapatınca kapanır');
+  esit(app._depo.getItem('scvBildirimTercih'), 'kapali', 'kapalı tercihi cihaza yazılır');
+
+  // Kapalıyken hiçbir bildirim çıkmaz
+  const oncekiSayi = app._gunluk.bildirimler.length;
+  app.bildirimGoster('t1', 'başlık', 'gövde');
+  esit(app._gunluk.bildirimler.length, oncekiSayi, 'kapalıyken bildirim gösterilmez');
+
+  // Tekrar aç
+  app.bildirimAcKapa();
+  dogru(app.bildirimAcikMi(), 'tekrar açılabilir');
+  esit(app._depo.getItem('scvBildirimTercih'), 'acik', 'açık tercihi cihaza yazılır');
+
+  // Düğme metni ve görsel durumu tercihle birlikte değişir
+  app.bildirimDurumGuncelle();
+  esit(app._belge.getElementById('bildirimBtnText').textContent, 'Bildirimler Açık', 'açıkken düğme metni');
+  dogru(app._belge.getElementById('bildirimBtn').classList.contains('acik'), 'açıkken düğme dolu görünür');
+  app.bildirimAcKapa();
+  esit(app._belge.getElementById('bildirimBtnText').textContent, 'Bildirimleri Aç', 'kapalıyken düğme metni');
+  yanlis(app._belge.getElementById('bildirimBtn').classList.contains('acik'), 'kapalıyken düğme sönük');
+  app._temizle();
+}
+{
+  // İzin hiç istenmemiş: uygulama kendiliğinden açık saymamalı
+  const app = kur({ bildirimIzni: 'default' });
+  yanlis(app.bildirimAcikMi(), 'izin yokken kapalı');
+  app._temizle();
+}
+{
+  // Tarayıcı düzeyinde engellenmiş: açılamaz, kullanıcı bilgilendirilir
+  const app = kur({ bildirimIzni: 'denied' });
+  app.bildirimAcKapa();
+  yanlis(app.bildirimAcikMi(), 'engelliyken açılamaz');
+  dogru(app._gunluk.uyarilar.some(m => /engellenmiş/.test(m)), 'engelliyken kullanıcı uyarılır');
+  app.bildirimDurumGuncelle();
+  esit(app._belge.getElementById('bildirimBtnText').textContent, 'Bildirimler Engelli', 'engelli durumu düğmede yazar');
+  app._temizle();
+}
+
+/* ---------------------------------------------------------------
+   Çeviri: onay/uyarı kutuları
+   --------------------------------------------------------------- */
+bolum('Çeviri');
+{
+  const app = kur();
+  app.currentLang = 'en';
+  esit(app.i18n('Bu tarla silinsin mi?'), 'Delete this field?', 'silme onayı İngilizceye çevrilir');
+  esit(app.i18n('Çeşit girin.'), 'Enter a variety.', 'zorunlu alan uyarısı çevrilir');
+  esit(app.i18n('Bildirimler Engelli'), 'Notifications Blocked', 'bildirim durumu çevrilir');
+  // Sözlükte olmayan metin Türkçe kalır, patlamaz
+  esit(app.i18n('Bilinmeyen bir metin'), 'Bilinmeyen bir metin', 'karşılığı olmayan metin olduğu gibi döner');
+  app._temizle();
+}
+{
+  /* Kaynak denetimi: uyar()/onayla() içindeki SABİT metinlerin hepsinin sözlükte
+     karşılığı olmalı. Yeni bir onay kutusu eklenip çevirisi unutulduğunda, İngilizce
+     moddaki kullanıcı arayüzü İngilizce ama uyarıyı Türkçe görür — bu test o
+     unutmayı yakalar. (İçinde ${...} taşıyan şablon metinler kapsam dışı: araya
+     değer basıldığı için sözlükte anahtarları olamaz, bilinçli bir sınır.) */
+  const kaynak = fs.readFileSync(path.join(__dirname, '..', 'scv-saha-v1.html'), 'utf8');
+  const bas = kaynak.indexOf('const I18N_EN = {');
+  const son = kaynak.indexOf('\n};', bas);
+  // son+2: kapanış '\n}' dahil, sondaki ';' hariç (parantez içine alınacak)
+  const sozluk = eval('(' + kaynak.slice(bas + 'const I18N_EN = '.length, son + 2) + ')');
+  const sabitler = [...new Set(
+    [...kaynak.matchAll(/\b(?:uyar|onayla)\('((?:[^'\\]|\\.)*)'\)/g)].map(m => eval("'" + m[1] + "'"))
+  )];
+  const eksik = sabitler.filter(t => !(t in sozluk));
+  dogru(sabitler.length > 50, 'onay/uyarı metinleri kaynaktan okunabildi');
+  esit(eksik.map(t => t.slice(0, 60)), [], 'çevirisi eksik onay/uyarı metni yok');
+}
+
+/* ---------------------------------------------------------------
+   Cihaz deposu dolduğunda sessiz kalınmamalı
+   --------------------------------------------------------------- */
+bolum('Cihaz deposu');
+{
+  const app = kur();
+  app.setSyncStatus(true);
+  esit(app._belge.getElementById('syncStatusText').textContent, 'Kaydedildi · Herkese senkron', 'normalde senkron durumu yazar');
+
+  app._depo.kotaAsimi = true;
+  app.state.tarlalar.push({ id: 't1', ad: 'K1', dekar: 10 });
+  app.localStorageYaz();
+
+  dogru(app._belge.getElementById('syncStatus').classList.contains('depo-dolu'), 'kota dolunca rozet uyarıya döner');
+  dogru(/Cihaz deposu dolu/.test(app._belge.getElementById('syncStatusText').textContent), 'kullanıcı ne yapacağını okur');
+  // Depo doluyken günlük de diske yazılamaz; kayıt bellekte tutulup yine de okunabilmeli
+  dogru(app.hataGunluguOku().some(k => k.tip === 'depo'), 'yazılamayan hata kaydı yine de günlükte görünür');
+  dogru(/Cihaz deposuna yazılamadı/.test(app.hataGunluguMetne()), 'kopyalanacak metinde de yer alır');
+
+  // Firestore'a yazma başarılı olsa bile uyarı ekranda kalmalı
+  app.setSyncStatus(true);
+  dogru(app._belge.getElementById('syncStatus').classList.contains('depo-dolu'), 'senkron başarılı olsa da uyarı öncelikli kalır');
+
+  // Yer açılınca uyarı kendiliğinden kalkar
+  app._depo.kotaAsimi = false;
+  app.localStorageYaz();
+  yanlis(app._belge.getElementById('syncStatus').classList.contains('depo-dolu'), 'yer açılınca uyarı kalkar');
+  esit(app._belge.getElementById('syncStatusText').textContent, 'Kaydedildi · Herkese senkron', 'rozet eski durumuna döner');
+  app._temizle();
+}
+
+/* ---------------------------------------------------------------
+   Kırım / tarla hesapları
+   Ortak kırımın payı tarla sayısına EŞİT bölünür (dekara göre değil) —
+   tarlaların toplamı gerçek hasadı aşmasın diye.
+   --------------------------------------------------------------- */
+bolum('Kırım hesapları');
+{
+  const app = kur();
+  app.state.tarlalar.push(
+    { id: 't1', ad: 'K1', dekar: 10, bolge: 'kalemli' },
+    { id: 't2', ad: 'K2', dekar: 30, bolge: 'kalemli' },
+  );
+  // Aynı gün iki tarla birlikte kırıldı: 1000 dizi × 2 kg = 2000 kg
+  app.state.kirimlar.push({ id: 'k1', tarlaIds: ['t1', 't2'], tarih: '2026-07-10', diziSayisi: 1000, ortDiziKg: 2, kirimNo: 1, seraDagilimi: [] });
+
+  esit(app.kirimTurev(app.state.kirimlar[0]).toplamKg, 2000, 'kırım toplam kg = dizi × ort. dizi kg');
+  esit(app.tarlaStats('t1').toplamKg, 1000, 'ortak kırım payı eşit bölünür (küçük tarla)');
+  esit(app.tarlaStats('t2').toplamKg, 1000, 'ortak kırım payı dekara göre oranlanmaz');
+  esit(app.tarlaStats('t1').toplamKg + app.tarlaStats('t2').toplamKg, 2000, 'tarla payları toplamı gerçek hasadı aşmaz');
+
+  // Dekar başına verim: 2000 kg ÷ 40 dekar
+  esit(app.hesaplaRozetler().verimKirilan, 50, 'kg/dekar ağırlıklı toplamdan hesaplanır');
+  app._temizle();
+}
+{
+  // Tarlası girilmemiş kayıt: hiçbir tarlaya yazılmaz ama genel toplamda görünür
+  const app = kur();
+  app.state.tarlalar.push({ id: 't1', ad: 'K1', dekar: 10, bolge: 'kalemli' });
+  app.state.kirimlar.push(
+    { id: 'k1', tarlaIds: ['t1'], tarih: '2026-07-10', diziSayisi: 100, ortDiziKg: 2, kirimNo: 1, seraDagilimi: [] },
+    { id: 'k2', tarlaIds: [], tarih: '2026-07-11', diziSayisi: 50, ortDiziKg: 2, seraDagilimi: [] },
+  );
+  esit(app.tarlaStats('t1').toplamKg, 200, 'tarlasız kayıt tarla toplamına karışmaz');
+  esit(app.state.kirimlar.reduce((s, k) => s + app.kirimTurev(k).toplamKg, 0), 300, 'tarlasız kayıt genel toplamda sayılır');
+  app._temizle();
+}
+{
+  // Bekleyen dizi: kırılan ama henüz seraya dizilmemiş kısım
+  const app = kur();
+  app.state.kirimlar.push({ id: 'k1', tarlaIds: [], tarih: '2026-07-10', diziSayisi: 100, ortDiziKg: 2, seraDagilimi: [{ id: 'd1', seraId: 's1', diziSayisi: 40 }] });
+  const tr = app.kirimTurev(app.state.kirimlar[0]);
+  esit(tr.atananDizi, 40, 'seraya dizilen dizi sayısı');
+  esit(tr.kalanDizi, 60, 'bekleyen dizi = kırılan − dizilen');
+  app._temizle();
+}
+
+/* ---------------------------------------------------------------
+   Sezon
+   Sezon kayıtlara YAZILMAZ, tarihten türetilir. Testler hem türetmeyi hem de
+   "geçen sezonun verisi bu sezonun rakamlarına karışmıyor" güvencesini korur.
+   --------------------------------------------------------------- */
+bolum('Sezon');
+{
+  const app = kur();
+  esit(app.sezonTarihten('2026-07-10'), 2026, 'sezon tarihin yılından gelir');
+  esit(app.sezonTarihten('2025-12-31'), 2025, 'yıl sonu kaydı kendi sezonuna düşer');
+  esit(app.sezonTarihten(''), null, 'tarihsiz kayıt sezonsuzdur');
+  esit(app.sezonTarihten('bozuk'), null, 'bozuk tarih sezon üretmez');
+  app._temizle();
+}
+{
+  const app = kur();
+  app.state.tarlalar.push({ id: 't1', ad: 'K1', dekar: 10, bolge: 'kalemli' });
+  app.state.kirimlar.push(
+    { id: 'k25', tarlaIds: ['t1'], tarih: '2025-07-10', diziSayisi: 100, ortDiziKg: 2, kirimNo: 1, seraDagilimi: [] },
+    { id: 'k26', tarlaIds: ['t1'], tarih: '2026-07-10', diziSayisi: 300, ortDiziKg: 2, kirimNo: 1, seraDagilimi: [] },
+  );
+
+  app.sezonSecildi(2026);
+  esit(app.tarlaStats('t1').toplamKg, 600, 'seçili sezonun kg’ı yalnız o yıldan');
+  esit(app.hesaplaRozetler().verimKirilan, 60, 'kg/dekar geçmiş sezonla şişmez');
+
+  app.sezonSecildi(2025);
+  esit(app.tarlaStats('t1').toplamKg, 200, 'geçmiş sezona dönülebilir');
+  esit(app.hesaplaRozetler().verimKirilan, 20, 'geçmiş sezonun verimi ayrı hesaplanır');
+
+  app.sezonSecildi('tum');
+  esit(app.tarlaStats('t1').toplamKg, 800, '"tüm sezonlar" eski davranışı verir');
+
+  esit(app.mevcutSezonlar(), [2026, 2025], 'veride görünen sezonlar yeniden eskiye listelenir');
+  app._temizle();
+}
+{
+  // Sezon seçimi cihazda kalıcı olmalı, her açılışta sıfırlanmamalı
+  const app = kur();
+  app.sezonSecildi(2025);
+  esit(app._depo.getItem('scvSeciliSezon'), '2025', 'seçili sezon cihaza yazılır');
+  app._temizle();
+}
+{
+  // Tarlada sezon kapatma: yıllık bilgiler arşive, tarla temiz sezona
+  const app = kur();
+  app.state.tarlalar.push({
+    id: 't1', ad: 'K1', dekar: 14, bolge: 'kalemli', cesit: 'Izmir',
+    dikimTarihi: '2026-04-10', tahminiHasatKg: 5000,
+    ilaclar: [{ ad: 'X', tarih: '2026-06-01', phi: 14 }],
+    gubreler: [{ ad: 'Y', tarih: '2026-05-01', miktar: 20 }],
+    zararlilar: [{ ad: 'Z', tarih: '2026-06-15', yuzde: 30 }],
+  });
+  app.state.kirimlar.push({ id: 'k1', tarlaIds: ['t1'], tarih: '2026-07-10', diziSayisi: 100, ortDiziKg: 2, kirimNo: 1, seraDagilimi: [] });
+
+  app.sezonSecildi(2026);
+  app.tarlaSezonuKapat('t1');
+  const t = app.state.tarlalar[0];
+
+  esit((t.gecmisSezonlar || []).length, 1, 'sezon arşive alınır');
+  esit(t.gecmisSezonlar[0].sezon, 2026, 'arşiv doğru sezona yazılır');
+  esit(t.gecmisSezonlar[0].cesit, 'Izmir', 'çeşit arşivde saklanır');
+  esit(t.gecmisSezonlar[0].ilaclar.length, 1, 'ilaç geçmişi arşivde saklanır');
+  esit(t.gecmisSezonlar[0].gerceklesenKg, 200, 'o sezonun gerçekleşen kg’ı arşive yazılır');
+  esit(t.gecmisSezonlar[0].kirimSayisi, 1, 'kırım sayısı arşive yazılır');
+
+  esit(t.cesit, '', 'tarla yeni sezona çeşitsiz girer');
+  esit(t.ilaclar, [], 'ilaç geçmişi temizlenir');
+  esit(t.gubreler, [], 'gübre geçmişi temizlenir');
+  esit(t.zararlilar, [], 'zararlı geçmişi temizlenir');
+  esit(t.tahminiHasatKg, 0, 'tahmini hasat sıfırlanır');
+  esit(t.dekar, 14, 'dekar korunur (tarlanın büyüklüğü sezonla değişmez)');
+
+  // Olay kayıtlarına dokunulmamalı — sezon zaten tarihlerinden geliyor
+  esit(app.state.kirimlar.length, 1, 'kırım kayıtları silinmez');
+  esit(app.tarlaStats('t1').toplamKg, 200, 'geçmiş sezon verisi hâlâ okunabilir');
+
+  // İkinci kez kapatmak arşivi çiftlemez
+  app.tarlaSezonuKapat('t1');
+  esit(app.state.tarlalar[0].gecmisSezonlar.length, 1, 'aynı sezon iki kez arşivlenmez');
+  dogru(app._gunluk.uyarilar.some(m => /zaten kapatılmış/.test(m)), 'tekrar denemede kullanıcı uyarılır');
+  app._temizle();
+}
+
+/* ---------------------------------------------------------------
+   Rozet önbelleği: aynı çizim turunda iki kez hesaplanmamalı,
+   ama veri değişince MUTLAKA tazelenmeli (bayat rozet göstermek yasak)
+   --------------------------------------------------------------- */
+bolum('Rozet önbelleği');
+{
+  const app = kur();
+  app.state.tarlalar.push({ id: 't1', ad: 'K1', dekar: 10, bolge: 'kalemli' });
+  app.state.kirimlar.push({ id: 'k1', tarlaIds: ['t1'], tarih: '2026-07-10', diziSayisi: 100, ortDiziKg: 2, kirimNo: 1, seraDagilimi: [] });
+
+  const ilk = app.hesaplaRozetler();
+  dogru(app.hesaplaRozetler() === ilk, 'aynı tur içinde aynı nesne döner (yeniden hesaplanmaz)');
+  esit(ilk.verimKirilan, 20, 'ilk hesap doğru');
+
+  // Veri değişti ama önbellek atılmadı: eski sonuç dönmeye devam eder
+  app.state.kirimlar[0].diziSayisi = 200;
+  dogru(app.hesaplaRozetler() === ilk, 'önbellek atılmadan eski sonuç durur');
+
+  // saveState önbelleği atar → taze hesap
+  app.saveState();
+  const ikinci = app.hesaplaRozetler();
+  dogru(ikinci !== ilk, 'saveState sonrası yeniden hesaplanır');
+  esit(ikinci.verimKirilan, 40, 'yeni veriyle doğru sonuç');
+
+  // renderAll turu: saveState ile bittiği için sonraki tur her zaman taze başlar
+  app.state.kirimlar[0].diziSayisi = 300;
+  app.renderAll();
+  esit(app.hesaplaRozetler().verimKirilan, 60, 'renderAll turu bayat rozet bırakmaz');
+  app._temizle();
+}
+
+/* ---------------------------------------------------------------
+   Firestore giden senkron: yalnızca DEĞİŞEN alanlar patch olarak gider
+   (iki kişi aynı kaydın farklı alanını düzenlerse ikisi de kalsın diye)
+   --------------------------------------------------------------- */
+
+/* syncOutgoingNow gönderdiği anlık görüntüyü batch.commit() ÇÖZÜLDÜKTEN sonra
+   günceller (yazma başarısızsa bir sonraki turda tekrar denensin diye). Bu yüzden
+   iki gönderim arasında mikro-görev kuyruğunun boşalması beklenmeli. */
+const tik = () => new Promise(r => setImmediate(r));
+
+(async () => {
+  /* -------------------------------------------------------------
+     Tembel kütüphane yükleme
+     Açılışta indirilmemeleri kadar, yüklenemediklerinde SESSİZ kalmamaları da
+     önemli: kullanıcı düğmeye basıp hiçbir şey olmamasını hata sanmamalı.
+     ------------------------------------------------------------- */
+  bolum('Tembel kütüphane yükleme');
+  {
+    const app = kur(); // varsayılan: ağ yok
+    esit(typeof app.XLSX, 'undefined', 'xlsx açılışta yüklenmez');
+    esit(typeof app.L, 'undefined', 'leaflet açılışta yüklenmez');
+    esit(app._gunluk.istenenKaynaklar.length, 0, 'açılışta hiçbir harici kütüphane istenmez');
+
+    await app.excelDisaAktar();
+    dogru(app._gunluk.istenenKaynaklar.some(u => /xlsx/.test(u)), 'Excel dışa aktarımda xlsx istenir');
+    dogru(app._gunluk.uyarilar.some(m => /Excel kütüphanesi yüklenemedi/.test(m)), 'xlsx yüklenemezse kullanıcı uyarılır');
+
+    await app.haritaMapBaslat();
+    dogru(app._gunluk.istenenKaynaklar.some(u => /leaflet\.js/.test(u)), 'Haritalar açılınca leaflet istenir');
+    dogru(app._gunluk.istenenKaynaklar.some(u => /leaflet\.css/.test(u)), 'leaflet CSS de istenir');
+    dogru(app._gunluk.uyarilar.some(m => /Harita kütüphanesi yüklenemedi/.test(m)), 'leaflet yüklenemezse kullanıcı uyarılır');
+
+    // Başarısız yükleme kalıcı olarak kilitlenmemeli: ikinci deneme yeni istek çıkarır
+    const oncekiSayi = app._gunluk.istenenKaynaklar.filter(u => /xlsx/.test(u)).length;
+    await app.excelDisaAktar();
+    dogru(app._gunluk.istenenKaynaklar.filter(u => /xlsx/.test(u)).length > oncekiSayi, 'başarısız yükleme tekrar denenebilir');
+    app._temizle();
+  }
+  {
+    // Aynı kütüphane iki kez istenirse tek indirme yapılmalı
+    const app = kur({ kutuphaneYuklenebilir: true });
+    await Promise.all([app.kutuphaneYukle('xlsx'), app.kutuphaneYukle('xlsx')]);
+    esit(app._gunluk.istenenKaynaklar.filter(u => /xlsx/.test(u)).length, 1, 'başarılı yükleme tek kez indirilir');
+    app._temizle();
+  }
+
+  /* -------------------------------------------------------------
+     Otomatik günlük yedek
+     Bu, yanlış bir toplu silmeye karşı tek gerçek savunma; testler yedeğin
+     ALINDIĞINI, tam olduğunu ve geri yüklenebildiğini doğrular.
+     ------------------------------------------------------------- */
+  bolum('Otomatik yedek');
+  {
+    const app = kur();
+    app._girisYapildi();
+    app.state.tarlalar.push({ id: 't1', ad: 'K1', dekar: 10, cesit: 'Izmir' });
+    app.state.kirimlar.push({ id: 'k1', tarlaIds: ['t1'], tarih: '2026-07-10', diziSayisi: 100, ortDiziKg: 2, seraDagilimi: [] });
+
+    await app.otomatikYedekAl();
+    const yedekler = app._gunluk.firestoreDepo.get('yedekler');
+    const bugun = app.todayStr();
+    dogru(yedekler && yedekler.has(bugun), 'günün künye belgesi yazılır');
+    esit(yedekler.get(bugun).parcaSayisi, 1, 'küçük veri tek parçaya sığar');
+    dogru(yedekler.has(bugun + '__p0'), 'gövde parçası yazılır');
+
+    // Aynı gün ikinci çağrı tekrar yazmamalı (kota boşa gitmesin)
+    const oncekiBatch = app._gunluk.batchler.length;
+    await app.otomatikYedekAl();
+    esit(app._gunluk.batchler.length, oncekiBatch, 'aynı gün ikinci kez yedek alınmaz');
+
+    // Yedek gerçekten okunabilir ve tam olmalı
+    const paket = await app.otomatikYedekOku(bugun);
+    esit(paket.veri.tarlalar.length, 1, 'yedekten tarla geri okunur');
+    esit(paket.veri.kirimlar[0].diziSayisi, 100, 'yedekten kırım verisi bozulmadan gelir');
+    app._temizle();
+  }
+  {
+    // Veri henüz gelmemişken BOŞ yedek yazmak, o günün gerçek yedeğinin
+    // yerine geçeceği için en tehlikeli senaryo.
+    const app = kur();
+    app._girisYapildi();
+    await app.otomatikYedekAl();
+    const yedekler = app._gunluk.firestoreDepo.get('yedekler');
+    dogru(!yedekler || !yedekler.has(app.todayStr()), 'boş state yedeklenmez');
+    app._temizle();
+  }
+  {
+    // Büyük veri tek belgeye sığmaz: parçalanıp eksiksiz geri gelmeli
+    const app = kur();
+    app._girisYapildi();
+    // Gövde YEDEK_PARCA_BOYUT'u (700 KB) kesin aşsın diye her kayda dolgu konur
+    const dolgu = 'x'.repeat(200);
+    for (let i = 0; i < 4000; i++) {
+      app.state.depoKutulari.push({ id: 'kutu' + i, kutuNo: i, kg: 12.5, kalite: 'X1', tarih: '2026-07-20', bolge: 'kalemli', not: 'dolgu metni ' + i + dolgu });
+    }
+    await app.otomatikYedekAl();
+    const bugun = app.todayStr();
+    const kunye = app._gunluk.firestoreDepo.get('yedekler').get(bugun);
+    dogru(kunye.parcaSayisi > 1, 'büyük veri birden çok parçaya bölünür');
+    const paket = await app.otomatikYedekOku(bugun);
+    esit(paket.veri.depoKutulari.length, 4000, 'parçalı yedek eksiksiz birleştirilir');
+    esit(paket.veri.depoKutulari[3999].not, 'dolgu metni 3999' + dolgu, 'son kayıt da bozulmadan gelir');
+    app._temizle();
+  }
+  {
+    // Eksik parça: yarım veri döndürmektense hata vermeli
+    const app = kur();
+    app._girisYapildi();
+    app.state.tarlalar.push({ id: 't1', ad: 'K1', dekar: 10 });
+    await app.otomatikYedekAl();
+    const bugun = app.todayStr();
+    app._gunluk.firestoreDepo.get('yedekler').delete(bugun + '__p0');
+    let hataAlindi = false;
+    try { await app.otomatikYedekOku(bugun); } catch (e) { hataAlindi = /parças/.test(e.message); }
+    dogru(hataAlindi, 'eksik parçada yarım veri değil hata döner');
+    app._temizle();
+  }
+  {
+    /* Saklama penceresi: yalnızca YEDEK_SAKLAMA_GUN'den ESKİ yedekler silinmeli.
+       Bu test aynı zamanda "asıl veri temizlikten etkilenmiyor" güvencesini tutar —
+       silme sorgusu yalnızca yedekler koleksiyonunda çalışır. */
+    const app = kur();
+    app._girisYapildi();
+    const gun = app.YEDEK_SAKLAMA_GUN;
+    esit(gun, 90, 'saklama süresi 90 gün');
+
+    const bugun = app.todayStr();
+    const yedekKol = new Map();
+    app._gunluk.firestoreDepo.set('yedekler', yedekKol);
+    const ekle = (tarih) => yedekKol.set(tarih, { id: tarih, tarih, kunye: true, parcaSayisi: 1 });
+    const taze = app.yedekGunEkle(bugun, -(gun - 5));   // pencere içinde
+    const sinirda = app.yedekGunEkle(bugun, -gun);      // tam sınır: korunur
+    const eski = app.yedekGunEkle(bugun, -(gun + 5));   // pencere dışı
+    [taze, sinirda, eski].forEach(ekle);
+
+    // Asıl veri de dursun: temizlik ona dokunmamalı
+    app.state.tarlalar.push({ id: 't1', ad: 'K1', dekar: 10 });
+    app.syncOutgoingNow();
+    await tik();
+
+    await app.eskiYedekleriTemizle();
+    dogru(yedekKol.has(taze), 'pencere içindeki yedek korunur');
+    dogru(yedekKol.has(sinirda), 'tam sınırdaki yedek korunur');
+    yanlis(yedekKol.has(eski), 'penceren eski yedek silinir');
+    esit(app._gunluk.firestoreDepo.get('tarlalar').size, 1, 'temizlik asıl veriye dokunmaz');
+    esit(app.state.tarlalar.length, 1, 'cihazdaki kayıtlar yerinde kalır');
+    app._temizle();
+  }
+  {
+    // Eski sürümden gelen, koleksiyonu eksik bir yedek uygulamayı çökertmemeli
+    const app = kur();
+    app.stateYerineKoy({ tarlalar: [{ id: 't1', ad: 'K1', dekar: 10 }] }); // seralar, kirimlar… yok
+    esit(app.state.seralar, [], 'eksik koleksiyon boş dizi olarak tamamlanır');
+    esit(app.state.odemeAyarlari, [], 'sonradan eklenen koleksiyonlar da tamamlanır');
+    esit(app.state.tarlalar.length, 1, 'gelen veri korunur');
+    app.renderAll(); // eksik koleksiyonla çizim patlamamalı
+    dogru(true, 'eksik koleksiyonlu yedekten sonra çizim yapılabilir');
+    app._temizle();
+  }
+
+  bolum('Senkron');
+  {
+    const app = kur();
+    app._girisYapildi();
+    esit(app._gunluk.dinleyiciler.length, 12, '12 koleksiyonun tamamı dinlenir');
+
+    app.state.tarlalar.push({ id: 't1', ad: 'K1', dekar: 10, cesit: 'Izmir' });
+    app.syncOutgoingNow();
+    await tik();
+    const ilk = app._gunluk.batchler.pop();
+    esit(ilk.length, 1, 'yeni kayıt tek işlemle gönderilir');
+    esit(ilk[0].tur, 'set', 'yeni kayıt set ile yazılır');
+    esit(ilk[0].veri.ad, 'K1', 'yeni kayıt tam gövdesiyle gider');
+
+    // Tek alan değişti: yalnızca o alan gitmeli
+    app.state.tarlalar[0].dekar = 12;
+    app.syncOutgoingNow();
+    await tik();
+    const ikinci = app._gunluk.batchler.pop();
+    esit(Object.keys(ikinci[0].veri), ['dekar'], 'değişmeyen alanlar tekrar gönderilmez');
+    esit(ikinci[0].sec, { merge: true }, 'patch merge ile yazılır');
+
+    // Hiçbir şey değişmedi: tek bir yazma bile olmamalı
+    const oncekiBatchSayisi = app._gunluk.batchler.length;
+    app.syncOutgoingNow();
+    await tik();
+    esit(app._gunluk.batchler.length, oncekiBatchSayisi, 'değişiklik yoksa yazma yapılmaz');
+
+    // Silinen kayıt sunucudan da silinmeli
+    app.state.tarlalar.length = 0;
+    app.syncOutgoingNow();
+    await tik();
+    const silme = app._gunluk.batchler.pop();
+    esit(silme[0].tur, 'delete', 'silinen kayıt için delete gönderilir');
+    esit(silme[0].ref._id, 't1', 'doğru belge silinir');
+    app._temizle();
+  }
+  {
+    // Belge id'si her zaman kaydın kendi id alanına eşit olmalı — firestore.rules
+    // bu eşleşmeyi zorunlu kılıyor, bozulursa yazma sunucuda reddedilir.
+    const app = kur();
+    app._girisYapildi();
+    app.state.seralar.push({ id: 's1', ad: 'B1', kapasite: 400, donemler: [] });
+    app.syncOutgoingNow();
+    await tik();
+    const b = app._gunluk.batchler.pop();
+    esit(b[0].ref._id, 's1', 'belge id = kaydın id alanı');
+    esit(b[0].veri.id, 's1', 'gövdedeki id alanı korunur');
+    app._temizle();
+  }
+
+  /* --------------------------------------------------------------- */
+  console.log(`\n${'─'.repeat(52)}`);
+  if (kalan.length) {
+    console.log(`GEÇEN: ${gecen}   KALAN: ${kalan.length}\n`);
+    kalan.forEach((k, i) => console.log(`  ${i + 1}) ${k}\n`));
+    process.exit(1);
+  }
+  console.log(`GEÇEN: ${gecen}   KALAN: 0`);
+})();

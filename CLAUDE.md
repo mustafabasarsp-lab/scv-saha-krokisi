@@ -6,7 +6,8 @@
 
 ## Ortam
 
-- `node` kurulu: `C:\Program Files\nodejs\node.exe` (PATH'te). Test için standart yöntem: fonksiyonları HTML'den çekip stub'larla çalıştıran geçici Node harness'ı (scratchpad'e yaz, projeye değil).
+- `node` kurulu: `C:\Program Files\nodejs\node.exe` (PATH'te).
+- **Testler: `node tests/run.js`** — değişiklikten sonra çalıştır. `tests/harness.js` uygulamanın inline `<script>`'ini sahte DOM/localStorage/Firebase ile gerçek bir ortamda çalıştırır, `tests/run.js` iddiaları tutar. Yeni davranış eklerken oraya da bir test ekle; tek seferlik ölçüm/deneme betikleri yine scratchpad'e.
 - `gh` CLI **yok**. GitHub işleri için `git` + `curl` kullan.
 - Commit'te pre-commit hook `APP_SURUM` ve `sw.js`'teki `CACHE_NAME`'i otomatik artırır — sürümü elle değiştirme.
 - `firestore.rules` değişirse Firebase Console'dan manuel publish gerekir.
