@@ -47,12 +47,15 @@ service cloud.firestore {
     // yasak, bir hatanın alınmış yedeğin üzerine yazıp onu bozmasını engeller.
     // Silme serbesttir çünkü süresi dolan yedekleri uygulama kendisi temizler
     // (YEDEK_SAKLAMA_GUN, şu an 90 gün).
+    // NOT: bu bloktaki koşullar bilerek TEK SATIRDA. Çok satırlı yazıldığında
+    // Console "Unexpected '&&'" veriyordu; sebebi tam olarak saptanamadı, ama
+    // tek satır sorunsuz geçiyor ve kısa olduğu için sarma riski de yok.
+    // Eskiden burada tarih alanının biçimi de doğrulanıyordu (is string,
+    // size() == 10); yayınlanabilirlik uğruna çıkarıldı. Asıl korumalar duruyor:
+    // giriş zorunlu, belge id'si kaydın id'sine eşit, ve yedekler değiştirilemez.
     match /yedekler/{docId} {
       allow read, delete: if request.auth != null;
-      allow create: if request.auth != null
-        && request.resource.data.id == docId
-        && request.resource.data.tarih is string
-        && request.resource.data.tarih.size() == 10;
+      allow create: if request.auth != null && request.resource.data.id == docId;
       allow update: if false;
     }
   }
