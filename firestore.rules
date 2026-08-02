@@ -47,7 +47,8 @@ service cloud.firestore {
     // Yedekler DEĞİŞTİRİLEMEZ (update yasak): bir günün yedeği bir kez yazılır.
     // Uygulama zaten yazmadan önce o günün künyesi var mı diye bakar; buradaki
     // yasak, bir hatanın alınmış yedeğin üzerine yazıp onu bozmasını engeller.
-    // Silme serbesttir çünkü 30 günden eski yedekleri uygulama kendisi temizler.
+    // Silme serbesttir çünkü süresi dolan yedekleri uygulama kendisi temizler
+    // (YEDEK_SAKLAMA_GUN, şu an 90 gün).
     match /yedekler/{docId} {
       allow read, delete: if girisli();
       allow create: if girisli()
