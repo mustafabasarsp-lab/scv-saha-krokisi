@@ -923,7 +923,48 @@ body.has-fullscreen-panel{overflow:hidden;}
   overscroll-behavior:contain;
   padding:16px 18px;
 }
-.modal h2{color:var(--green-900);font-size:20px;margin-bottom:10px;}
+.modal h2{color:var(--green-900);font-size:var(--fs-xl);margin-bottom:10px;}
+
+/* ---- SERA SAHA KARTI ----
+   Sahada seralar sırayla gezilirken tek bakışta okunması gereken blok. Ölçek
+   bilerek serttir: varyete en büyük, kırım/fide rozetleri ikinci, tarihler
+   üçüncü, tarla ve bekleme süresi en sönük. */
+.sera-detay-baslik{display:flex;align-items:center;gap:var(--sp-2);margin-bottom:10px;}
+.sera-detay-baslik h2{margin:0;flex:1;text-align:center;}
+.sera-gez{flex:0 0 auto;font-size:22px;font-weight:var(--fw-kalin);}
+.saha-kart{
+  background:var(--panel-2);
+  border:1px solid var(--border);
+  border-left:4px solid var(--green-700);
+  border-radius:var(--r-md);
+  padding:var(--sp-3) var(--sp-4);
+  margin-bottom:var(--sp-3);
+}
+.saha-kart-varyete{
+  font-size:var(--fs-2xl);font-weight:var(--fw-kalin);
+  color:var(--green-900);line-height:1.1;letter-spacing:-.02em;
+}
+.saha-kart-rozetler{display:flex;flex-wrap:wrap;gap:var(--sp-2);margin-top:var(--sp-2);}
+.saha-kart-kirim,.saha-kart-fide{
+  font-size:var(--fs-sm);font-weight:var(--fw-kalin);
+  text-transform:uppercase;letter-spacing:.05em;
+  padding:3px 10px;border-radius:var(--r-pill);
+}
+.saha-kart-kirim{background:var(--green-100);color:var(--green-700);}
+.saha-kart-fide{background:var(--empty);color:var(--ink);}
+/* Seçim bekleyen karma tarla: kehribar, çünkü eksik bilgi — hata değil. */
+.saha-kart-fide.eksik{background:var(--amber-soft);color:var(--amber);}
+.saha-kart-tarihler{display:flex;gap:var(--sp-5);margin-top:var(--sp-3);}
+.saha-kart-tarihler span{display:block;font-size:var(--fs-xs);color:var(--muted);text-transform:uppercase;letter-spacing:.05em;}
+.saha-kart-tarihler b{font-size:var(--fs-lg);font-weight:var(--fw-kalin);color:var(--ink);}
+/* Tarla ve bekleme süresi: istendi ama "göze batmasın" — en sönük satır. */
+.saha-kart-ikincil{margin-top:var(--sp-2);font-size:var(--fs-xs);color:var(--muted);}
+.saha-kart-fide-sec{
+  display:flex;flex-wrap:wrap;align-items:center;gap:var(--sp-2);
+  margin-top:var(--sp-3);padding-top:var(--sp-3);border-top:1px solid var(--border);
+  font-size:var(--fs-xs);color:var(--muted);
+}
+.saha-kart-bos{color:var(--muted);font-size:var(--fs-sm);border-left-color:var(--border-strong);}
 .field{margin-bottom:9px;}
 .field label{display:block;font-size:11.5px;color:var(--muted);margin-bottom:2px;text-transform:uppercase;letter-spacing:.03em;}
 .field input,.field select,.field textarea{
@@ -1986,7 +2027,7 @@ const AYARLAR = {
   UNITE_PX: 40                // referans kapasitedeki sera-box genişliği (px) — kroki oranı
 };
 const STORAGE_KEY = 'scvSahaKrokiV1';
-const APP_SURUM = 'v90'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
+const APP_SURUM = 'v91'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
 
 /* =========================================================
    HATA / DONMA GÜNLÜĞÜ — "bazen donuyor" şikayetini araştırmak için.
@@ -2122,6 +2163,11 @@ const I18N_EN = {
   '⬇️ Uygulamayı Yükle':'⬇️ Install App', '💾 Veri Yönetimi':'💾 Data Management',
   'Giriş yapan':'Logged in as', '🚪 Çıkış Yap / Hesap Değiştir':'🚪 Log Out / Switch Account',
   'Dizim Alanı':'Stringing Area', 'Tam Ekran':'Fullscreen', 'Tam Ekranı Kapat':'Exit Fullscreen', 'Ayarlar':'Settings',
+  'Viyol':'Tray', 'Yer Ocağı':'Ground Bed', 'Karma — seçilmedi':'Mixed — not set',
+  'Karma tarla — bu seranınki hangisi?':'Mixed field — which one is this greenhouse?',
+  'kırım':'harvest', 'kırım no yok':'no harvest no.', 'parti daha':'more batches',
+  'Bu serada aktif dizim yok.':'No active stringing in this greenhouse.',
+  'Önceki sera':'Previous greenhouse', 'Sonraki sera':'Next greenhouse',
   '+ Kırım Kaydı Gir':'+ Enter Harvest Record', 'Tarla · Kırım No · Dizi Sayısı':'Field · Harvest No. · String Count',
   'Bekleyen Kırımlar (dizilmemiş)':'Pending Harvests (not yet strung)', 'Bekleyen kırım yok — tüm kırımlar seralara dizilmiş.':'No pending harvests — all harvests have been strung.',
   'Seraya Dağıt':'Distribute to Greenhouse', 'Tütün Dizimi Ekle':'Add Tobacco Stringing', '+ Tütün Dizimi Ekle':'+ Add Tobacco Stringing',
@@ -3005,6 +3051,82 @@ function seraBul(id){ return state.seralar.find(s=>s.id===id); }
 const seraAdKarsilastirici = new Intl.Collator('tr',{numeric:true}); // localeCompare her çağrıda collator kurar; sıralama sıcak yolda
 function seralarSirali(liste){ return [...(liste||state.seralar)].sort((a,b)=>seraAdKarsilastirici.compare(a.ad||'', b.ad||'')); }
 function seraAktifDonem(sera){ return (sera && sera.donemler || []).find(d=>d.aktif) || null; }
+
+/* ---- Sahada anında görülmesi gereken beş bilgi (varyete, kırım tarihi, dizim
+   tarihi, kaçıncı kırım, viyol/yer ocağı). Dördü zaten kayıtlı, aşağısı onları
+   tek yerde toplar. Beşincisi (fide tipi) tarladan türetilir ama tarla KARMA ise
+   (hem viyolDekar hem yerOcagiDekar dolu) hangi diziler nereden geldi bilinmez —
+   o durumda kullanıcı seçer ve seçim kaynağa yazılır. ---- */
+const FIDE_VIYOL = 'viyol', FIDE_YER = 'yerOcagi', FIDE_KARMA = 'karma';
+function tarlaFideTipi(tarla){
+  if(!tarla) return null;
+  const v = Number(tarla.viyolDekar)||0, y = Number(tarla.yerOcagiDekar)||0;
+  if(v>0 && y>0) return FIDE_KARMA;
+  if(v>0) return FIDE_VIYOL;
+  if(y>0) return FIDE_YER;
+  return null; // hiç belirtilmemiş
+}
+/* Bir kaynağın (seraya giren bir dizim partisi) fide tipi.
+   secim: kullanıcının bu parti için elle seçtiği tip — türetmeyi EZER. */
+function kaynakFideTipi(kaynak){
+  if(!kaynak) return { tip:null, secimGerekli:false };
+  if(kaynak.fideTipi) return { tip:kaynak.fideTipi, secimGerekli:false, elle:true };
+  const ham = tarlaFideTipi(tarlaBul(kaynak.tarlaId));
+  // Karma tarlada türetme dürüst bir cevap veremez: seçim istenir.
+  if(ham===FIDE_KARMA) return { tip:FIDE_KARMA, secimGerekli:true };
+  return { tip:ham, secimGerekli:false };
+}
+function fideTipiEtiket(tip){
+  if(tip===FIDE_VIYOL) return i18n('Viyol');
+  if(tip===FIDE_YER) return i18n('Yer Ocağı');
+  if(tip===FIDE_KARMA) return i18n('Karma — seçilmedi');
+  return '—';
+}
+/* Kaynak, hangi kırımdan geldiğini kirimId ile taşır; kaçıncı kırım olduğu
+   kırım kaydında durur, kaynağa kopyalanmamış. */
+function kaynakKirimNo(kaynak){
+  if(!kaynak || !kaynak.kirimId) return null;
+  const k = (state.kirimlar||[]).find(x=>x.id===kaynak.kirimId);
+  return k ? (k.kirimNo ?? null) : null;
+}
+/* Seranın aktif dönemindeki "asıl" kaynak. Gerçek veride her dolu seranın tam
+   olarak bir kaynağı var (121/121); yine de birden fazlaysa en son dizilen
+   parti asıl kabul edilir, kalanı kartta "+N parti" olarak belirtilir. */
+function seraAsilKaynak(sera){
+  const d = seraAktifDonem(sera);
+  if(!d) return null;
+  const kn = [...(d.kaynaklar||[])].sort((a,b)=>(b.dizimTarihi||b.tarih||'').localeCompare(a.dizimTarihi||a.tarih||''));
+  return kn[0] || null;
+}
+/* '2026-07-18' → '18.07.2026'. Kartta tarihler ISO değil, sahada okunan biçimde. */
+function isoTarihTr(iso){
+  if(!iso || typeof iso!=='string') return '—';
+  const p = iso.slice(0,10).split('-');
+  return p.length===3 ? `${p[2]}.${p[1]}.${p[0]}` : iso;
+}
+/* Karma tarladan gelen partide kullanıcının seçtiği fide tipini kaydeder.
+   Kaynak, dizimId (yoksa kirimId) ile bulunur — sıra değişse de doğru partiye yazar. */
+function seraFideTipiSec(seraId, kaynakAnahtar, tip){
+  const s = seraBul(seraId);
+  const d = s && seraAktifDonem(s);
+  if(!d) return;
+  const kn = (d.kaynaklar||[]).find(k => (k.dizimId||k.kirimId||'') === kaynakAnahtar);
+  if(!kn) return;
+  kn.fideTipi = tip;
+  Object.assign(s, sonIslemDamgasi());
+  renderAll(); openSeraDetay(seraId); // renderAll sonunda saveState var
+
+}
+/* Sera detayında ‹ › ile bir önceki/sonraki seraya geçer. Sıra, panelde o an
+   görünen sıradır (bölge sekmesi + arama) — seralar sahada zaten sırayla
+   geziliyor, kartı kapatıp yenisini açmak gereksiz bir adımdı. */
+function seraDetayGezin(seraId, yon){
+  const liste = seraGorunurListe();
+  const i = liste.findIndex(x=>x.id===seraId);
+  if(i<0 || liste.length<2) return;
+  const hedef = liste[(i + yon + liste.length) % liste.length];
+  openSeraDetay(hedef.id);
+}
 function seraGuncelDolu(sera){ const d = seraAktifDonem(sera); return d ? (Number(d.dolu)||0) : 0; }
 function seraGuncelDizilmisKg(sera){ const d = seraAktifDonem(sera); return d ? (d.kaynaklar||[]).reduce((s,k)=>s+(Number(k.diziKg)||0),0) : 0; }
 /* Aynı gün aynı kodlu birden çok tarla birlikte kırıldığında tek ortak kayıt
@@ -3412,15 +3534,22 @@ function seraTermometreFiltreToggle(){
 function openSeraEkleModalAktifBolgeIle(){
   openSeraEkleModal(seraBolgeAktif==='tumu' ? '' : seraBolgeAktif);
 }
-function renderSeralar(){
-  if(sayfaGizliMi('pageSaha')) return;
-  const el = document.getElementById('seraPlot');
+/* Panelde O AN görünen seralar, ekrandaki sırayla. Hem ızgarayı çizen
+   renderSeralar hem de sera detayındaki ‹ › gezinmesi bunu kullanır — ikisi
+   ayrı ayrı filtrelenirse ok tuşu ekranda olmayan bir seraya atlar. */
+function seraGorunurListe(){
   let liste = seraBolgeAktif==='tumu' ? state.seralar : state.seralar.filter(s=>s.bolge===seraBolgeAktif);
   if(seraTermometreFiltre) liste = liste.filter(s=>s.termometreVar===true);
   const aramaInput = document.getElementById('seraAramaInput');
   const arama = aramaInput ? aramaInput.value.trim().toLocaleLowerCase('tr') : '';
   if(arama) liste = liste.filter(s=>(s.ad||'').toLocaleLowerCase('tr').includes(arama));
-  liste = [...liste].sort((a,b)=>(a.ad||'').localeCompare(b.ad||'','tr',{numeric:true}));
+  return [...liste].sort((a,b)=>(a.ad||'').localeCompare(b.ad||'','tr',{numeric:true}));
+}
+function renderSeralar(){
+  if(sayfaGizliMi('pageSaha')) return;
+  const el = document.getElementById('seraPlot');
+  const liste = seraGorunurListe();
+  const arama = (document.getElementById('seraAramaInput')?.value||'').trim();
   // Bant filtreden bağımsızdır: işaretli sera arama/bölge filtresi yüzünden gizlenmiş olsa da görünür kalır
   const bantEl = document.getElementById('seraCalismaBant');
   if(bantEl) bantEl.innerHTML =
@@ -3523,12 +3652,23 @@ function panelTamEkranKapat(panelElId){
 }
 document.addEventListener('keydown', function(e){
   if(e.key==='Escape' && fullscreenPanelId){ panelTamEkranKapat(fullscreenPanelId); }
+  /* Sera detayı açıkken ok tuşlarıyla komşu seraya geç. Bir alana yazı
+     yazılıyorsa karışmasın: input/select/textarea içindeyken devre dışı. */
+  if(acikSeraDetayId && (e.key==='ArrowLeft' || e.key==='ArrowRight')){
+    const t = e.target;
+    if(t && /^(INPUT|SELECT|TEXTAREA)$/.test(t.tagName)) return;
+    e.preventDefault();
+    seraDetayGezin(acikSeraDetayId, e.key==='ArrowRight' ? 1 : -1);
+  }
 });
 
 /* =========================================================
    MODAL YARDIMCI
    ========================================================= */
 function openModal(html, wide, extraClass){
+  /* Varsayılan olarak sıfırlanır; sera detayı kendi id'sini openModal'dan SONRA
+     yazar. Böylece başka bir modal açıldığında ok tuşları sera gezmeye devam etmez. */
+  acikSeraDetayId = null;
   const el = document.getElementById('modalContent');
   el.innerHTML = html;
   el.classList.toggle('modal-wide', !!wide);
@@ -3539,7 +3679,30 @@ function openModal(html, wide, extraClass){
 function closeModal(){
   document.getElementById('overlay').classList.add('hidden');
   document.getElementById('modalContent').innerHTML = '';
+  acikSeraDetayId = null; // ok tuşu/kaydırma gezinmesi yalnızca sera detayı açıkken çalışır
 }
+
+/* Sera detayında yatay kaydırma ile komşu seraya geçiş. Seralar sahada sırayla
+   gezildiği için "kapat → yenisini aç" adımı gereksizdi.
+   Dikey kaydırmayı ezmemek için: yatay hareket dikeyin en az iki katı olmalı. */
+let acikSeraDetayId = null;
+let dokunusBasX = null, dokunusBasY = null;
+(function seraKaydirmaBagla(){
+  const el = document.getElementById('modalContent');
+  if(!el) return;
+  el.addEventListener('touchstart', e=>{
+    if(!acikSeraDetayId || e.touches.length!==1){ dokunusBasX = null; return; }
+    dokunusBasX = e.touches[0].clientX; dokunusBasY = e.touches[0].clientY;
+  }, {passive:true});
+  el.addEventListener('touchend', e=>{
+    if(dokunusBasX===null || !acikSeraDetayId) return;
+    const dx = e.changedTouches[0].clientX - dokunusBasX;
+    const dy = e.changedTouches[0].clientY - dokunusBasY;
+    dokunusBasX = null;
+    if(Math.abs(dx) < 55 || Math.abs(dx) < Math.abs(dy)*2) return;
+    seraDetayGezin(acikSeraDetayId, dx < 0 ? 1 : -1); // sola kaydır → sonraki
+  }, {passive:true});
+})();
 document.getElementById('overlay').addEventListener('click', function(e){
   if(e.target.id === 'overlay') closeModal();
 });
@@ -4051,8 +4214,57 @@ function openSeraDetay(id){
       <button class="btn btn-primary ust-bosluk-minik" onclick="submitDonemBaslat('${s.id}')">${i18n('Dönem Başlat')}</button>
     </div>
   `;
+  /* ---- SAHA KARTI ----
+     Sahada seralar arasında gezerken anında görülmesi istenen beş bilgi:
+     varyete kodu, kaçıncı kırım, fide tipi (viyol/yer ocağı), kırım tarihi,
+     dizim tarihi. Bunlar zaten kayıtlıydı ama modalın içine dağılmıştı —
+     varyete küçük bir rozet, tarihler meta metni, kaçıncı kırım hiç yoktu.
+     Tarla ve bekleme süresi ikincil satırda: istendi ama göze batmamalı. ---- */
+  const asilKaynak = seraAsilKaynak(s);
+  const sahaKartiHtml = asilKaynak ? (() => {
+    const fide = kaynakFideTipi(asilKaynak);
+    const kirimNo = kaynakKirimNo(asilKaynak);
+    const dizimT = asilKaynak.dizimTarihi || asilKaynak.tarih;
+    const bekleGun = (asilKaynak.tarih && dizimT)
+      ? Math.round((new Date(dizimT) - new Date(asilKaynak.tarih))/86400000) : null;
+    const bekleEtiket = bekleGun===null ? '' : (bekleGun<=0 ? i18n('aynı gün') : bekleGun+' '+i18n('gün bekledi'));
+    const partiSayisi = (d && (d.kaynaklar||[]).length) || 0;
+    const anahtar = asilKaynak.dizimId || asilKaynak.kirimId || '';
+    // Karma tarlada uygulama dürüst bir cevap veremez; seçimi kullanıcı yapar.
+    const fideHtml = fide.secimGerekli
+      ? `<div class="saha-kart-fide-sec">
+           <span>${i18n('Karma tarla — bu seranınki hangisi?')}</span>
+           <button class="btn btn-sm" onclick="seraFideTipiSec('${s.id}','${anahtar}','${FIDE_VIYOL}')">${i18n('Viyol')}</button>
+           <button class="btn btn-sm" onclick="seraFideTipiSec('${s.id}','${anahtar}','${FIDE_YER}')">${i18n('Yer Ocağı')}</button>
+         </div>`
+      : '';
+    return `<div class="saha-kart">
+      <div class="saha-kart-varyete">${escapeHtml(asilKaynak.cesit || d.cesit || '—')}</div>
+      <div class="saha-kart-rozetler">
+        <span class="saha-kart-kirim">${kirimNo ? kirimNo+'. '+i18n('kırım') : i18n('kırım no yok')}</span>
+        <span class="saha-kart-fide${fide.secimGerekli?' eksik':''}">${escapeHtml(fideTipiEtiket(fide.tip))}</span>
+      </div>
+      <div class="saha-kart-tarihler">
+        <div><span>${i18n('Kırım')}</span><b>${isoTarihTr(asilKaynak.tarih)}</b></div>
+        <div><span>${i18n('Dizim')}</span><b>${isoTarihTr(dizimT)}</b></div>
+      </div>
+      <div class="saha-kart-ikincil">
+        ${escapeHtml(kirimTarlaEtiket(asilKaynak))}${bekleEtiket?' · '+escapeHtml(bekleEtiket):''}${partiSayisi>1?' · +'+(partiSayisi-1)+' '+i18n('parti daha'):''}
+      </div>
+      ${fideHtml}
+    </div>`;
+  })() : `<div class="saha-kart saha-kart-bos">${i18n('Bu serada aktif dizim yok.')}</div>`;
+
+  const gezinmeListesi = seraGorunurListe();
+  const gezinmeVar = gezinmeListesi.length > 1 && gezinmeListesi.some(x=>x.id===s.id);
+
   openModal(`
-    <h2>${escapeHtml(s.ad)}</h2>
+    <div class="sera-detay-baslik">
+      ${gezinmeVar?`<button class="icon-btn ghost sera-gez" onclick="seraDetayGezin('${s.id}',-1)" title="${i18n('Önceki sera')}" aria-label="${i18n('Önceki sera')}">‹</button>`:''}
+      <h2>${escapeHtml(s.ad)}</h2>
+      ${gezinmeVar?`<button class="icon-btn ghost sera-gez" onclick="seraDetayGezin('${s.id}',1)" title="${i18n('Sonraki sera')}" aria-label="${i18n('Sonraki sera')}">›</button>`:''}
+    </div>
+    ${sahaKartiHtml}
     <div class="detail-grid">
       <div>${i18n('Kapasite')}<b>${fmt(s.kapasite,0)} dizi</b></div>
       <div>${i18n('Bölge')}<b>${s.bolge==='tekeliler'?'Tekeliler':s.bolge==='kalemli'?'Kalemli':'-'}</b></div>
@@ -4075,6 +4287,8 @@ function openSeraDetay(id){
       <button class="btn btn-danger" onclick="seraSil('${s.id}')">${i18n('Sil')}</button>
     </div>
   `);
+  // openModal bunu sıfırlar; ok tuşu ve kaydırma gezinmesi için sonra yazılır.
+  acikSeraDetayId = s.id;
 }
 
 /* =========================================================
