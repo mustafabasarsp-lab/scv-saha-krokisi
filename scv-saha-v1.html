@@ -713,13 +713,17 @@ body.has-fullscreen-panel{overflow:hidden;}
   position:relative;
   display:flex;flex-direction:column;
 }
+/* Punto sera kutusuyla EŞİT (.sera-box .label 11px / .pct 10px). Tarla adları
+   9-10.5px'te kalmıştı; aynı ızgarada, aynı bakışta sera etiketleri okunurken
+   tarla adları sıkışıktı. Yatay dolgu 6→4px kısaldı: 11px'e çıkarken ada aynı
+   yer kalsın diye — ölçüldü, kırpılan ad sayısı artmıyor. */
 .tarla-box .name{
-  font-weight:700;font-size:10.5px;color:var(--etiket-ink);
+  font-weight:700;font-size:11px;color:var(--etiket-ink);
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
   background:var(--etiket-bg);
   align-self:flex-start;
   max-width:100%;
-  padding:1px 6px;
+  padding:1px 4px;
   border-radius:3px 3px 3px 0;
   box-shadow:0 2px 3px rgba(0,0,0,.22);
   margin:-1px 0 4px -2px;
@@ -731,7 +735,7 @@ body.has-fullscreen-panel{overflow:hidden;}
   border-width:3px 3px 0 0;border-style:solid;
   border-color:var(--etiket-bg) transparent transparent transparent;
 }
-.tarla-box .sub{font-size:9px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.tarla-box .sub{font-size:10px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .tarla-box .kirim-row{display:flex;align-items:center;gap:2px;margin-top:auto;flex-wrap:wrap;}
 /* KIRIM SIRASI GÖSTERGESİ — uygulamanın imzası.
    Altı nokta, altı kırım. Dolu noktalar kendi kırımlarının tonunu taşır
@@ -764,12 +768,13 @@ body.has-fullscreen-panel{overflow:hidden;}
 .phi-badge{
   position:absolute;top:3px;right:3px;
   background:var(--red);color:var(--on-accent);font-size:8px;font-weight:700;
-  padding:1px 4px;border-radius:5px;
+  /* Kutunun kendisi 3px: iç öğe dıştan yuvarlak olamaz (5px'ti). */
+  padding:1px 4px;border-radius:3px;
 }
 .zararli-badge{
   position:absolute;top:22px;right:3px;
   background:var(--amber);color:var(--on-accent);font-size:8px;font-weight:700;
-  padding:1px 4px;border-radius:5px;
+  padding:1px 4px;border-radius:3px; /* phi-badge ile aynı gerekçe: iç ≤ dış */
 }
 .zararli-badge.siddetli{background:var(--red);}
 .tarla-close{
@@ -1437,8 +1442,10 @@ body.has-fullscreen-panel{overflow:hidden;}
   .btn-csv{padding:6px 9px;font-size:var(--fs-xs);min-height:44px;}
   .header .brand{font-size:var(--fs-lg);}
   .tarla-box{width:64px;height:64px;padding:4px 5px;}
-  .tarla-box .name{font-size:9px;}
-  .tarla-box .sub{font-size:8px;}
+  /* Telefonda ayrı punto override'ı KALDIRILDI: kutu 82→64px'e düşse de
+     11/10 sığıyor (dar şerit dolgusuyla ölçüldü), ve sera kutusunun zaten
+     telefonda override'ı yok. İki kutu tipi artık her genişlikte aynı
+     puntoyu kullanıyor. */
   /* 64px kutuda iki satırlık "kırım yapılıyor" şeridi + ad + dekar + kırım
      noktaları aynı anda sığmıyor; işaretliyken dekar düşer, kırım noktaları kalır. */
   .tarla-box.calisma-isaretli .sub{display:none;}
@@ -2046,7 +2053,7 @@ const AYARLAR = {
   UNITE_PX: 40                // referans kapasitedeki sera-box genişliği (px) — kroki oranı
 };
 const STORAGE_KEY = 'scvSahaKrokiV1';
-const APP_SURUM = 'v94'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
+const APP_SURUM = 'v95'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
 
 /* =========================================================
    HATA / DONMA GÜNLÜĞÜ — "bazen donuyor" şikayetini araştırmak için.
