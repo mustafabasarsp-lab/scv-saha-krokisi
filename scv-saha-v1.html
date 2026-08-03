@@ -2,7 +2,10 @@
 <html lang="tr">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<!-- maximum-scale YOK: güneş altında/tozlu ekranda kullanıcının parmakla
+     yakınlaştırabilmesi gerekiyor. Yakınlaştırmayı kilitlemek erişilebilirlik
+     ihlali; küçük punto tablolar (ödeme dökümü, günlük kutulama) bunu şart kılıyor. -->
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>SCV Saha</title>
 <!-- Betikten ÖNCE durmalı: temaUygula bu etiketi güncelliyor. -->
 <meta name="theme-color" content="#0E6B41">
@@ -94,8 +97,9 @@ if(window.matchMedia){
   --border-strong:#C2CFBC;
   /* accent üzerine basılan metin — koyu temada accent açıldığı için değişir */
   --on-accent:#FFFFFF;
-  /* tütün sarısı zemin üzerine basılan metin (kaydediliyor rozeti, kırım düğmesi) */
-  --on-tobacco:#3A2A05;
+  /* tütün sarısı zemin üzerine basılan metin (kaydediliyor rozeti, kırım düğmesi).
+     #3A2A05 iken --tobacco üzerinde 4.33:1 kalıyordu (AA sınırı 4.5); koyulaştırıldı → 4.90:1. */
+  --on-tobacco:#2E2104;
   /* Tablo başlık şeridi. Ana yeşilden ayrı bir belirteç: koyu temada accent
      parlaklaşıyor ve geniş bir başlık şeridi olarak kullanıldığında göz yoruyordu. */
   --table-head-bg:#0E6B41;
@@ -133,7 +137,10 @@ if(window.matchMedia){
   --plot-outline:#A13A2E;
   --tobacco:#C4820E;
   --tobacco-deep:#8A5A12;
-  --amber:#B8730A;
+  /* --amber METİN rengi olarak kullanılıyor (iklim "kuru" girdisi, uyarı rozetleri).
+     #B8730A kendi yumuşak zemininde 3.42:1, beyazda 3.82:1 ile AA'yı geçemiyordu;
+     koyulaştırıldı → soft 4.81:1, panel 5.38:1. Zemin olan --amber-soft aynı kaldı. */
+  --amber:#965E07;
   --amber-soft:#FDF1DA;
   --red:#B3261E;
   --red-soft:#FBE4E1;
@@ -242,7 +249,12 @@ input[type=number],.num,td,th,.badge b,.quickstats b{font-variant-numeric:tabula
 .app{
   display:grid;
   grid-template-rows:auto 1fr auto;
+  /* dvh: telefon tarayıcısında adres çubuğu gizlenip görününce 100vh sabit kalır
+     ve alt şerit kırpılırdı. Modal (.modal-box) zaten dvh kullanıyordu.
+     vh önce yazılı: dvh desteklenmeyen tarayıcıda satır düşer, kabuk yine ayakta
+     kalır (burası tüm uygulamanın ızgarası, geçersiz yükseklik düzeni çökertir). */
   height:100vh;
+  height:100dvh;
   gap:8px;
   padding:8px;
 }
@@ -601,7 +613,10 @@ input[type=number],.num,td,th,.badge b,.quickstats b{font-variant-numeric:tabula
   -webkit-appearance:none;appearance:none;
 }
 .search-input::placeholder{color:var(--muted);}
-.search-input:focus{outline:none;border-color:var(--green-500);}
+/* Halka şart: kenarlık rengini değiştirmek tek başına "renk tek sinyal" oluyordu
+   ve güneş altında fark edilmiyordu. Diğer odak kuralları (.toplu-satir, .iklim-*)
+   zaten aynı halkayı kullanıyor. */
+.search-input:focus{outline:none;border-color:var(--green-500);box-shadow:0 0 0 2px var(--green-100);}
 
 /* ---------- TAM EKRAN PANEL ---------- */
 .icon-btn.fullscreen-close{display:none;}
@@ -870,6 +885,10 @@ body.has-fullscreen-panel{overflow:hidden;}
   box-shadow:0 8px 30px rgba(0,0,0,.3);
   width:100%;max-width:520px;
   max-height:88vh;overflow-y:auto;
+  /* Modalın sonuna gelince kaydırma arkadaki sayfaya zincirleniyordu: kullanıcı
+     formu kaydırmayı bitirince altındaki kroki kayıyor, modal kapanınca yer
+     değişmiş oluyordu. contain zinciri modalda kesiyor. */
+  overscroll-behavior:contain;
   padding:16px 18px;
 }
 .modal h2{color:var(--green-900);font-size:20px;margin-bottom:10px;}
@@ -1259,11 +1278,20 @@ body.has-fullscreen-panel{overflow:hidden;}
   .panel-body{-webkit-overflow-scrolling:touch;}
   .bottom-panel{height:auto;}
   .tarla-plot{-webkit-overflow-scrolling:touch;}
-  .icon-btn{width:42px;height:42px;font-size:19px;}
-  .btn{padding:12px 16px;font-size:14px;}
-  .tab-btn{padding:10px 14px;font-size:14px;}
-  /* Başlıktaki yardımcı düğmeler telefonda iki satır yer kaplıyordu. */
-  .btn-csv{padding:6px 9px;font-size:12px;min-height:34px;}
+  /* Dokunma hedefleri telefonda 44px tabanına çekildi (WCAG 2.5.5 / iOS-Android
+     ortak asgarisi). Saha kullanımı eldivenli ve tek elle: 34-42px hedeflerde
+     ıskalama oluyordu. Masaüstü ölçüleri bilerek değiştirilmedi. */
+  .icon-btn{width:44px;height:44px;font-size:19px;}
+  .btn{padding:12px 16px;font-size:14px;min-height:44px;}
+  .btn-sm{min-height:44px;}
+  .tab-btn{padding:10px 14px;font-size:14px;min-height:44px;}
+  /* Bu ikisi bileşik seçici (0,2,0) olduğu için yukarıdaki .tab-btn kuralını
+     eziyordu; telefonda 44'e çıkmaları için ayrıca yazılmaları şart. Yazı boyu
+     ve yatay dolgu korundu — sadece dokunma yüksekliği artıyor, şerit taşmıyor. */
+  .panel-head .tab-btn{min-height:44px;}
+  /* Başlıktaki yardımcı düğmeler telefonda iki satır yer kaplıyordu: yükseklik
+     44'e çıkarken yatay dolgu dar tutuldu, böylece satır sayısı artmıyor. */
+  .btn-csv{padding:6px 9px;font-size:12px;min-height:44px;}
   .header .brand{font-size:17px;}
   .tarla-box{width:64px;height:64px;padding:4px 5px;}
   .tarla-box .name{font-size:9px;}
@@ -1293,7 +1321,7 @@ body.has-fullscreen-panel{overflow:hidden;}
      daraltıldı. */
   .header .page-tabs{display:none;}
   .bolge-tabs{overflow-x:auto;flex-wrap:nowrap;-webkit-overflow-scrolling:touch;gap:6px;}
-  .bolge-tabs .tab-btn{padding:7px 12px;font-size:12.5px;min-height:34px;white-space:nowrap;flex:0 0 auto;}
+  .bolge-tabs .tab-btn{padding:7px 12px;font-size:12.5px;min-height:44px;white-space:nowrap;flex:0 0 auto;}
   /* Alta sabitlenen iki katmanın ölçüsü tek yerden gelir: FAB'ın konumu da
      gövdenin alt boşluğu da bunlardan türetilir, biri değişince öteki kaymaz. */
   :root{ --alt-nav-h:61px; --fab-h:50px; --alt-aralik:4px; --alt-nefes:8px; }
@@ -1580,7 +1608,7 @@ input.dayibasi-ad-alani{flex:1;min-width:110px;border:1px solid var(--border);bo
           <button class="icon-btn ghost" onclick="openSeraTopluModal()" title="Toplu İşlem" data-i18n-title="Toplu İşlem">☑</button>
           <button class="icon-btn ghost" onclick="panelTamEkranAc('seraPanelBox')" title="Tam Ekran" data-i18n-title="Tam Ekran">⤢</button>
           <button class="icon-btn fullscreen-close" onclick="panelTamEkranKapat('seraPanelBox')" title="Tam Ekranı Kapat" data-i18n-title="Tam Ekranı Kapat">×</button>
-          <button class="icon-btn" onclick="openSeraEkleModalAktifBolgeIle()">+</button>
+          <button class="icon-btn" onclick="openSeraEkleModalAktifBolgeIle()" title="Yeni Sera" data-i18n-title="Yeni Sera">+</button>
         </div>
       </div>
       <div class="panel-body">
@@ -1607,7 +1635,7 @@ input.dayibasi-ad-alani{flex:1;min-width:110px;border:1px solid var(--border);bo
         <button class="icon-btn ghost" onclick="openTarlaTopluModal()" title="Toplu İşlem" data-i18n-title="Toplu İşlem">☑</button>
         <button class="icon-btn ghost" onclick="panelTamEkranAc('tarlalarPanelBox')" title="Tam Ekran" data-i18n-title="Tam Ekran">⤢</button>
         <button class="icon-btn fullscreen-close" onclick="panelTamEkranKapat('tarlalarPanelBox')" title="Tam Ekranı Kapat" data-i18n-title="Tam Ekranı Kapat">×</button>
-        <button class="icon-btn" onclick="openTarlaEkleModalAktifBolgeIle()">+</button>
+        <button class="icon-btn" onclick="openTarlaEkleModalAktifBolgeIle()" title="Yeni Tarla" data-i18n-title="Yeni Tarla">+</button>
       </div>
     </div>
     <div id="tarlaCalismaBant"></div>
@@ -1647,7 +1675,7 @@ input.dayibasi-ad-alani{flex:1;min-width:110px;border:1px solid var(--border);bo
             <button class="tab-btn" id="depoBolgeTab_kalemli" onclick="depoBolgeSekmeGecis('kalemli')">Kalemli</button>
           </div>
         </div>
-        <button class="icon-btn" onclick="openKutuBasimModal()">+</button>
+        <button class="icon-btn" onclick="openKutuBasimModal()" title="Kutu Basımı Gir" data-i18n-title="Kutu Basımı Gir">+</button>
       </div>
       <div class="panel-body">
         <input type="search" id="depoAramaInput" class="search-input alt-bosluk-2" placeholder="Kutu no, tarih veya kalite ara…" data-i18n-placeholder="Kutu no, tarih veya kalite ara…" oninput="renderDepo()">
@@ -1674,7 +1702,7 @@ input.dayibasi-ad-alani{flex:1;min-width:110px;border:1px solid var(--border);bo
     <div class="panel icerik-daralabilir">
       <div class="panel-head">
         <h2 data-i18n="Sulama Takip">Sulama Takip</h2>
-        <button class="icon-btn" onclick="openSulamaEkleModal()">+</button>
+        <button class="icon-btn" onclick="openSulamaEkleModal()" title="Sulama Kaydı Ekle" data-i18n-title="Sulama Kaydı Ekle">+</button>
       </div>
       <div class="panel-body">
         <input type="search" id="sulamaAramaInput" class="search-input alt-bosluk-2" placeholder="Tarla veya tarih ara…" data-i18n-placeholder="Tarla veya tarih ara…" oninput="renderSulama()">
@@ -1707,7 +1735,7 @@ input.dayibasi-ad-alani{flex:1;min-width:110px;border:1px solid var(--border);bo
           <button class="btn" onclick="openIklimGrafikModal()" data-i18n="📈 Grafik">📈 Grafik</button>
           <button class="btn" onclick="openIklimTopluEkleModal()" data-i18n="📋 Toplu Giriş">📋 Toplu Giriş</button>
           <button class="icon-btn ghost" onclick="openIklimAralikSilModal()" title="Aralıkla Sil" data-i18n-title="Aralıkla Sil">🗑</button>
-          <button class="icon-btn" onclick="openIklimEkleModal()">+</button>
+          <button class="icon-btn" onclick="openIklimEkleModal()" title="Sıcaklık/Nem Kaydı Ekle" data-i18n-title="Sıcaklık/Nem Kaydı Ekle">+</button>
           <button class="icon-btn ghost" onclick="panelTamEkranAc('iklimPanelBox')" title="Tam Ekran" data-i18n-title="Tam Ekran">⤢</button>
           <button class="icon-btn fullscreen-close" onclick="panelTamEkranKapat('iklimPanelBox')" title="Tam Ekranı Kapat" data-i18n-title="Tam Ekranı Kapat">×</button>
         </div>
@@ -1863,7 +1891,7 @@ const AYARLAR = {
   UNITE_PX: 40                // referans kapasitedeki sera-box genişliği (px) — kroki oranı
 };
 const STORAGE_KEY = 'scvSahaKrokiV1';
-const APP_SURUM = 'v87'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
+const APP_SURUM = 'v88'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
 
 /* =========================================================
    HATA / DONMA GÜNLÜĞÜ — "bazen donuyor" şikayetini araştırmak için.
