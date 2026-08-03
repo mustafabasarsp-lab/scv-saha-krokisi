@@ -1204,51 +1204,57 @@ body.has-fullscreen-panel{overflow:hidden;}
 /* Bir gruba başlık olan tek başına etiket (.field içinde değil) */
 .alan-basligi{display:block;font-size:11.5px;color:var(--muted);margin-bottom:2px;text-transform:uppercase;letter-spacing:.03em;}
 .depo-tablo-wrap{max-height:300px;overflow:auto;border:1px solid var(--border);border-radius:8px;background:var(--panel);}
-.depo-tablo{width:100%;min-width:430px;border-collapse:collapse;font-size:12px;}
+.depo-tablo{width:100%;min-width:430px;border-collapse:collapse;font-size:var(--fs-sm);}
 .depo-tablo thead th{
   position:sticky;top:0;z-index:1;background:var(--table-head-bg);color:var(--table-head-ink);
-  font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;padding:7px 8px;text-align:left;
+  font-size:var(--fs-xs);font-weight:var(--fw-kalin);text-transform:uppercase;letter-spacing:.05em;padding:7px 8px;text-align:left;
 }
 .depo-tablo th.num,.depo-tablo td.num{text-align:right;}
 .depo-tablo tbody tr{border-bottom:1px solid var(--border);}
 .depo-tablo tbody tr:nth-child(even){background:var(--panel-2);}
 .depo-tablo td{padding:6px 8px;}
-.depo-tablo td.toplam{font-weight:800;color:var(--green-900);}
-.depo-tablo .kod-not{color:var(--muted);font-size:10.5px;}
+.depo-tablo td.toplam{font-weight:var(--fw-kalin);color:var(--green-900);}
+.depo-tablo .kod-not{color:var(--muted);font-size:var(--fs-xs);}
 .depo-tablo tfoot td{
-  padding:7px 8px;font-weight:800;background:var(--green-100);color:var(--green-900);
+  padding:7px 8px;font-weight:var(--fw-kalin);background:var(--green-100);color:var(--green-900);
   border-top:2px solid var(--green-300);position:sticky;bottom:0;
 }
 .iklim-row-del{border:none;background:transparent;color:var(--muted);font-size:15px;line-height:1;cursor:pointer;padding:4px 7px;border-radius:5px;}
 .iklim-row-del:hover{background:var(--red-soft);color:var(--red);}
 
 /* ---------- ÖDEMELER ---------- */
-.odeme-tarih-input{border:1px solid var(--border);border-radius:8px;padding:7px 10px;font-size:13px;background:var(--panel);color:var(--ink);}
+.odeme-tarih-input{border:1px solid var(--border);border-radius:8px;padding:7px 10px;font-size:var(--fs-sm);background:var(--panel);color:var(--ink);}
 .odeme-gunluk-toolbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px;}
-.odeme-oran-ipucu{display:block;font-size:9px;font-weight:400;text-transform:none;opacity:.85;}
+/* 9px'ti — oran ipucu ödeme kararının dayanağı, okunamayan bir dipnot olamaz. */
+.odeme-oran-ipucu{display:block;font-size:var(--fs-xs);font-weight:var(--fw-normal);text-transform:none;opacity:.85;}
 .odeme-gunluk-table thead th{text-align:right;}
 .odeme-gunluk-table thead th:first-child{text-align:left;}
 .odeme-genel-toplam-row td{background:var(--green-100);border-top:2px solid var(--green-700);}
 .odeme-table-wrap{display:block;overflow-x:auto;border:1px solid var(--border);border-radius:8px;background:var(--panel);}
 .odeme-card-list{display:none;}
 .odeme-kart{border:1px solid var(--border);border-radius:12px;padding:10px 12px;margin-bottom:8px;background:var(--panel);}
-.odeme-kart-ad{font-weight:800;font-size:16px;color:var(--ink);margin-bottom:6px;}
+.odeme-kart-ad{font-weight:var(--fw-kalin);font-size:var(--fs-lg);color:var(--ink);margin-bottom:6px;}
 .odeme-mini-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:5px;}
 .odeme-mini-grid .field{margin-bottom:0;min-width:0;}
-.odeme-mini-grid .field label{font-size:8.5px;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+/* 8.5px'ti. Etiketler kısa (Yevmiye, Kişi, Gün) ve ellipsis zaten var —
+   12px'e çıkınca taşma değil, gerekirse kısalma olur. */
+.odeme-mini-grid .field label{font-size:var(--fs-xs);text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .odeme-mini-grid .field input{width:100%;min-width:0;padding:6px 2px;text-align:center;font-weight:700;}
-.odeme-kart-toplam{margin-top:8px;text-align:right;font-size:13px;font-weight:700;color:var(--green-900);}
+/* Kartın sonucu: ödenecek tutar. Ölçekte bir basamak yukarı — kartın en
+   büyük sayısı adı değil, parası olmalı. */
+.odeme-kart-toplam{margin-top:8px;text-align:right;font-size:var(--fs-lg);font-weight:var(--fw-kalin);color:var(--green-900);}
 .odeme-genel-toplam-sticky{
   position:sticky;bottom:0;margin-top:4px;
   background:var(--green-700);color:var(--on-accent);border-radius:10px;
-  padding:10px 14px;font-weight:800;text-align:center;font-size:14px;
+  /* Ekranın en önemli tek sayısı: o günün toplam ödemesi. */
+  padding:10px 14px;font-weight:var(--fw-kalin);text-align:center;font-size:var(--fs-lg);
   box-shadow:var(--shadow);
 }
 .odeme-bakiye-table-wrap{max-height:320px;overflow:auto;border:1px solid var(--border);border-radius:8px;background:var(--panel);}
 .odeme-bakiye-row{cursor:pointer;}
 .odeme-bakiye-row:hover{background:var(--green-100);}
-.odeme-kalan-uyari{color:var(--red);font-weight:800;}
-.odeme-kalan-ok{color:var(--green-700);font-weight:800;}
+.odeme-kalan-uyari{color:var(--red);font-weight:var(--fw-kalin);}
+.odeme-kalan-ok{color:var(--green-700);font-weight:var(--fw-kalin);}
 /* Bölge atanmamış (eski) dayıbaşı kayıtları: her iki bölgede de göründükleri için
    listelerde küçük bir rozetle işaretlenir. */
 .dayibasi-bolgesiz{
@@ -1281,7 +1287,7 @@ body.has-fullscreen-panel{overflow:hidden;}
 .ozel-oran-table input.ozel-oran-dolu{background:var(--green-100);color:var(--green-900);border-color:var(--green-500);}
 .ozel-oran-bolge{font-size:9.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.03em;}
 /* Filtre dışında kalan yevmiye kayıtlarını haber veren bilgi satırı */
-.odeme-filtre-disi-ipucu{font-size:11.5px;color:var(--muted);margin:6px 2px 0;line-height:1.5;}
+.odeme-filtre-disi-ipucu{font-size:var(--fs-xs);color:var(--muted);margin:6px 2px 0;line-height:1.5;}
 .odeme-filtre-disi-ipucu b{color:var(--ink);}
 .odeme-filtre-disi-ipucu .ipucu-gelecek{color:var(--red);font-weight:700;}
 
@@ -2027,7 +2033,7 @@ const AYARLAR = {
   UNITE_PX: 40                // referans kapasitedeki sera-box genişliği (px) — kroki oranı
 };
 const STORAGE_KEY = 'scvSahaKrokiV1';
-const APP_SURUM = 'v91'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
+const APP_SURUM = 'v92'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
 
 /* =========================================================
    HATA / DONMA GÜNLÜĞÜ — "bazen donuyor" şikayetini araştırmak için.
