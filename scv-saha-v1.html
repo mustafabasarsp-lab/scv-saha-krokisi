@@ -352,6 +352,13 @@ input[type=number],.num,td,th,.badge b,.quickstats b{font-variant-numeric:tabula
 }
 .badge.open .badge-tip{display:block;}
 .header-actions{display:flex;gap:var(--sp-2);align-items:center;flex-wrap:wrap;min-width:0;}
+/* Ayarlar kutusu. Masaüstünde display:contents ile SAYDAM kalır — çocuklar
+   doğrudan .header-actions'ın flex öğesi olur, yani masaüstü görünümü birebir
+   eskisi gibi. Telefonda (bkz. max-width:900px bloğu) gerçek bir kutuya dönüşüp
+   açılır menü olur. Tetik düğmesi masaüstünde gizli. */
+.ayar-menu{display:contents;}
+.ayar-menu-govde{display:contents;}
+.ayar-menu-btn{display:none;}
 .user-menu{position:relative;}
 .user-menu-dropdown{
   display:none;
@@ -1254,6 +1261,15 @@ body.has-fullscreen-panel{overflow:hidden;}
 }
 /* Nokta her zaman renkli rozetin ÜZERİNDE durur, panel zemininde değil. */
 .sync-status .dot{width:9px;height:9px;border-radius:50%;background:var(--on-accent);flex-shrink:0;}
+/* "Her şey yolunda" hâli ekrandaki en gürültülü öğeydi: 241x37px dolu yeşil rozet,
+   söylediği şey ise "sorun yok". Durum bildirimi normalde sessiz durmalı, yalnızca
+   ters gittiğinde yükselmeli — bu yüzden SADECE sınıfsız (senkron) hâl sakinleşir;
+   .offline / .saving / .depo-dolu dolu rozet olarak aynen kalır.
+   setSyncStatus sınıfları böyle kullanıyor, JS'e dokunmak gerekmedi. */
+.sync-status:not(.offline):not(.saving):not(.depo-dolu){
+  background:none;color:var(--muted);padding:0;font-weight:650;
+}
+.sync-status:not(.offline):not(.saving):not(.depo-dolu) .dot{background:var(--green-500);}
 .sync-status.offline{background:var(--red);}
 .sync-status.saving{background:var(--tobacco);color:var(--on-tobacco);}
 .sync-status.saving .dot{background:var(--on-tobacco);animation:syncPulse 1.1s ease-in-out infinite;}
@@ -1278,6 +1294,46 @@ body.has-fullscreen-panel{overflow:hidden;}
   .panel-body{-webkit-overflow-scrolling:touch;}
   .bottom-panel{height:auto;}
   .tarla-plot{-webkit-overflow-scrolling:touch;}
+  /* ---- Başlık hiyerarşisi (telefon) ----
+     Ölçüm: başlık 235px = ekranın %34'ü. Bunun 96px'i sahada hiç kullanılmayan
+     ayar düğmeleri, 37px'i "her şey yolunda" diyen dolu senkron rozeti, ve
+     yalnızca 25px'i işin asıl sayıları (kg/dekar, ₺/kg, doluluk) idi — yani en az
+     işe yarayan en büyük, en çok işe yarayan en küçüktü. Aşağısı bunu tersine
+     çevirir: ayarlar ••• menüsüne girer, senkron susar, sayılar büyür. */
+  .ayar-menu{display:block;position:relative;flex:0 0 auto;}
+  .ayar-menu-btn{
+    display:inline-flex;align-items:center;justify-content:center;
+    min-width:44px;min-height:44px;font-size:18px;line-height:1;padding:0;
+  }
+  .ayar-menu-govde{
+    display:none;
+    position:absolute;top:calc(100% + 6px);right:0;z-index:160;
+    background:var(--panel);border:1px solid var(--border);
+    border-radius:var(--r-md);box-shadow:var(--shadow-md);
+    padding:var(--sp-2);min-width:232px;
+    flex-direction:column;gap:var(--sp-2);
+  }
+  .ayar-menu.open .ayar-menu-govde{display:flex;}
+  /* .btn-csv display:block — justify-content işlemez, hizayı text-align kurar.
+     Menüde sola hizalı liste ortalanmışa göre çok daha hızlı taranır. */
+  .ayar-menu-govde .btn-csv{width:100%;min-height:44px;text-align:left;}
+  /* Hesap menüsü artık ayarlar menüsünün İÇİNDE: mutlak konumlu ikinci bir katman
+     olarak açılırsa dar ekranda menünün dışına taşıyor. Akış içinde açılsın. */
+  .ayar-menu-govde .user-menu{width:100%;}
+  .ayar-menu-govde .user-menu-dropdown{
+    position:static;min-width:0;box-shadow:none;margin-top:var(--sp-2);
+  }
+  /* Senkron: sorunsuzken yalnızca nokta kalır. Metin DOM'dan SİLİNMEZ, sadece
+     gözden çekilir — ekran okuyucu durumu okumaya devam etsin. */
+  .sync-status:not(.offline):not(.saving):not(.depo-dolu) #syncStatusText{
+    position:absolute;width:1px;height:1px;overflow:hidden;
+    clip-path:inset(50%);white-space:nowrap;
+  }
+  /* Saha sayıları: başlıktaki en küçük şeritken artık en okunur satır. */
+  .badges{gap:var(--sp-2);}
+  .badge{padding:7px 13px;font-size:12.5px;}
+  .badge b{font-size:17px;font-weight:800;}
+
   /* Dokunma hedefleri telefonda 44px tabanına çekildi (WCAG 2.5.5 / iOS-Android
      ortak asgarisi). Saha kullanımı eldivenli ve tek elle: 34-42px hedeflerde
      ıskalama oluyordu. Masaüstü ölçüleri bilerek değiştirilmedi. */
@@ -1484,17 +1540,29 @@ input.dayibasi-ad-alani{flex:1;min-width:110px;border:1px solid var(--border);bo
                alan tutulmaz (bkz. sezonTarihten). Geçmiş bir sezon seçildiğinde
                ekran o yılın verisini gösterir; yeni kayıtlar yine bugüne yazılır. -->
           <select class="btn-csv sezon-secici" id="sezonSecici" onchange="sezonSecildi(this.value)" title="Sezon" data-i18n-title="Sezon"></select>
-          <button class="btn-csv" id="temaBtn" onclick="temaDegistir()" title="Tema" data-i18n-title="Tema">🌗 <span id="temaBtnText">Otomatik</span></button>
-          <button class="btn-csv" onclick="dilDegistir()">🌐 <span id="dilBtnText">EN</span></button>
-          <button class="btn-csv" id="installBtn" style="display:none;" onclick="pwaYukle()" data-i18n="⬇️ Uygulamayı Yükle">⬇️ Uygulamayı Yükle</button>
-          <button class="btn-csv" id="bildirimBtn" onclick="bildirimAcKapa()">🔔 <span id="bildirimBtnText">Bildirimleri Aç</span></button>
-          <button class="btn-csv" onclick="openVeriYonetimiModal()" data-i18n="💾 Veri Yönetimi">💾 Veri Yönetimi</button>
-          <div class="user-menu" id="userMenu">
-            <button class="btn-csv" onclick="kullaniciMenusuAcKapa(event)">👤 <span id="userMenuBtnAd"></span></button>
-            <div class="user-menu-dropdown" id="userMenuDropdown">
-              <div class="user-menu-label" data-i18n="Giriş yapan">Giriş yapan</div>
-              <div class="user-menu-name" id="userMenuAd"></div>
-              <button class="btn btn-muted" onclick="hesaptanCik()" data-i18n="🚪 Çıkış Yap / Hesap Değiştir">🚪 Çıkış Yap / Hesap Değiştir</button>
+          <!-- Yardımcı işlemler (tema, dil, kurulum, bildirim, yedek, hesap): hiçbiri
+               sahada kullanılmıyor ama telefonda 96px, yani ekranın %14'ü kalıcı
+               olarak bunlardaydı ve asıl saha sayılarını aşağı itiyorlardı. Telefonda
+               tek bir ••• düğmesine toplanır; masaüstünde eskisi gibi satır içinde
+               durmaya devam eder (bkz. .ayar-menu / display:contents).
+               Sezon seçici bilerek bu kutunun DIŞINDA: yanlış sezona veri girmek
+               sessiz ve pahalı bir hata, hangi sezonda olunduğu her an görünmeli. -->
+          <div class="ayar-menu" id="ayarMenu">
+            <button class="btn-csv ayar-menu-btn" onclick="ayarMenusuAcKapa(event)" title="Ayarlar" data-i18n-title="Ayarlar" aria-haspopup="true" aria-expanded="false">⋯</button>
+            <div class="ayar-menu-govde">
+              <button class="btn-csv" id="temaBtn" onclick="temaDegistir()" title="Tema" data-i18n-title="Tema">🌗 <span id="temaBtnText">Otomatik</span></button>
+              <button class="btn-csv" onclick="dilDegistir()">🌐 <span id="dilBtnText">EN</span></button>
+              <button class="btn-csv" id="installBtn" style="display:none;" onclick="pwaYukle()" data-i18n="⬇️ Uygulamayı Yükle">⬇️ Uygulamayı Yükle</button>
+              <button class="btn-csv" id="bildirimBtn" onclick="bildirimAcKapa()">🔔 <span id="bildirimBtnText">Bildirimleri Aç</span></button>
+              <button class="btn-csv" onclick="openVeriYonetimiModal()" data-i18n="💾 Veri Yönetimi">💾 Veri Yönetimi</button>
+              <div class="user-menu" id="userMenu">
+                <button class="btn-csv" onclick="kullaniciMenusuAcKapa(event)">👤 <span id="userMenuBtnAd"></span></button>
+                <div class="user-menu-dropdown" id="userMenuDropdown">
+                  <div class="user-menu-label" data-i18n="Giriş yapan">Giriş yapan</div>
+                  <div class="user-menu-name" id="userMenuAd"></div>
+                  <button class="btn btn-muted" onclick="hesaptanCik()" data-i18n="🚪 Çıkış Yap / Hesap Değiştir">🚪 Çıkış Yap / Hesap Değiştir</button>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -1891,7 +1959,7 @@ const AYARLAR = {
   UNITE_PX: 40                // referans kapasitedeki sera-box genişliği (px) — kroki oranı
 };
 const STORAGE_KEY = 'scvSahaKrokiV1';
-const APP_SURUM = 'v88'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
+const APP_SURUM = 'v89'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
 
 /* =========================================================
    HATA / DONMA GÜNLÜĞÜ — "bazen donuyor" şikayetini araştırmak için.
@@ -2026,7 +2094,7 @@ const I18N_EN = {
   '🌿 Saha Krokisi':'🌿 Field Layout', '🗺️ Haritalar':'🗺️ Maps', '📦 Depo':'📦 Storage', '💧 Sulama Takip':'💧 Irrigation Tracking',
   '⬇️ Uygulamayı Yükle':'⬇️ Install App', '💾 Veri Yönetimi':'💾 Data Management',
   'Giriş yapan':'Logged in as', '🚪 Çıkış Yap / Hesap Değiştir':'🚪 Log Out / Switch Account',
-  'Dizim Alanı':'Stringing Area', 'Tam Ekran':'Fullscreen', 'Tam Ekranı Kapat':'Exit Fullscreen',
+  'Dizim Alanı':'Stringing Area', 'Tam Ekran':'Fullscreen', 'Tam Ekranı Kapat':'Exit Fullscreen', 'Ayarlar':'Settings',
   '+ Kırım Kaydı Gir':'+ Enter Harvest Record', 'Tarla · Kırım No · Dizi Sayısı':'Field · Harvest No. · String Count',
   'Bekleyen Kırımlar (dizilmemiş)':'Pending Harvests (not yet strung)', 'Bekleyen kırım yok — tüm kırımlar seralara dizilmiş.':'No pending harvests — all harvests have been strung.',
   'Seraya Dağıt':'Distribute to Greenhouse', 'Tütün Dizimi Ekle':'Add Tobacco Stringing', '+ Tütün Dizimi Ekle':'+ Add Tobacco Stringing',
@@ -2712,6 +2780,17 @@ fbAuth.onAuthStateChanged(user=>{
 function kullaniciMenusuAcKapa(e){
   e.stopPropagation();
   document.getElementById('userMenu').classList.toggle('open');
+}
+/* Ayarlar menüsü yalnızca telefonda açılır menüdür; masaüstünde .ayar-menu
+   display:contents olduğu için tetik düğmesi zaten gizli ve bu hiç çağrılmaz. */
+function ayarMenusuAcKapa(e){
+  e.stopPropagation();
+  const el = document.getElementById('ayarMenu');
+  const acik = el.classList.toggle('open');
+  el.querySelector('.ayar-menu-btn').setAttribute('aria-expanded', acik ? 'true' : 'false');
+  /* Menü kapanırken içindeki hesap menüsü açık kalmasın, yoksa bir sonraki
+     açılışta yarısı açık geliyor. */
+  if(!acik) document.getElementById('userMenu').classList.remove('open');
 }
 function hesaptanCik(){
   document.getElementById('userMenu').classList.remove('open');
@@ -3443,6 +3522,12 @@ document.addEventListener('click', function(e){
   }
   if(!e.target.closest('.user-menu')){
     document.querySelectorAll('.user-menu.open').forEach(b=>b.classList.remove('open'));
+  }
+  if(!e.target.closest('.ayar-menu')){
+    document.querySelectorAll('.ayar-menu.open').forEach(b=>{
+      b.classList.remove('open');
+      b.querySelector('.ayar-menu-btn')?.setAttribute('aria-expanded','false');
+    });
   }
 });
 
