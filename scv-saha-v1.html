@@ -1554,6 +1554,11 @@ body.has-fullscreen-panel{overflow:hidden;}
   .kirim-fab .ic{font-size:18px;}
   .kirim-fab:active{transform:translateY(2px);box-shadow:0 1px 0 rgba(0,0,0,.18);}
   .kirim-fab.hidden{display:none;}
+  /* Tam ekran panel açıkken FAB gizlenir: panel ekranın tamamını kaplayan bir
+     çalışma yüzeyi, üstünde duran yüzen buton içeriği kapatıyor. Saha Planlama
+     şemasında bu belirgin hâle geldi ama kural bütün tam ekran panellere iyi
+     geliyor. Alt gezinme çubuğu duruyor — panelden çıkış yolu gerekiyor. */
+  body.has-fullscreen-panel .kirim-fab{display:none;}
   .odeme-table-wrap{display:none;}
   .odeme-card-list{display:block;}
   .odeme-genel-toplam-sticky{bottom:calc(var(--alt-nav-h) + var(--alt-aralik) + env(safe-area-inset-bottom,0px));}
@@ -2124,7 +2129,7 @@ const AYARLAR = {
   UNITE_PX: 40                // referans kapasitedeki sera-box genişliği (px) — kroki oranı
 };
 const STORAGE_KEY = 'scvSahaKrokiV1';
-const APP_SURUM = 'v107'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
+const APP_SURUM = 'v108'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
 
 /* =========================================================
    HATA / DONMA GÜNLÜĞÜ — "bazen donuyor" şikayetini araştırmak için.
@@ -3926,9 +3931,15 @@ function renderSahaPlanlama(){
       ? u.map(m=>`<div class="uyari-satiri">⚠ ${escapeHtml(m)}</div>`).join('')
       : `<div class="uyari-satiri">${i18n('Uyarı yok.')}</div>`;
   }
-  // Düzen oturduktan sonra ölç: aynı turda ölçmek eski kutu boylarını verir
+  /* Çizgiler İKİ KEZ çizilir ve bu bilinçli:
+      • Hemen: getBoundingClientRect zaten eşzamanlı yeniden yerleşim zorluyor,
+        yani ölçüler bu anda da doğru. Tek başına rAF'a güvenmek HATALIYDI —
+        arka plandaki sekmede rAF hiç çalışmıyor ve çizgiler hiç çizilmiyordu
+        (sekmeyi arkaya alıp dönen telefon kullanıcısı da bunu yaşardı).
+      • Bir kare sonra: gömülü yazı tipi geç yüklenirse kutu boyları değişir,
+        o durumda ölçüler tazelensin. */
+  planCizgileriCiz();
   if(typeof requestAnimationFrame==='function') requestAnimationFrame(planCizgileriCiz);
-  else planCizgileriCiz();
   planDegistirDugmeleriGuncelle();
 }
 

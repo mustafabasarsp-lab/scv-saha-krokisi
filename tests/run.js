@@ -1118,6 +1118,22 @@ const tik = () => new Promise(r => setImmediate(r));
     dogru(true, 'plansız günde çizim sessizce geçer');
     app._temizle();
   }
+  {
+    // Gerileme: çizim rAF'a BAĞLI OLMAMALI. Arka plandaki sekmede rAF hiç
+    // çalışmıyor; tek başına ona güvenildiğinde çizgiler hiç çizilmiyordu.
+    const app = kur();
+    let rafCagrildi = false;
+    const gercekRaf = app.requestAnimationFrame;
+    app.requestAnimationFrame = () => { rafCagrildi = true; };  // hiç tetiklenmeyen rAF
+    let cizimSayisi = 0;
+    const gercekCizim = app.planCizgileriCiz;
+    app.planCizgileriCiz = function(){ cizimSayisi++; return gercekCizim.apply(this, arguments); };
+    app.sahaGenelSekmeGecis('planlama');
+    dogru(cizimSayisi > 0, 'render, rAF beklemeden de çizim yapar');
+    dogru(rafCagrildi, 'yazı tipi geç yüklenirse diye rAF yine de planlanır');
+    app.requestAnimationFrame = gercekRaf;
+    app._temizle();
+  }
 
   /* ---------------------------------------------------------------
      Saha Planlama — dizim alanı yönetimi
