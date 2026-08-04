@@ -1168,6 +1168,73 @@ const tik = () => new Promise(r => setImmediate(r));
     app._temizle();
   }
 
+  /* ---------------------------------------------------------------
+     Saha Planlama — kırım kaydına dönüştürme
+     Plan önce kurulur, kayıt plandan beslenir: aynı bilgi iki kez girilmesin.
+     --------------------------------------------------------------- */
+  bolum('Saha Planlama — kırım kaydına dönüştürme');
+  {
+    const { app, T, a1 } = planOrtami();
+    const plan = app.planGetir(T);
+    const b1 = app.planAlanGetir(plan, a1).bolmeler[0].id;
+    app.planGirisEkle(T, a1, b1, 't0', 'traktor1', 'Ahmet');
+    app.planGirisEkle(T, a1, b1, 't1', 'traktor1', 'Ahmet');
+    app.planSeraEkle(T, a1, b1, 's0');
+    app.planSeraEkle(T, a1, b1, 's1');
+    app.planSeciliTarih = T;
+
+    app.planBolmedenKirimAc(a1, b1);
+    esit(app.kirimAkisTarlaId, 't0', 'ana tarla plandan geldi');
+    esit(app.kirimAkisEkTarlaIds, ['t1'], 'ek tarlalar plandan geldi');
+    esit(app.kirimAkisSeraSecimleri.map(x => x.seraId), ['s0','s1'], 'hedef seralar plandan geldi');
+    esit(app.kirimAkisSeraSecimleri[0].mod, 'tam', 'seralar tam mod ile gelir');
+    esit(app.planKirimBaglami.bolmeId, b1, 'bağlam bölmeyi hatırlar');
+    esit(app._belge.getElementById('k2Tarih').value, T, 'kırım tarihi plan tarihine ayarlanır');
+    app._temizle();
+  }
+  {
+    // Kayıt oluşunca bölme işaretlenir ve bağlam temizlenir
+    const { app, T, a1 } = planOrtami();
+    const plan = app.planGetir(T);
+    const b1 = app.planAlanGetir(plan, a1).bolmeler[0].id;
+    app.planGirisEkle(T, a1, b1, 't0', 'traktor1', 'Ahmet');
+    app.planSeciliTarih = T;
+    app.planBolmedenKirimAc(a1, b1);
+
+    app.planKirimSonrasiIsaretle('kayit-1');
+    esit(app.planBolmeBul(plan, a1, b1).kirimId, 'kayit-1', 'bölme kayda bağlandı');
+    esit(app.planKirimBaglami, null, 'bağlam temizlendi');
+
+    // Bağlam yokken çağrı hiçbir bölmeyi bozmaz
+    app.planKirimSonrasiIsaretle('kayit-2');
+    esit(app.planBolmeBul(plan, a1, b1).kirimId, 'kayit-1', 'bağlamsız çağrı kaydı değiştirmez');
+    app._temizle();
+  }
+  {
+    // Girişsiz bölme dönüştürülemez
+    const { app, T, a1 } = planOrtami();
+    const plan = app.planGetir(T);
+    const b1 = app.planAlanGetir(plan, a1).bolmeler[0].id;
+    app.planSeciliTarih = T;
+    app.planBolmedenKirimAc(a1, b1);
+    esit(app.planKirimBaglami, null, 'girişsiz bölme akışı başlatmaz');
+    app._temizle();
+  }
+  {
+    // Normal kırım girişi eski bağlamı miras almaz
+    const { app, T, a1 } = planOrtami();
+    const plan = app.planGetir(T);
+    const b1 = app.planAlanGetir(plan, a1).bolmeler[0].id;
+    app.planGirisEkle(T, a1, b1, 't0', 'traktor1', 'Ahmet');
+    app.planSeciliTarih = T;
+    app.planBolmedenKirimAc(a1, b1);
+    dogru(!!app.planKirimBaglami, 'bağlam kuruldu');
+
+    app.openKirimModal();
+    esit(app.planKirimBaglami, null, 'normal kırım kipi bağlamı sıfırlar');
+    app._temizle();
+  }
+
   /* --------------------------------------------------------------- */
   console.log(`\n${'─'.repeat(52)}`);
   if (kalan.length) {

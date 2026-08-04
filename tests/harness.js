@@ -353,6 +353,10 @@ function kur(secenekler) {
   planSeciliTarih:     { get: () => planSeciliTarih, set: v => { planSeciliTarih = v; }, enumerable: true },
   planSecim:           { get: () => planSecim, set: v => { planSecim = v; }, enumerable: true },
   planSecim2:          { get: () => planSecim2, set: v => { planSecim2 = v; }, enumerable: true },
+  planKirimBaglami:    { get: () => planKirimBaglami, set: v => { planKirimBaglami = v; }, enumerable: true },
+  kirimAkisTarlaId:    { get: () => kirimAkisTarlaId, set: v => { kirimAkisTarlaId = v; }, enumerable: true },
+  kirimAkisEkTarlaIds: { get: () => kirimAkisEkTarlaIds, set: v => { kirimAkisEkTarlaIds = v; }, enumerable: true },
+  kirimAkisSeraSecimleri: { get: () => kirimAkisSeraSecimleri, set: v => { kirimAkisSeraSecimleri = v; }, enumerable: true },
 });`;
 
   const baglam = vm.createContext(pencere);

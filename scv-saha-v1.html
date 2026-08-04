@@ -2114,7 +2114,7 @@ const AYARLAR = {
   UNITE_PX: 40                // referans kapasitedeki sera-box genişliği (px) — kroki oranı
 };
 const STORAGE_KEY = 'scvSahaKrokiV1';
-const APP_SURUM = 'v104'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
+const APP_SURUM = 'v105'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
 
 /* =========================================================
    HATA / DONMA GÜNLÜĞÜ — "bazen donuyor" şikayetini araştırmak için.
@@ -2310,6 +2310,8 @@ const I18N_EN = {
   'planda kullanılıyor':'plans use it', 'hiç kullanılmamış':'never used',
   'Yeni Alan Adı':'New Area Name',
   'Alan adı boş olamaz ve aynı ad iki kez kullanılamaz.':'The area name cannot be empty and must be unique.',
+  'Bu bölme zaten bir kırım kaydına dönüştürülmüş.':'This section has already been converted to a harvest record.',
+  'Bu bölmede tarla yok — önce bir tarla bağlayın.':'No field in this section — connect a field first.',
   'Boş':'Empty', 'Tarla':'Field', 'Sera':'Greenhouse', 'Sera Doluluk':'Greenhouse Occupancy',
   'Dolu Sera':'Full', 'Boş Sera':'Empty', 'kg/da (kırılan)':'kg/da (harvested)', 'kg/da (tüm saha)':'kg/da (all land)',
   'Seralar':'Greenhouses', 'Sera ara…':'Search greenhouses…',
@@ -3672,6 +3674,39 @@ function submitDizimAlaniEkle(){
   renderAll();
   openDizimAlaniYonetimModal();
 }
+/* ---- Plandan kırım kaydına ----
+   Plan zaten "hangi tarla, hangi sera" sorusunu yanıtlıyor; kırım ekranı da
+   aynı iki soruyu soruyor. Bu köprü olmasaydı kullanıcı aynı bilgiyi iki kez
+   girerdi. Kullanıcı yalnız dizi/kg ve tarihleri doldurur. */
+let planKirimBaglami = null;
+function planBolmedenKirimAc(alanId, bolmeId){
+  const plan = planBul(planSeciliTarih);
+  const bolme = planBolmeBul(plan, alanId, bolmeId);
+  if(!bolme) return;
+  if(bolme.kirimId){ uyar('Bu bölme zaten bir kırım kaydına dönüştürülmüş.'); return; }
+  const tarlaIds = bolme.girisler.map(g=>g.tarlaId).filter(tarlaBul);
+  if(!tarlaIds.length){ uyar('Bu bölmede tarla yok — önce bir tarla bağlayın.'); return; }
+
+  planKirimBaglami = { tarih: planSeciliTarih, alanId, bolmeId };
+  kirimAkisTarlaId = tarlaIds[0];
+  kirimAkisEkTarlaIds = tarlaIds.slice(1);
+  kirimAkisSeraSecimleri = bolme.seraIds.filter(seraBul).map(seraId=>({ seraId, mod:'tam' }));
+  kirimAdim2Ac();
+  const tarihEl = document.getElementById('k2Tarih');
+  if(tarihEl) tarihEl.value = planSeciliTarih;
+}
+function planKirimSonrasiIsaretle(kirimId){
+  if(!planKirimBaglami) return;
+  const { tarih, alanId, bolmeId } = planKirimBaglami;
+  const plan = planBul(tarih);
+  const bolme = planBolmeBul(plan, alanId, bolmeId);
+  if(bolme){
+    bolme.kirimId = kirimId;
+    planDamgala(plan);
+  }
+  planKirimBaglami = null;
+}
+
 function dizimAlaniSilTikla(alanId){
   const alan = dizimAlaniBul(alanId);
   if(!alan) return;
@@ -5582,6 +5617,9 @@ function kirimAkisSecimleriSifirla(){
 }
 function openKirimModal(presetTarlaId){
   if(!state.tarlalar.length){ uyar('Önce en az bir tarla ekleyin.'); return; }
+  // Plandan gelmeyen normal bir kırım girişi eski plan bağlamını miras almasın.
+  // planBolmedenKirimAc bu fonksiyonu değil doğrudan kirimAdim2Ac'ı çağırır.
+  planKirimBaglami = null;
   kirimModalPresetTarlaId = presetTarlaId || null;
   kirimAkisSecimleriSifirla();
   if(presetTarlaId){ kirimAkisTarlaId = presetTarlaId; kirimAdim2Ac(); }
@@ -5864,6 +5902,7 @@ function submitKirimEkle(){
   });
   state.kirimlar.push(k);
   kirimIsaretiniDusur(tarlaIds, k.tarih); // "kırım yapılıyor" işareti, kayıt girilene kadarki pencereyi anlatır
+  planKirimSonrasiIsaretle(k.id); // plandan gelindiyse bölmeyi kayda bağlar (çalışma işareti de böylece düşer)
   dagitim.forEach(d=>dizimUygula(k, d.seraId, d.miktar, dizimTarihi));
   if(kirimModalPresetTarlaId){ renderAll(); openTarlaDetay(kirimModalPresetTarlaId); }
   else { closeModal(); renderAll(); }
