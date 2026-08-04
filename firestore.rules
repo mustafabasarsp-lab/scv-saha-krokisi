@@ -6,7 +6,7 @@ service cloud.firestore {
     // koleksiyon adına hiçbir işlem yapılamaz — yanlış yazılmış bir koleksiyon
     // adı sessizce yeni bir çöp koleksiyon açmasın.
     //
-    // DİKKAT — liste neden dörde bölünüp || ile birleştirilmiş:
+    // DİKKAT — liste neden parça parça bölünüp || ile birleştirilmiş:
     //  • Tek uzun satır: Console'a yapıştırılırken sarıyor, sarma noktası bir
     //    tırnağın ortasına denk gelince ayrıştırılamıyor ("Unexpected
     //    'amaKayitlari'").
