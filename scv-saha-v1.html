@@ -2130,7 +2130,7 @@ const AYARLAR = {
   UNITE_PX: 40                // referans kapasitedeki sera-box genişliği (px) — kroki oranı
 };
 const STORAGE_KEY = 'scvSahaKrokiV1';
-const APP_SURUM = 'v109'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
+const APP_SURUM = 'v110'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
 
 /* =========================================================
    HATA / DONMA GÜNLÜĞÜ — "bazen donuyor" şikayetini araştırmak için.
@@ -2652,6 +2652,12 @@ function stateNormalizeEt(){
   state.yevmiyeKayitlari = state.yevmiyeKayitlari || [];
   state.odemeKayitlari = state.odemeKayitlari || [];
   state.odemeAyarlari = state.odemeAyarlari || [];
+  /* Bu iki satır olmadan v107 ve öncesinden gelen KAYITLI state'te bu anahtarlar
+     undefined kalıyordu; tarlaKirimYapiliyorMu/seraDolduruluyorMu artık planı
+     okuduğu için renderSeralar undefined.find() ile patlıyor ve renderAll yarıda
+     kesiliyordu — paneller boş görünüyor, veri yerinde olduğu hâlde. */
+  state.dizimAlanlari = state.dizimAlanlari || [];
+  state.sahaPlanlari = state.sahaPlanlari || [];
   state.tarlalar.forEach(t=>{
     if(!t.bolge){
       if(/^T\d/i.test(t.ad)) t.bolge = 'tekeliler';

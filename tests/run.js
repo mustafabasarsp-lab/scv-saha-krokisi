@@ -536,6 +536,43 @@ const tik = () => new Promise(r => setImmediate(r));
   }
 
   /* ---------------------------------------------------------------
+     Saha Planlama — eski kayıttan yükseltme
+     GERÇEK ARIZA: v107'den kalma kayıtlı state'te dizimAlanlari/sahaPlanlari
+     anahtarları yok. tarlaKirimYapiliyorMu/seraDolduruluyorMu artık planı
+     okuduğu için renderSeralar undefined.find() ile patlıyor, renderAll yarıda
+     kesiliyor ve BÜTÜN paneller boş görünüyordu — veri yerinde olduğu hâlde.
+     bosState() yeni anahtarları içerdiği için testler bunu göremiyordu;
+     yükseltme yolu ayrıca sınanmalı.
+     --------------------------------------------------------------- */
+  bolum('Saha Planlama — eski kayıttan yükseltme');
+  {
+    const eskiKayit = JSON.stringify({
+      tarlalar: [{ id:'t1', ad:'K11', dekar:61, cesit:'BSB 6195', bolge:'kalemli' }],
+      seralar:  [{ id:'s1', ad:'A1', kapasite:400, bolge:'kalemli', donemler:[] }],
+      kirimlar: [], haritaPinleri: [], tesisPinleri: [], depoKutulari: [],
+      sulamaKayitlari: [], iklimKayitlari: [], dayibasilar: [],
+      yevmiyeKayitlari: [], odemeKayitlari: [], odemeAyarlari: []
+      // dizimAlanlari ve sahaPlanlari BİLEREK yok — v107 kaydının aynısı
+    });
+    const app = kur({ localStorage: { scvSahaKrokiV1: eskiKayit } });
+
+    esit(app.state.dizimAlanlari, [], 'eksik dizimAlanlari boş diziye çekilir');
+    esit(app.state.sahaPlanlari, [], 'eksik sahaPlanlari boş diziye çekilir');
+
+    // Asıl arıza: bu iki yüklem patlıyordu
+    yanlis(app.tarlaKirimYapiliyorMu(app.tarlaBul('t1')), 'eski kayıtta tarla işareti patlamadan çalışır');
+    yanlis(app.seraDolduruluyorMu(app.seraBul('s1')), 'eski kayıtta sera işareti patlamadan çalışır');
+
+    // Ve render gerçekten sonuna kadar gidiyor mu
+    let hata = null;
+    try { app.renderAll(); } catch(e) { hata = e.message; }
+    esit(hata, null, 'eski kayıtla renderAll hatasız tamamlanır');
+    dogru(app._belge.getElementById('seraPlot').innerHTML.includes('A1'), 'seralar çizilir');
+    dogru(app._belge.getElementById('tarlaPlot').innerHTML.includes('K11'), 'tarlalar çizilir');
+    app._temizle();
+  }
+
+  /* ---------------------------------------------------------------
      Saha Planlama — veri katmanı
      Plan belgeleri TEMBEL oluşur: boş günler için çöp belge birikmemeli.
      --------------------------------------------------------------- */
