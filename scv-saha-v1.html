@@ -2114,7 +2114,7 @@ const AYARLAR = {
   UNITE_PX: 40                // referans kapasitedeki sera-box genişliği (px) — kroki oranı
 };
 const STORAGE_KEY = 'scvSahaKrokiV1';
-const APP_SURUM = 'v105'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
+const APP_SURUM = 'v106'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
 
 /* =========================================================
    HATA / DONMA GÜNLÜĞÜ — "bazen donuyor" şikayetini araştırmak için.
@@ -2312,6 +2312,8 @@ const I18N_EN = {
   'Alan adı boş olamaz ve aynı ad iki kez kullanılamaz.':'The area name cannot be empty and must be unique.',
   'Bu bölme zaten bir kırım kaydına dönüştürülmüş.':'This section has already been converted to a harvest record.',
   'Bu bölmede tarla yok — önce bir tarla bağlayın.':'No field in this section — connect a field first.',
+  'Kopyalanacak önceki bir plan yok.':'There is no earlier plan to copy.',
+  'Bu günün planı zaten dolu. Kopyalamadan önce mevcut planı boşaltın.':'This day already has a plan. Clear it before copying.',
   'Boş':'Empty', 'Tarla':'Field', 'Sera':'Greenhouse', 'Sera Doluluk':'Greenhouse Occupancy',
   'Dolu Sera':'Full', 'Boş Sera':'Empty', 'kg/da (kırılan)':'kg/da (harvested)', 'kg/da (tüm saha)':'kg/da (all land)',
   'Seralar':'Greenhouses', 'Sera ara…':'Search greenhouses…',
@@ -3674,6 +3676,47 @@ function submitDizimAlaniEkle(){
   renderAll();
   openDizimAlaniYonetimModal();
 }
+/* ---- Dünü kopyala ----
+   Kırım çoğu gün önceki günün düzeniyle sürer; sıfırdan kurmak angarya.
+   "Dün" takvim günü değil, PLANI OLAN en son gün: hafta sonu ya da yağmur
+   molası araya girdiğinde de doğru şablon gelir. */
+function planOncekiDoluTarih(tarih){
+  const adaylar = state.sahaPlanlari
+    .filter(p=>(p.tarih||'') < tarih && !planBosMu(p))
+    .map(p=>p.tarih)
+    .sort();
+  return adaylar.length ? adaylar[adaylar.length-1] : null;
+}
+function planKopyala(kaynakTarih, hedefTarih){
+  const kaynak = planBul(kaynakTarih);
+  if(!kaynak || planBosMu(kaynak)) return false;
+  const mevcut = planBul(hedefTarih);
+  if(mevcut && !planBosMu(mevcut)) return false;   // üzerine yazmak veri kaybı olurdu
+  const hedef = planGetir(hedefTarih);
+  hedef.alanlar = kaynak.alanlar.map(a=>({
+    alanId: a.alanId,
+    bolmeler: a.bolmeler.map(b=>({
+      id: uid(),                                    // kimlikler yenilenir: iki gün aynı bölme id'sini paylaşmamalı
+      girisler: b.girisler.map(g=>({ tarlaId:g.tarlaId, aracId:g.aracId, sofor:'' })), // şoför her gün değişir
+      seraIds: b.seraIds.slice(),
+      kirimId: null,                                // yeni günün kaydı henüz girilmedi
+      not: ''
+    }))
+  }));
+  planDamgala(hedef);
+  return true;
+}
+function planDunuKopyala(){
+  const kaynak = planOncekiDoluTarih(planSeciliTarih);
+  if(!kaynak){ uyar('Kopyalanacak önceki bir plan yok.'); return; }
+  if(!planKopyala(kaynak, planSeciliTarih)){
+    uyar('Bu günün planı zaten dolu. Kopyalamadan önce mevcut planı boşaltın.');
+    return;
+  }
+  uyar(`${kaynak} planı kopyalandı. Şoför adlarını yeniden girmeyi unutmayın.`);
+  renderAll();
+}
+
 /* ---- Plandan kırım kaydına ----
    Plan zaten "hangi tarla, hangi sera" sorusunu yanıtlıyor; kırım ekranı da
    aynı iki soruyu soruyor. Bu köprü olmasaydı kullanıcı aynı bilgiyi iki kez

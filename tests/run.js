@@ -1235,6 +1235,70 @@ const tik = () => new Promise(r => setImmediate(r));
     app._temizle();
   }
 
+  /* ---------------------------------------------------------------
+     Saha Planlama — dünü kopyala
+     Şoför adı KOPYALANMAZ: her gün değişiyor, kopyalanan ad yanlış bilgi olur.
+     Araç ataması kopyalanır — filo sabit.
+     --------------------------------------------------------------- */
+  bolum('Saha Planlama — dünü kopyala');
+  {
+    const { app, a1 } = planOrtami();
+    const dun = '2026-08-04', bugun = '2026-08-05';
+    const kaynak = app.planGetir(dun);
+    const b1 = app.planAlanGetir(kaynak, a1).bolmeler[0].id;
+    app.planBolmeEkle(dun, a1);
+    app.planGirisEkle(dun, a1, b1, 't0', 'traktor1', 'Ahmet');
+    app.planSeraEkle(dun, a1, b1, 's0');
+
+    esit(app.planOncekiDoluTarih(bugun), dun, 'önceki dolu gün bulunur');
+    dogru(app.planKopyala(dun, bugun), 'plan kopyalanır');
+
+    const hedef = app.planBul(bugun);
+    const hb = app.planAlanGetir(hedef, a1);
+    esit(hb.bolmeler.length, 2, 'bölme yapısı kopyalandı');
+    esit(hb.bolmeler[0].girisler[0].tarlaId, 't0', 'tarla kopyalandı');
+    esit(hb.bolmeler[0].girisler[0].aracId, 'traktor1', 'araç kopyalandı');
+    esit(hb.bolmeler[0].girisler[0].sofor, '', 'şoför adı kopyalanmadı');
+    esit(hb.bolmeler[0].seraIds, ['s0'], 'seralar kopyalandı');
+    esit(hb.bolmeler[0].kirimId, null, 'kırım bağı kopyalanmadı');
+    yanlis(hb.bolmeler[0].id === b1, 'bölme kimlikleri yenilendi');
+    app._temizle();
+  }
+  {
+    // Dolu hedefin üzerine yazılmaz
+    const { app, a1 } = planOrtami();
+    const dun = '2026-08-04', bugun = '2026-08-05';
+    const kaynak = app.planGetir(dun);
+    const kb = app.planAlanGetir(kaynak, a1).bolmeler[0].id;
+    app.planGirisEkle(dun, a1, kb, 't0', 'traktor1', 'Ahmet');
+
+    const hedef = app.planGetir(bugun);
+    const hb = app.planAlanGetir(hedef, a1).bolmeler[0].id;
+    app.planGirisEkle(bugun, a1, hb, 't2', 'transit1', 'Veli');
+
+    yanlis(app.planKopyala(dun, bugun), 'dolu hedefe kopyalanmaz');
+    esit(app.planBolmeBul(app.planBul(bugun), a1, hb).girisler[0].tarlaId, 't2', 'mevcut plan korundu');
+    app._temizle();
+  }
+  {
+    // Kaynak yoksa
+    const { app } = planOrtami();
+    esit(app.planOncekiDoluTarih('2026-08-05'), null, 'hiç plan yoksa null');
+    yanlis(app.planKopyala('2026-08-04', '2026-08-05'), 'olmayan kaynak kopyalanmaz');
+    app._temizle();
+  }
+  {
+    // Boşluk atlanır: en son dolu gün bulunur (hafta sonu / yağmur molası)
+    const { app, a1 } = planOrtami();
+    const eski = '2026-08-01';
+    const p = app.planGetir(eski);
+    const b = app.planAlanGetir(p, a1).bolmeler[0].id;
+    app.planGirisEkle(eski, a1, b, 't0', 'traktor1', 'Ahmet');
+    app.planGetir('2026-08-03'); // boş belge: atlanmalı
+    esit(app.planOncekiDoluTarih('2026-08-05'), eski, 'aradaki boş günler atlanır');
+    app._temizle();
+  }
+
   /* --------------------------------------------------------------- */
   console.log(`\n${'─'.repeat(52)}`);
   if (kalan.length) {
