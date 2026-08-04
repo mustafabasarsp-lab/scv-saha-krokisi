@@ -349,6 +349,8 @@ function kur(secenekler) {
   seciliSezon:         { get: () => seciliSezon, set: v => { seciliSezon = v; }, enumerable: true },
   ARACLAR:             { get: () => ARACLAR, enumerable: true },
   DIZIM_ALANI_TOHUM:   { get: () => DIZIM_ALANI_TOHUM, enumerable: true },
+  sahaGenelSekmeAktif: { get: () => sahaGenelSekmeAktif, set: v => { sahaGenelSekmeAktif = v; }, enumerable: true },
+  planSeciliTarih:     { get: () => planSeciliTarih, set: v => { planSeciliTarih = v; }, enumerable: true },
 });`;
 
   const baglam = vm.createContext(pencere);

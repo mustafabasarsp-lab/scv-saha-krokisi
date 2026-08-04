@@ -851,6 +851,57 @@ const tik = () => new Promise(r => setImmediate(r));
     app._temizle();
   }
 
+  /* ---------------------------------------------------------------
+     Saha Planlama — sekme geçişi
+     --------------------------------------------------------------- */
+  bolum('Saha Planlama — sekmeler');
+  {
+    const app = kur();
+    const b = app._belge;
+    esit(app.sahaGenelSekmeAktif, 'genel', 'varsayılan sekme Genel Bilgiler');
+
+    app.sahaGenelSekmeGecis('planlama');
+    esit(app.sahaGenelSekmeAktif, 'planlama', 'sekme değişir');
+    dogru(b.getElementById('sahaGenelIcerikGenel').classList.contains('hidden'), 'genel içerik gizlenir');
+    yanlis(b.getElementById('sahaGenelIcerikPlanlama').classList.contains('hidden'), 'planlama içeriği görünür');
+    dogru(b.getElementById('sahaGenelTab_planlama').classList.contains('active'), 'planlama sekmesi etkin');
+    yanlis(b.getElementById('sahaGenelTab_genel').classList.contains('active'), 'genel sekmesi etkin değil');
+    dogru(b.getElementById('sahaGenelPanelBox').classList.contains('panel-fullscreen'), 'planlamada panel tam ekran açılır');
+
+    app.sahaGenelSekmeGecis('genel');
+    esit(app.sahaGenelSekmeAktif, 'genel', 'geri dönülür');
+    yanlis(b.getElementById('sahaGenelIcerikGenel').classList.contains('hidden'), 'genel içerik geri gelir');
+    yanlis(b.getElementById('sahaGenelPanelBox').classList.contains('panel-fullscreen'), 'genele dönünce tam ekran kapanır');
+    app._temizle();
+  }
+  {
+    // Tarih gezinme
+    const app = kur();
+    app.planTarihSecildi('2026-08-05');
+    esit(app.planSeciliTarih, '2026-08-05', 'tarih seçilir');
+    app.planTarihKaydir(1);
+    esit(app.planSeciliTarih, '2026-08-06', 'bir gün ileri');
+    app.planTarihKaydir(-2);
+    esit(app.planSeciliTarih, '2026-08-04', 'iki gün geri');
+    app.planTarihSecildi('');
+    esit(app.planSeciliTarih, app.todayStr(), 'boş tarih bugüne düşer');
+    app._temizle();
+  }
+  {
+    // Uyarılar seçili günün planından çizilir
+    const { app, T, a1 } = planOrtami();
+    const plan = app.planGetir(T);
+    const b1 = app.planAlanGetir(plan, a1).bolmeler[0].id;
+    app.planGirisEkle(T, a1, b1, 't0', 'traktor1', 'Ahmet');
+    app.planGirisEkle(T, a1, b1, 't2', 'transit1', 'Veli');
+    app.sahaGenelSekmeGecis('planlama'); // render sekme kapalıyken erken çıkar
+    app.planTarihSecildi(T);
+    const html = app._belge.getElementById('planUyarilar').innerHTML;
+    dogru(html.includes('karış'), 'karışma uyarısı ekrana yazılır');
+    dogru(html.includes('D.A2'), 'boş alan uyarısı ekrana yazılır');
+    app._temizle();
+  }
+
   /* --------------------------------------------------------------- */
   console.log(`\n${'─'.repeat(52)}`);
   if (kalan.length) {

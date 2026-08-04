@@ -526,6 +526,12 @@ input[type=number],.num,td,th,.badge b,.quickstats b{font-variant-numeric:tabula
 }
 .icon-btn.ghost{background:transparent;color:var(--green-700);}
 
+/* ---------- SAHA PLANLAMA ---------- */
+.plan-body{display:flex;flex-direction:column;gap:var(--sp-2);min-height:0;}
+.plan-arac-cubugu{display:flex;align-items:center;gap:var(--sp-1);flex-wrap:wrap;}
+.plan-arac-cubugu input[type=date]{font:inherit;padding:2px 6px;border:1px solid var(--border);border-radius:var(--r-xs);background:var(--surface);color:var(--ink);}
+.plan-sema{position:relative;overflow:auto;flex:1;min-height:220px;}
+
 /* ---------- SOL: DIZIM ALANI ---------- */
 /* Ana eylem düğmesi. Gölgesi eskiden --tobacco-deep'ti; o belirteç koyu temada
    metin rengi olarak da kullanıldığı için açılıyor ve düğmenin altında açık bir
@@ -1724,10 +1730,21 @@ input.dayibasi-ad-alani{flex:1;min-width:110px;border:1px solid var(--border);bo
     </div>
 
     <!-- ORTA -->
-    <div class="panel">
-      <div class="panel-head"><h2 data-i18n="Saha Genel">Saha Genel</h2></div>
+    <div class="panel" id="sahaGenelPanelBox">
+      <div class="panel-head">
+        <h2 data-i18n="Saha Genel">Saha Genel</h2>
+        <div class="panel-head-left">
+          <div class="page-tabs" id="sahaGenelTabs">
+            <button class="tab-btn active" id="sahaGenelTab_genel" onclick="sahaGenelSekmeGecis('genel')" data-i18n="Genel Bilgiler">Genel Bilgiler</button>
+            <button class="tab-btn" id="sahaGenelTab_planlama" onclick="sahaGenelSekmeGecis('planlama')" data-i18n="Saha Planlama">Saha Planlama</button>
+          </div>
+        </div>
+        <div class="satir-ortali-dar">
+          <button class="icon-btn fullscreen-close" onclick="sahaGenelSekmeGecis('genel')" title="Tam Ekranı Kapat" data-i18n-title="Tam Ekranı Kapat">×</button>
+        </div>
+      </div>
       <div class="panel-body">
-        <div class="orta-body">
+        <div class="orta-body" id="sahaGenelIcerikGenel">
           <h1>🌿 SCV</h1>
           <div class="sub" data-i18n="Üstten görünüm kroki paneli">Üstten görünüm kroki paneli</div>
           <div class="legend">
@@ -1749,6 +1766,19 @@ input.dayibasi-ad-alani{flex:1;min-width:110px;border:1px solid var(--border);bo
           </div>
           <div class="uyarilar-baslik" data-i18n="⚠️ Uyarılar">⚠️ Uyarılar</div>
           <div class="uyarilar-box" id="sahaUyarilar"></div>
+        </div>
+        <div class="plan-body hidden" id="sahaGenelIcerikPlanlama">
+          <div class="plan-arac-cubugu">
+            <button class="icon-btn ghost" onclick="planTarihKaydir(-1)" title="Önceki gün" data-i18n-title="Önceki gün">‹</button>
+            <input type="date" id="planTarihInput" onchange="planTarihSecildi(this.value)">
+            <button class="icon-btn ghost" onclick="planTarihKaydir(1)" title="Sonraki gün" data-i18n-title="Sonraki gün">›</button>
+            <button class="btn" onclick="planDunuKopyala()" data-i18n="📋 Dünü Kopyala">📋 Dünü Kopyala</button>
+            <button class="btn" id="planDegistirBtn" onclick="planDegistirUygula()" disabled data-i18n="⇄ Değiştir">⇄ Değiştir</button>
+            <button class="btn" id="planSecimBirakBtn" onclick="planSecimBirak()" disabled data-i18n="× Seçimi bırak">× Seçimi bırak</button>
+            <button class="btn" onclick="openDizimAlaniYonetimModal()" data-i18n="⚙ Dizim Alanları">⚙ Dizim Alanları</button>
+          </div>
+          <div class="plan-sema" id="planSema"></div>
+          <div class="uyarilar-box" id="planUyarilar"></div>
         </div>
       </div>
     </div>
@@ -2053,7 +2083,7 @@ const AYARLAR = {
   UNITE_PX: 40                // referans kapasitedeki sera-box genişliği (px) — kroki oranı
 };
 const STORAGE_KEY = 'scvSahaKrokiV1';
-const APP_SURUM = 'v99'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
+const APP_SURUM = 'v100'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
 
 /* =========================================================
    HATA / DONMA GÜNLÜĞÜ — "bazen donuyor" şikayetini araştırmak için.
@@ -2228,6 +2258,11 @@ const I18N_EN = {
   'Son Kırımlar':'Recent Harvests', 'Toplam İstatistik':'Total Statistics',
   'Başlangıç':'Start', 'Bitiş':'End', 'Çeşit / Varyete':'Variety', 'Tümü':'All',
   'Saha Genel':'Farm Overview', 'Üstten görünüm kroki paneli':'Top-down layout panel',
+  'Genel Bilgiler':'General Info', 'Saha Planlama':'Field Planning',
+  'Önceki gün':'Previous day', 'Sonraki gün':'Next day',
+  '📋 Dünü Kopyala':'📋 Copy Yesterday', '⇄ Değiştir':'⇄ Swap',
+  '× Seçimi bırak':'× Clear selection', '⚙ Dizim Alanları':'⚙ Stringing Areas',
+  'Uyarı yok.':'No warnings.',
   'Boş':'Empty', 'Tarla':'Field', 'Sera':'Greenhouse', 'Sera Doluluk':'Greenhouse Occupancy',
   'Dolu Sera':'Full', 'Boş Sera':'Empty', 'kg/da (kırılan)':'kg/da (harvested)', 'kg/da (tüm saha)':'kg/da (all land)',
   'Seralar':'Greenhouses', 'Sera ara…':'Search greenhouses…',
@@ -3353,6 +3388,48 @@ function sayfaGizliMi(pageId){
   const el = document.getElementById(pageId);
   return !!el && el.classList.contains('hidden');
 }
+/* =========================================================
+   SAHA PLANLAMA — EKRAN
+   Şema dar orta sütuna sığmaz; bu yüzden Saha Planlama sekmesi seçilince
+   panel mevcut tam ekran mekanizmasıyla açılır, Genel Bilgiler'e dönünce kapanır.
+   ========================================================= */
+let sahaGenelSekmeAktif = 'genel';
+let planSeciliTarih = todayStr();
+
+function sahaGenelSekmeGecis(sekme){
+  sahaGenelSekmeAktif = (sekme==='planlama') ? 'planlama' : 'genel';
+  const planlamaMi = sahaGenelSekmeAktif==='planlama';
+  document.getElementById('sahaGenelTab_genel').classList.toggle('active', !planlamaMi);
+  document.getElementById('sahaGenelTab_planlama').classList.toggle('active', planlamaMi);
+  document.getElementById('sahaGenelIcerikGenel').classList.toggle('hidden', planlamaMi);
+  document.getElementById('sahaGenelIcerikPlanlama').classList.toggle('hidden', !planlamaMi);
+  if(planlamaMi){ panelTamEkranAc('sahaGenelPanelBox'); renderSahaPlanlama(); }
+  else panelTamEkranKapat('sahaGenelPanelBox');
+}
+function planTarihSecildi(deger){
+  planSeciliTarih = /^\d{4}-\d{2}-\d{2}$/.test(deger||'') ? deger : todayStr();
+  renderSahaPlanlama();
+}
+/* Tarih aritmetiği UTC üzerinden: yerel saatte yaz saati geçişi olan günlerde
+   +1 gün 23 ya da 25 saat sürer ve gün atlaması bozulur. */
+function planTarihKaydir(gunFarki){
+  const d = new Date(planSeciliTarih + 'T00:00:00Z');
+  d.setUTCDate(d.getUTCDate() + gunFarki);
+  planTarihSecildi(d.toISOString().slice(0,10));
+}
+function renderSahaPlanlama(){
+  if(sahaGenelSekmeAktif!=='planlama') return;
+  const tarihEl = document.getElementById('planTarihInput');
+  if(tarihEl) tarihEl.value = planSeciliTarih;
+  const uyariEl = document.getElementById('planUyarilar');
+  if(uyariEl){
+    const u = planUyarilari(planSeciliTarih);
+    uyariEl.innerHTML = u.length
+      ? u.map(m=>`<div class="uyari-satiri">⚠ ${escapeHtml(m)}</div>`).join('')
+      : `<div class="uyari-satiri">${i18n('Uyarı yok.')}</div>`;
+  }
+}
+
 function renderSahaSayfasi(){
   renderDizim();
   renderBekleyenKirimlar();
@@ -3360,6 +3437,7 @@ function renderSahaSayfasi(){
   renderTarlalar();
   renderQuickStats();
   renderSahaUyarilar();
+  renderSahaPlanlama();
   populateCesitFiltre();
   renderToplamIstatistik();
 }
