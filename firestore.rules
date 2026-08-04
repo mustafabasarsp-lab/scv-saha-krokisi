@@ -20,7 +20,8 @@ service cloud.firestore {
         && (collection in ['tarlalar', 'seralar', 'kirimlar']
          || collection in ['haritaPinleri', 'tesisPinleri', 'depoKutulari']
          || collection in ['sulamaKayitlari', 'iklimKayitlari', 'dayibasilar']
-         || collection in ['yevmiyeKayitlari', 'odemeKayitlari', 'odemeAyarlari']);
+         || collection in ['yevmiyeKayitlari', 'odemeKayitlari', 'odemeAyarlari']
+         || collection in ['dizimAlanlari', 'sahaPlanlari']);
 
       // create/update: uygulama her zaman belge id'sini kaydın kendi 'id'
       // alanıyla aynı tutar (bkz. scv-saha-v1.html syncOutgoingNow) — bu
@@ -33,7 +34,8 @@ service cloud.firestore {
         && (collection in ['tarlalar', 'seralar', 'kirimlar']
          || collection in ['haritaPinleri', 'tesisPinleri', 'depoKutulari']
          || collection in ['sulamaKayitlari', 'iklimKayitlari', 'dayibasilar']
-         || collection in ['yevmiyeKayitlari', 'odemeKayitlari', 'odemeAyarlari'])
+         || collection in ['yevmiyeKayitlari', 'odemeKayitlari', 'odemeAyarlari']
+         || collection in ['dizimAlanlari', 'sahaPlanlari'])
         && request.resource.data.id == docId
         && request.resource.data.keys().size() <= 200;
     }

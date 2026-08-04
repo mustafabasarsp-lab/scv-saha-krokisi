@@ -347,6 +347,8 @@ function kur(secenekler) {
   YEDEK_KOLEKSIYON:    { get: () => YEDEK_KOLEKSIYON, enumerable: true },
   SEZON_TUMU:          { get: () => SEZON_TUMU, enumerable: true },
   seciliSezon:         { get: () => seciliSezon, set: v => { seciliSezon = v; }, enumerable: true },
+  ARACLAR:             { get: () => ARACLAR, enumerable: true },
+  DIZIM_ALANI_TOHUM:   { get: () => DIZIM_ALANI_TOHUM, enumerable: true },
 });`;
 
   const baglam = vm.createContext(pencere);

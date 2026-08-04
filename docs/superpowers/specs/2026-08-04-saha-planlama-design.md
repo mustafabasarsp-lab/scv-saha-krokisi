@@ -47,8 +47,16 @@ sözlü iletişimde ("A1'e indir" hangi A1?) tek harf bütün belirsizliği kald
 Şemada kutu içinde büyük **A1**, altında küçük **DİZİM** rozeti gösterilir — yani
 sahadaki tabelayla da örtüşür.
 
-Alanların yönetimi: uygulama ilk açılışta liste boşsa 8 alanı (D.A1–D.A4,
-D.B1–D.B4) kendiliğinden oluşturur. Şemanın altındaki `⚙ Dizim Alanları`
+Alanların yönetimi: liste boşken planlama ekranı "Sahadaki 8 dizim alanını
+oluştur" düğmesi gösterir; 8 alan (D.A1–D.A4, D.B1–D.B4) tek dokunuşla kurulur.
+
+**Açılışta kendiliğinden tohumlanmaz** (uygulama sırasında düzeltildi). Sebebi
+iki katmanlı: (1) açılışta senkron verisi henüz inmemiş olur, tohumlama 8 yerel
+alan yaratır ve uzaktan 8 alan daha inince 16 alan olurdu; (2) otomatik yedek
+"hiç veri yoksa yedek alma" kuralıyla çalışıyor, tohum bomboş bir cihazı "dolu"
+gösterip içi tohumdan ibaret bir yedek yazdırırdı.
+
+Şemanın altındaki `⚙ Dizim Alanları`
 düğmesi ekle/adını değiştir/sil için küçük bir kip açar — sera yönetiminin
 sadeleştirilmiş hâli. Bir alan silinirse geçmiş planlardaki atamaları da düşer;
 silmeden önce kaç planda kullanıldığı gösterilir.

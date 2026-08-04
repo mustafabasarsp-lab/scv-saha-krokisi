@@ -464,7 +464,7 @@ const tik = () => new Promise(r => setImmediate(r));
   {
     const app = kur();
     app._girisYapildi();
-    esit(app._gunluk.dinleyiciler.length, 12, '12 koleksiyonun tamamı dinlenir');
+    esit(app._gunluk.dinleyiciler.length, app.SYNC_KOLEKSIYONLARI.length, 'senkron listesindeki her koleksiyon dinlenir');
 
     app.state.tarlalar.push({ id: 't1', ad: 'K1', dekar: 10, cesit: 'Izmir' });
     app.syncOutgoingNow();
@@ -508,6 +508,75 @@ const tik = () => new Promise(r => setImmediate(r));
     const b = app._gunluk.batchler.pop();
     esit(b[0].ref._id, 's1', 'belge id = kaydın id alanı');
     esit(b[0].veri.id, 's1', 'gövdedeki id alanı korunur');
+    app._temizle();
+  }
+
+  /* ---------------------------------------------------------------
+     Saha Planlama — veri katmanı
+     Plan belgeleri TEMBEL oluşur: boş günler için çöp belge birikmemeli.
+     --------------------------------------------------------------- */
+  bolum('Saha Planlama — veri');
+  {
+    const app = kur();
+    esit(app.state.dizimAlanlari, [], 'yeni kurulumda dizim alanı listesi boş');
+    esit(app.state.sahaPlanlari, [], 'yeni kurulumda plan listesi boş');
+    dogru(app.SYNC_KOLEKSIYONLARI.includes('dizimAlanlari'), 'dizimAlanlari senkron listesinde');
+    dogru(app.SYNC_KOLEKSIYONLARI.includes('sahaPlanlari'), 'sahaPlanlari senkron listesinde');
+    // Açılış tohumlamıyor: tohumlasaydı senkron verisi inmeden 8 yerel alan
+    // yaratılır, uzaktan 8 alan daha inince 16 alan olurdu. Ayrıca bomboş bir
+    // cihaz "dolu" görünüp içi tohumdan ibaret bir yedek yazdırırdı.
+    app.renderAll();
+    esit(app.state.dizimAlanlari.length, 0, 'açılış/render dizim alanı tohumlamaz');
+    app._temizle();
+  }
+  {
+    const app = kur();
+    esit(app.dizimAlanlariTohumla(), 8, 'ilk tohumlama 8 alan ekler');
+    esit(app.dizimAlanlariSirali().map(a => a.ad),
+      ['D.A1','D.A2','D.A3','D.A4','D.B1','D.B2','D.B3','D.B4'], 'alan adları ve sırası');
+    esit(app.dizimAlanlariTohumla(), 0, 'ikinci tohumlama hiçbir şey eklemez');
+    app._temizle();
+  }
+  {
+    const app = kur();
+    esit(app.ARACLAR.length, 4, '2 traktör + 2 transit');
+    esit(app.ARACLAR.map(a => a.id), ['traktor1','traktor2','transit1','transit2'], 'araç kimlikleri');
+    esit(app.aracBul('transit2').ad, 'Transit 2', 'araç ada göre bulunur');
+    esit(app.aracBul('yok'), undefined, 'olmayan araç undefined');
+    dogru(app.ARACLAR.every(a => /^var\(--[a-z0-9-]+\)$/.test(a.renk)), 'araç renkleri belirteç kullanır');
+    app._temizle();
+  }
+  {
+    // Tembel oluşma: okumak belge yaratmaz, yazmak yaratır
+    const app = kur();
+    esit(app.planBul('2026-08-05'), undefined, 'olmayan günün planı okunurken yaratılmaz');
+    esit(app.state.sahaPlanlari.length, 0, 'okuma sonrası liste hâlâ boş');
+
+    const plan = app.planGetir('2026-08-05');
+    esit(plan.tarih, '2026-08-05', 'planGetir tarihi yazar');
+    esit(plan.id, '2026-08-05', 'belge id doğrudan tarih');
+    esit(app.state.sahaPlanlari.length, 1, 'planGetir belgeyi state e ekler');
+    dogru(app.planGetir('2026-08-05') === plan, 'ikinci çağrı aynı belgeyi döndürür');
+
+    dogru(app.planBosMu(plan), 'alanı olmayan plan boştur');
+    app._temizle();
+  }
+  {
+    const app = kur();
+    app.dizimAlanlariTohumla();
+    const alanId = app.dizimAlanlariSirali()[0].id;
+    const plan = app.planGetir('2026-08-05');
+    const alan = app.planAlanGetir(plan, alanId);
+    esit(alan.alanId, alanId, 'alan girdisi alanId taşır');
+    esit(alan.bolmeler.length, 1, 'alan tek bölmeyle açılır');
+    esit(alan.bolmeler[0].girisler, [], 'yeni bölmenin girişi yok');
+    esit(alan.bolmeler[0].seraIds, [], 'yeni bölmenin serası yok');
+    esit(alan.bolmeler[0].kirimId, null, 'yeni bölme kırım kaydına bağlı değil');
+    dogru(app.planAlanGetir(plan, alanId) === alan, 'ikinci çağrı aynı alanı döndürür');
+
+    dogru(app.planBosMu(plan), 'boş bölmeden ibaret plan hâlâ boş sayılır');
+    dogru(app.planCopTopla('2026-08-05'), 'boş plan çöp toplanır');
+    esit(app.state.sahaPlanlari.length, 0, 'çöp toplama sonrası belge kalmaz');
     app._temizle();
   }
 

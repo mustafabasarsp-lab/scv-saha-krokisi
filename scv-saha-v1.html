@@ -2053,7 +2053,7 @@ const AYARLAR = {
   UNITE_PX: 40                // referans kapasitedeki sera-box genişliği (px) — kroki oranı
 };
 const STORAGE_KEY = 'scvSahaKrokiV1';
-const APP_SURUM = 'v95'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
+const APP_SURUM = 'v96'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
 
 /* =========================================================
    HATA / DONMA GÜNLÜĞÜ — "bazen donuyor" şikayetini araştırmak için.
@@ -2527,7 +2527,7 @@ function uygulaStatikDil(){
 /* =========================================================
    STORE
    ========================================================= */
-function bosState(){ return { tarlalar: [], seralar: [], kirimlar: [], haritaPinleri: [], tesisPinleri: [], depoKutulari: [], sulamaKayitlari: [], iklimKayitlari: [], dayibasilar: [], yevmiyeKayitlari: [], odemeKayitlari: [], odemeAyarlari: [] }; }
+function bosState(){ return { tarlalar: [], seralar: [], kirimlar: [], haritaPinleri: [], tesisPinleri: [], depoKutulari: [], sulamaKayitlari: [], iklimKayitlari: [], dayibasilar: [], yevmiyeKayitlari: [], odemeKayitlari: [], odemeAyarlari: [], dizimAlanlari: [], sahaPlanlari: [] }; }
 /* Geri yükleme yollarının ortak girişi. Eski bir sürümden alınmış yedekte
    sonradan eklenen koleksiyonlar bulunmayabilir; gelen nesne doğrudan atanırsa
    state.seralar gibi bir alan undefined kalır ve ilk .forEach'te uygulama
@@ -2690,7 +2690,7 @@ const fbDb = firebase.firestore();
 fbAuth.setPersistence(firebase.auth.Auth.Persistence.LOCAL).catch(()=>{});
 fbDb.enablePersistence({ synchronizeTabs:true }).catch(()=>{ /* birden fazla sekme/deste desteklenmiyorsa sessizce yut */ });
 
-const SYNC_KOLEKSIYONLARI = ['tarlalar','seralar','kirimlar','haritaPinleri','tesisPinleri','depoKutulari','sulamaKayitlari','iklimKayitlari','dayibasilar','yevmiyeKayitlari','odemeKayitlari','odemeAyarlari'];
+const SYNC_KOLEKSIYONLARI = ['tarlalar','seralar','kirimlar','haritaPinleri','tesisPinleri','depoKutulari','sulamaKayitlari','iklimKayitlari','dayibasilar','yevmiyeKayitlari','odemeKayitlari','odemeAyarlari','dizimAlanlari','sahaPlanlari'];
 let lastSyncedSnapshot = {};
 SYNC_KOLEKSIYONLARI.forEach(c=>{ lastSyncedSnapshot[c] = {}; });
 let firestoreUnsubscribes = [];
@@ -4812,6 +4812,80 @@ function submitGubreHizliEkle(tarlaId){
   t.gubreler.push({ ad, tarih, miktar });
   Object.assign(t, sonIslemDamgasi());
   renderAll(); openTarlaDetay(tarlaId);
+}
+
+/* =========================================================
+   SAHA PLANLAMA — VERİ
+   Tütünün tarladan seraya yolculuğu: tarla → (araç + şoför) → dizim alanı
+   bölmesi → seralar. Plan GÜNLÜKTÜR, belge id'si doğrudan tarihtir.
+   ========================================================= */
+
+/* Sahada 2 traktör + 2 transit var; şoförleri her gün değişiyor, bu yüzden
+   kalıcı olan ARAÇ, şoför adı ise planda serbest metin. Dört kalemlik bir liste
+   için ayrı koleksiyon + güvenlik kuralı + yönetim ekranı israf olurdu; filo
+   değişirse buraya bir satır eklenir. Renkler belirteç — koyu temada da okunur. */
+const ARACLAR = [
+  { id:'traktor1', ad:'Traktör 1', tip:'traktor', renk:'var(--green-700)' },
+  { id:'traktor2', ad:'Traktör 2', tip:'traktor', renk:'var(--green-500)' },
+  { id:'transit1', ad:'Transit 1', tip:'transit', renk:'var(--tobacco-deep)' },
+  { id:'transit2', ad:'Transit 2', tip:'transit', renk:'var(--amber)' }
+];
+function aracBul(id){ return ARACLAR.find(a=>a.id===id); }
+
+/* Sahadaki 8 dizim alanı. 'D.' öneki sera adlarıyla (A1…A41, B1…B40) çakışmayı
+   önler — arama, rapor, yedek ve sözlü iletişimde "A1" hangi A1 belirsizliği
+   kalmasın diye. Şemada kutu içinde büyük "A1", altında küçük "DİZİM" yazar. */
+const DIZIM_ALANI_TOHUM = ['D.A1','D.A2','D.A3','D.A4','D.B1','D.B2','D.B3','D.B4'];
+function dizimAlaniBul(id){ return state.dizimAlanlari.find(a=>a.id===id); }
+function dizimAlanlariSirali(){
+  return [...state.dizimAlanlari].sort((a,b)=>(a.sira||0)-(b.sira||0) || (a.ad||'').localeCompare(b.ad||'','tr',{numeric:true}));
+}
+/* Liste boşsa 8 alanı kurar. Var olan adlara dokunmaz: kullanıcı bir alanı
+   silmişse tohumlama onu geri getirmez, yalnızca hiç yoksa doldurur.
+   AÇILIŞTA ÇAĞRILMAZ, yalnızca kullanıcı düğmeye bastığında. Sebebi iki katmanlı:
+    • Açılışta state boş, senkron verisi henüz inmemiş oluyor. Tohumlasaydık
+      8 yerel alan yaratılır, ardından uzaktan 8 alan daha inerdi → 16 alan.
+    • Otomatik yedek "hiç veri yoksa yedek alma" kuralıyla çalışıyor; tohum,
+      bomboş bir cihazı "dolu" gösterip içi tohumdan ibaret yedek yazdırırdı. */
+function dizimAlanlariTohumla(){
+  if(state.dizimAlanlari.length) return 0;
+  DIZIM_ALANI_TOHUM.forEach((ad,i)=>{
+    state.dizimAlanlari.push({
+      id: uid(), ad,
+      bolge: ad.startsWith('D.A') ? 'kalemli' : 'tekeliler',
+      sira: i+1, olusturma: Date.now(), ...sonIslemDamgasi()
+    });
+  });
+  return DIZIM_ALANI_TOHUM.length;
+}
+
+function bosBolme(){ return { id: uid(), girisler: [], seraIds: [], kirimId: null, not: '' }; }
+function planBul(tarih){ return state.sahaPlanlari.find(p=>p.tarih===tarih); }
+/* Yazma yolundaki tek giriş noktası. Okuma yapan hiçbir yer bunu ÇAĞIRMAMALI —
+   yoksa sadece bakılan her gün için çöp belge yazılır. Okumalar planBul kullanır. */
+function planGetir(tarih){
+  let p = planBul(tarih);
+  if(!p){
+    p = { id: tarih, tarih, alanlar: [], olusturma: Date.now(), ...sonIslemDamgasi() };
+    state.sahaPlanlari.push(p);
+  }
+  return p;
+}
+function planAlanGetir(plan, alanId){
+  let a = plan.alanlar.find(x=>x.alanId===alanId);
+  if(!a){ a = { alanId, bolmeler: [bosBolme()] }; plan.alanlar.push(a); }
+  return a;
+}
+/* Hiç giriş ve hiç sera yoksa plan "boş"tur — kullanıcı bir alana dokunup
+   vazgeçmiş olabilir, o hâl kaydedilmeye değmez. */
+function planBosMu(plan){
+  return !plan || !plan.alanlar.some(a=>a.bolmeler.some(b=>b.girisler.length || b.seraIds.length));
+}
+function planCopTopla(tarih){
+  const p = planBul(tarih);
+  if(!p || !planBosMu(p)) return false;
+  state.sahaPlanlari = state.sahaPlanlari.filter(x=>x!==p);
+  return true;
 }
 
 /* =========================================================

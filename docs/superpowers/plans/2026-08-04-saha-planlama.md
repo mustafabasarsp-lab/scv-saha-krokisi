@@ -223,13 +223,19 @@ function planCopTopla(tarih){
 }
 ```
 
-- [ ] **Step 6: Uygulama açılışında tohumlamayı çağır**
+- [x] **Step 6: Tohumlama açılışta ÇAĞRILMAZ** *(uygulama sırasında düzeltildi)*
 
-`renderAll` (3373) içinde `renderSezonSecici();` satırının **öncesine** ekle:
+Planın ilk hâli `renderAll` içinde tohumlamayı çağırıyordu. Denendi ve geri alındı:
 
-```js
-  dizimAlanlariTohumla(); // liste boşsa 8 dizim alanını kurar; doluysa hiçbir şey yapmaz
-```
+- Açılışta state boş, senkron verisi henüz inmemiş oluyor. Tohumlanınca 8 yerel
+  alan yaratılıyor, ardından uzaktan 8 alan daha iniyor → **16 alan**.
+- Otomatik yedek "hiç veri yoksa yedek alma" kuralıyla çalışıyor; tohum bomboş
+  bir cihazı "dolu" gösterip içi tohumdan ibaret bir yedek yazdırıyor
+  (`boş state yedeklenmez` testi bunu yakaladı).
+
+Tohumlama yalnızca **kullanıcı düğmeye bastığında** çalışır (Task 6 boş ekran
+düğmesi ve Task 9 yönetim kipi). `renderAll` değiştirilmez. Gerileme testi:
+`açılış/render dizim alanı tohumlamaz`.
 
 - [ ] **Step 7: Harness'a yeni sabitleri aç**
 
