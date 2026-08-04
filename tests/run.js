@@ -723,6 +723,77 @@ const tik = () => new Promise(r => setImmediate(r));
     app._temizle();
   }
 
+  /* ---------------------------------------------------------------
+     Saha Planlama — türetimler
+     Bölmenin çeşidi SAKLANMAZ, tarlalardan türetilir: tek kaynak korunur,
+     tarlanın çeşidi düzeltilince plan kendiliğinden doğrulanır.
+     --------------------------------------------------------------- */
+  bolum('Saha Planlama — türetimler');
+  {
+    const { app, T, a1 } = planOrtami();
+    const plan = app.planGetir(T);
+    const b1 = app.planAlanGetir(plan, a1).bolmeler[0].id;
+    const bolme = app.planBolmeBul(plan, a1, b1);
+
+    esit(app.planBolmeCesitleri(bolme), [], 'girişsiz bölmenin çeşidi yok');
+    esit(app.planBolmeEtiketi(bolme), '—', 'girişsiz bölme tire gösterir');
+
+    app.planGirisEkle(T, a1, b1, 't0', 'traktor1', 'Ahmet'); // K11 · BSB 6195
+    esit(app.planBolmeCesitleri(bolme), ['BSB 6195'], 'tek çeşit');
+    yanlis(app.planBolmeKarisikMi(bolme), 'tek çeşit karışık değil');
+    esit(app.planBolmeEtiketi(bolme), 'BSB 6195', 'etiket çeşidi yazar');
+
+    app.planGirisEkle(T, a1, b1, 't1', 'traktor1', 'Ahmet'); // K21 · BSB 6195
+    esit(app.planBolmeCesitleri(bolme), ['BSB 6195'], 'aynı çeşit yinelenmez');
+    yanlis(app.planBolmeKarisikMi(bolme), 'aynı çeşitten iki tarla karışma değil');
+
+    app.planGirisEkle(T, a1, b1, 't2', 'transit1', 'Veli'); // K13 · PVH 2310
+    esit(app.planBolmeCesitleri(bolme), ['BSB 6195','PVH 2310'], 'iki çeşit');
+    dogru(app.planBolmeKarisikMi(bolme), 'farklı çeşit aynı bölmede karışma');
+    esit(app.planBolmeEtiketi(bolme), 'BSB 6195 + PVH 2310', 'etiket iki çeşidi birleştirir');
+    app._temizle();
+  }
+  {
+    // Farklı bölmelerde farklı çeşit normaldir — uyarı çıkmaz
+    const { app, T, a1 } = planOrtami();
+    const plan = app.planGetir(T);
+    const alan = app.planAlanGetir(plan, a1);
+    const b1 = alan.bolmeler[0].id;
+    app.planBolmeEkle(T, a1);
+    const b2 = alan.bolmeler[1].id;
+    app.planGirisEkle(T, a1, b1, 't0', 'traktor1', 'Ahmet');
+    app.planGirisEkle(T, a1, b2, 't2', 'transit1', 'Veli');
+
+    yanlis(app.planBolmeKarisikMi(app.planBolmeBul(plan, a1, b1)), '1. bölme temiz');
+    yanlis(app.planBolmeKarisikMi(app.planBolmeBul(plan, a1, b2)), '2. bölme temiz');
+    esit(app.planUyarilari(T).filter(u => u.includes('karış')).length, 0, 'ayrı bölmelerde karışma uyarısı yok');
+    app._temizle();
+  }
+  {
+    // Karışma uyarısı alan adını ve bölme numarasını söyler
+    const { app, T, a1 } = planOrtami();
+    const plan = app.planGetir(T);
+    const b1 = app.planAlanGetir(plan, a1).bolmeler[0].id;
+    app.planGirisEkle(T, a1, b1, 't0', 'traktor1', 'Ahmet');
+    app.planGirisEkle(T, a1, b1, 't2', 'transit1', 'Veli');
+    const uyarilar = app.planUyarilari(T);
+    esit(uyarilar.filter(u => u.includes('karış')).length, 1, 'tek karışma uyarısı');
+    dogru(uyarilar.some(u => u.includes('D.A1') && u.includes('BSB 6195') && u.includes('PVH 2310')),
+      'uyarı alan adını ve iki çeşidi içerir');
+    app._temizle();
+  }
+  {
+    // Boş alanlar
+    const { app, T, a1 } = planOrtami();
+    esit(app.planBosAlanIdleri(T).length, 8, 'plan yokken 8 alanın hepsi boş');
+    const plan = app.planGetir(T);
+    const b1 = app.planAlanGetir(plan, a1).bolmeler[0].id;
+    app.planGirisEkle(T, a1, b1, 't0', 'traktor1', 'Ahmet');
+    esit(app.planBosAlanIdleri(T).length, 7, 'giriş alan bir alanı boş listesinden çıkarır');
+    yanlis(app.planBosAlanIdleri(T).includes(a1), 'dolu alan boş listesinde yok');
+    app._temizle();
+  }
+
   /* --------------------------------------------------------------- */
   console.log(`\n${'─'.repeat(52)}`);
   if (kalan.length) {

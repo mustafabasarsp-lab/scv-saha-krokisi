@@ -2053,7 +2053,7 @@ const AYARLAR = {
   UNITE_PX: 40                // referans kapasitedeki sera-box genişliği (px) — kroki oranı
 };
 const STORAGE_KEY = 'scvSahaKrokiV1';
-const APP_SURUM = 'v97'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
+const APP_SURUM = 'v98'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
 
 /* =========================================================
    HATA / DONMA GÜNLÜĞÜ — "bazen donuyor" şikayetini araştırmak için.
@@ -5003,6 +5003,52 @@ function planAlanTakas(tarih, alanIdA, alanIdB){
   b.bolmeler = gecici;
   planDamgala(plan);
   return true;
+}
+
+/* ---- Türetimler ----
+   Bölmenin çeşidi belgeye YAZILMAZ; içindeki tarlalardan okunur. Böylece
+   tarlanın çeşidi düzeltildiğinde geçmiş planlar da kendiliğinden doğrulanır
+   ve iki yerde tutulan bir gerçek olmaz. */
+function planBolmeCesitleri(bolme){
+  const kume = [];
+  (bolme ? bolme.girisler : []).forEach(g=>{
+    const c = ((tarlaBul(g.tarlaId)||{}).cesit||'').trim();
+    if(c && !kume.includes(c)) kume.push(c);
+  });
+  return kume;
+}
+function planBolmeKarisikMi(bolme){ return planBolmeCesitleri(bolme).length > 1; }
+function planBolmeEtiketi(bolme){
+  const c = planBolmeCesitleri(bolme);
+  return c.length ? c.join(' + ') : '—';
+}
+/* Hiç giriş VE hiç sera almamış alanlar. Planlamanın asıl sorusu "hangi alan
+   boş kaldı" olduğu için bu liste şemanın altında açıkça yazılır. */
+function planBosAlanIdleri(tarih){
+  const plan = planBul(tarih);
+  return dizimAlanlariSirali().filter(al=>{
+    const a = plan && plan.alanlar.find(x=>x.alanId===al.id);
+    return !a || !a.bolmeler.some(b=>b.girisler.length || b.seraIds.length);
+  }).map(al=>al.id);
+}
+/* Kullanıcıya gösterilecek hazır uyarı metinleri. Karışma ENGELLENMEZ —
+   'Mix' ve 'Deneme' tarlaları var, kilitlemek sahadaki işi tıkar. */
+function planUyarilari(tarih){
+  const plan = planBul(tarih);
+  const cikti = [];
+  if(plan){
+    plan.alanlar.forEach(a=>{
+      const alanAd = (dizimAlaniBul(a.alanId)||{}).ad || '?';
+      a.bolmeler.forEach((b,i)=>{
+        if(planBolmeKarisikMi(b)){
+          cikti.push(`${alanAd} ${i+1}. bölmesinde ${planBolmeCesitleri(b).join(' ve ')} karışıyor.`);
+        }
+      });
+    });
+  }
+  const bos = planBosAlanIdleri(tarih).map(id=>(dizimAlaniBul(id)||{}).ad).filter(Boolean);
+  if(bos.length) cikti.push(`${bos.join(', ')} boş — atama yok.`);
+  return cikti;
 }
 
 /* =========================================================
