@@ -974,6 +974,124 @@ const tik = () => new Promise(r => setImmediate(r));
     app._temizle();
   }
 
+  /* ---------------------------------------------------------------
+     Saha Planlama — seçim ve bağlama
+     "Futbol değişikliği": iki aynı türden kutu seçilir, Değiştir'e basılır.
+     --------------------------------------------------------------- */
+  bolum('Saha Planlama — seçim ve bağlama');
+  {
+    const { app, T } = planOrtami();
+    app.sahaGenelSekmeGecis('planlama');
+    app.planTarihSecildi(T);
+    const b = app._belge;
+
+    app.planTarlaTikla('t0');
+    dogru(app.planSecimEsitMi('tarla','t0'), 'tarla seçilir');
+    dogru(b.getElementById('planDegistirBtn').disabled, 'tek seçimde Değiştir kapalı');
+    yanlis(b.getElementById('planSecimBirakBtn').disabled, 'seçim varken bırak açık');
+
+    app.planTarlaTikla('t0');
+    yanlis(app.planSecimEsitMi('tarla','t0'), 'aynı kutuya tekrar tıklamak seçimi bırakır');
+    dogru(b.getElementById('planSecimBirakBtn').disabled, 'seçim yokken bırak kapalı');
+    app._temizle();
+  }
+  {
+    // Tarla → bölme bağlama (kip onayı submitPlanGiris ile taklit edilir)
+    const { app, T, a1 } = planOrtami();
+    app.sahaGenelSekmeGecis('planlama');
+    app.planTarihSecildi(T);
+    const plan = app.planGetir(T);
+    const b1 = app.planAlanGetir(plan, a1).bolmeler[0].id;
+
+    app.planTarlaTikla('t0');
+    app.planBolmeTikla(a1, b1);            // araç/şoför kipini açar
+    dogru(app._belge.getElementById('modalContent').innerHTML.includes('Traktör 1'), 'araç seçenekleri kipte');
+
+    app._belge.getElementById('planGirisArac').value = 'transit1';
+    app._belge.getElementById('planGirisSofor').value = ' Ahmet ';
+    app.submitPlanGiris(a1, b1, 't0');
+
+    const bolme = app.planBolmeBul(plan, a1, b1);
+    esit(bolme.girisler.length, 1, 'giriş eklendi');
+    esit(bolme.girisler[0].aracId, 'transit1', 'seçilen araç yazıldı');
+    esit(bolme.girisler[0].sofor, 'Ahmet', 'şoför adının boşlukları kırpıldı');
+    esit(app.planSecim, null, 'bağlamadan sonra seçim bırakılır');
+    app._temizle();
+  }
+  {
+    // Bölme → sera bağlama
+    const { app, T, a1 } = planOrtami();
+    app.sahaGenelSekmeGecis('planlama');
+    app.planTarihSecildi(T);
+    const plan = app.planGetir(T);
+    const b1 = app.planAlanGetir(plan, a1).bolmeler[0].id;
+
+    app.planBolmeTikla(a1, b1);
+    dogru(app.planSecimEsitMi('bolme', b1), 'bölme seçildi');
+    app.planSeraTikla('s0', '', '');
+    esit(app.planBolmeBul(plan, a1, b1).seraIds, ['s0'], 'sera bölmeye bağlandı');
+    esit(app.planSecim, null, 'bağlamadan sonra seçim bırakılır');
+    app._temizle();
+  }
+  {
+    // İki tarla seçip Değiştir
+    const { app, T, a1, a2 } = planOrtami();
+    const plan = app.planGetir(T);
+    const b1 = app.planAlanGetir(plan, a1).bolmeler[0].id;
+    const b2 = app.planAlanGetir(plan, a2).bolmeler[0].id;
+    app.planGirisEkle(T, a1, b1, 't0', 'traktor1', 'Ahmet');
+    app.planGirisEkle(T, a2, b2, 't2', 'transit1', 'Veli');
+    app.sahaGenelSekmeGecis('planlama');
+    app.planTarihSecildi(T);
+
+    app.planTarlaTikla('t0');
+    app.planTarlaTikla('t2');
+    yanlis(app._belge.getElementById('planDegistirBtn').disabled, 'iki aynı tür seçilince Değiştir açılır');
+    app.planDegistirUygula();
+    esit(app.planBolmeBul(plan, a1, b1).girisler[0].tarlaId, 't2', 'tarlalar takas edildi');
+    esit(app.planSecim, null, 'takastan sonra seçim bırakılır');
+    dogru(app._belge.getElementById('planDegistirBtn').disabled, 'takastan sonra Değiştir kapanır');
+    app._temizle();
+  }
+  {
+    // Uyumsuz çift: tarla seçiliyken seraya tıklamak sadece serayı seçer
+    const { app, T } = planOrtami();
+    app.sahaGenelSekmeGecis('planlama');
+    app.planTarihSecildi(T);
+    app.planTarlaTikla('t0');
+    app.planSeraTikla('s0', '', '');
+    dogru(app.planSecimEsitMi('sera','s0'), 'sera tek seçim olur');
+    dogru(app._belge.getElementById('planDegistirBtn').disabled, 'uyumsuz çiftte Değiştir kapalı');
+    app._temizle();
+  }
+  {
+    // Bölme ekle / birleştir düğmeleri
+    const { app, T, a1 } = planOrtami();
+    app.sahaGenelSekmeGecis('planlama');
+    app.planTarihSecildi(T);
+    app.planBolmeEkleTikla(a1);
+    esit(app.planAlanGetir(app.planGetir(T), a1).bolmeler.length, 2, 'böl düğmesi bölme ekler');
+    app.planBolmeBirlestirTikla(a1);
+    esit(app.planAlanGetir(app.planGetir(T), a1).bolmeler.length, 1, 'birleştir düğmesi bölme azaltır');
+    app._temizle();
+  }
+  {
+    // Şoför önerileri son 30 günden derlenir, yinelenmez
+    const { app, T, a1 } = planOrtami();
+    const plan = app.planGetir(T);
+    const b1 = app.planAlanGetir(plan, a1).bolmeler[0].id;
+    app.planGirisEkle(T, a1, b1, 't0', 'traktor1', 'Ahmet');
+    app.planGirisEkle(T, a1, b1, 't1', 'traktor1', 'Ahmet');
+    app.planGirisEkle(T, a1, b1, 't2', 'transit1', 'Veli');
+    esit(app.planSoforOnerileri(), ['Ahmet','Veli'], 'öneriler benzersiz ve sıralı');
+
+    const eski = app.planGetir('2020-01-01');
+    const eb = app.planAlanGetir(eski, a1).bolmeler[0].id;
+    app.planGirisEkle('2020-01-01', a1, eb, 't0', 'traktor1', 'Eski Şoför');
+    yanlis(app.planSoforOnerileri().includes('Eski Şoför'), '30 günden eski ad önerilmez');
+    app._temizle();
+  }
+
   /* --------------------------------------------------------------- */
   console.log(`\n${'─'.repeat(52)}`);
   if (kalan.length) {

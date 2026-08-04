@@ -351,6 +351,8 @@ function kur(secenekler) {
   DIZIM_ALANI_TOHUM:   { get: () => DIZIM_ALANI_TOHUM, enumerable: true },
   sahaGenelSekmeAktif: { get: () => sahaGenelSekmeAktif, set: v => { sahaGenelSekmeAktif = v; }, enumerable: true },
   planSeciliTarih:     { get: () => planSeciliTarih, set: v => { planSeciliTarih = v; }, enumerable: true },
+  planSecim:           { get: () => planSecim, set: v => { planSecim = v; }, enumerable: true },
+  planSecim2:          { get: () => planSecim2, set: v => { planSecim2 = v; }, enumerable: true },
 });`;
 
   const baglam = vm.createContext(pencere);

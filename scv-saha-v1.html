@@ -2111,7 +2111,7 @@ const AYARLAR = {
   UNITE_PX: 40                // referans kapasitedeki sera-box genişliği (px) — kroki oranı
 };
 const STORAGE_KEY = 'scvSahaKrokiV1';
-const APP_SURUM = 'v101'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
+const APP_SURUM = 'v102'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
 
 /* =========================================================
    HATA / DONMA GÜNLÜĞÜ — "bazen donuyor" şikayetini araştırmak için.
@@ -2296,6 +2296,14 @@ const I18N_EN = {
   'Kırım Kaydına Dönüştür':'Convert to Harvest Record',
   'Henüz dizim alanı yok.':'No stringing areas yet.',
   'Sahadaki 8 dizim alanını oluştur':'Create the 8 stringing areas',
+  'Araç':'Vehicle', 'Şoför':'Driver', 'Şoför adı':'Driver name', 'Bağla':'Connect',
+  'Tarla Seç':'Select Field',
+  'Tarlayı seçtikten sonra bir dizim alanı bölmesine dokunarak bağlayın.':'After selecting the field, tap a stringing area section to connect it.',
+  'Bu tarla zaten bu bölmede.':'This field is already in this section.',
+  'Bu sera başka bir bölmedeydi, oradan alınıp buraya taşındı.':'This greenhouse was in another section; it has been moved here.',
+  'Bir dizim alanı en çok 4 bölmeye ayrılabilir.':'A stringing area can be split into at most 4 sections.',
+  'Alanda tek bölme var, birleştirilecek bir şey yok.':'The area has a single section; nothing to merge.',
+  'Bölmeler takas edilemez — bölme içeriğini "Böl / Birleştir" ile düzenleyin.':'Sections cannot be swapped — edit section contents with "Split / Merge".',
   'Boş':'Empty', 'Tarla':'Field', 'Sera':'Greenhouse', 'Sera Doluluk':'Greenhouse Occupancy',
   'Dolu Sera':'Full', 'Boş Sera':'Empty', 'kg/da (kırılan)':'kg/da (harvested)', 'kg/da (tüm saha)':'kg/da (all land)',
   'Seralar':'Greenhouses', 'Sera ara…':'Search greenhouses…',
@@ -3450,9 +3458,152 @@ function planTarihKaydir(gunFarki){
   d.setUTCDate(d.getUTCDate() + gunFarki);
   planTarihSecildi(d.toISOString().slice(0,10));
 }
-/* Seçim durumu Task 7'de gerçek mantığıyla dolduruluyor; şema render'ı buradan okur. */
+/* ---- Seçim ----
+   İki yuva: birinci seçim bağlamanın kaynağı, ikinci seçim (aynı türdense)
+   takasın öteki ucu. Futboldaki oyuncu değişikliği gibi: ikisi işaretlenir,
+   sonra Değiştir'e basılır. */
 let planSecim = null;   // { tur:'tarla'|'alan'|'bolme'|'sera', id, alanId, bolmeId }
-function planSecimEsitMi(tur, id){ return !!planSecim && planSecim.tur===tur && planSecim.id===id; }
+let planSecim2 = null;
+function planSecimEsitMi(tur, id){
+  return (!!planSecim && planSecim.tur===tur && planSecim.id===id)
+      || (!!planSecim2 && planSecim2.tur===tur && planSecim2.id===id);
+}
+function planSecimBirak(){
+  planSecim = null; planSecim2 = null;
+  renderSahaPlanlama();
+}
+function planDegistirDugmeleriGuncelle(){
+  const dg = document.getElementById('planDegistirBtn');
+  const br = document.getElementById('planSecimBirakBtn');
+  if(dg) dg.disabled = !(planSecim && planSecim2 && planSecim.tur===planSecim2.tur);
+  if(br) br.disabled = !planSecim;
+}
+/* Tek giriş noktası: hangi kutuya tıklanırsa tıklansın buraya düşer.
+   1) Aynı kutuya tekrar tıklamak seçimi bırakır.
+   2) Bağlanabilir çift (tarla→bölme, bölme→sera) ise bağlar (çağıranda).
+   3) Aynı türdense ikinci seçim olur (takas için).
+   4) Aksi hâlde yeni kutu tek seçim olur. */
+function planKutuSec(yeni){
+  if(planSecim && planSecim.tur===yeni.tur && planSecim.id===yeni.id){ planSecimBirak(); return; }
+  if(planSecim2 && planSecim2.tur===yeni.tur && planSecim2.id===yeni.id){ planSecim2 = null; renderSahaPlanlama(); return; }
+  if(planSecim && planSecim.tur===yeni.tur){ planSecim2 = yeni; renderSahaPlanlama(); return; }
+  planSecim = yeni; planSecim2 = null;
+  renderSahaPlanlama();
+}
+function planTarlaTikla(tarlaId){ planKutuSec({ tur:'tarla', id:tarlaId }); }
+function planAlanTikla(alanId){ planKutuSec({ tur:'alan', id:alanId }); }
+function planBolmeTikla(alanId, bolmeId){
+  // Tarla seçiliyken bölmeye dokunmak BAĞLAMA demektir; araç ve şoförü sorar.
+  if(planSecim && planSecim.tur==='tarla'){
+    const tarlaId = planSecim.id;
+    planSecim = null; planSecim2 = null;
+    openPlanGirisModal(alanId, bolmeId, tarlaId);
+    return;
+  }
+  planKutuSec({ tur:'bolme', id:bolmeId, alanId });
+}
+/* Bir seranın seçili günde hangi bölmede olduğunu bulur (taşıma bilgisi için). */
+function seraBolmesiniBul(tarih, seraId){
+  const plan = planBul(tarih);
+  if(!plan) return null;
+  for(const a of plan.alanlar){
+    for(const b of a.bolmeler){ if(b.seraIds.includes(seraId)) return { alanId:a.alanId, bolmeId:b.id }; }
+  }
+  return null;
+}
+function planSeraTikla(seraId, alanId, bolmeId){
+  // Bölme seçiliyken seraya dokunmak BAĞLAMA demektir.
+  if(planSecim && planSecim.tur==='bolme'){
+    const hedefAlan = planSecim.alanId, hedefBolme = planSecim.id;
+    planSecim = null; planSecim2 = null;
+    const tasindi = !!seraBolmesiniBul(planSeciliTarih, seraId);
+    planSeraEkle(planSeciliTarih, hedefAlan, hedefBolme, seraId);
+    if(tasindi) uyar('Bu sera başka bir bölmedeydi, oradan alınıp buraya taşındı.');
+    renderAll();
+    return;
+  }
+  planKutuSec({ tur:'sera', id:seraId, alanId, bolmeId });
+}
+function planDegistirUygula(){
+  if(!planSecim || !planSecim2 || planSecim.tur!==planSecim2.tur) return;
+  const t = planSecim.tur, a = planSecim.id, b = planSecim2.id;
+  if(t==='tarla') planTarlaTakas(planSeciliTarih, a, b);
+  else if(t==='sera') planSeraTakas(planSeciliTarih, a, b);
+  else if(t==='alan') planAlanTakas(planSeciliTarih, a, b);
+  else { uyar('Bölmeler takas edilemez — bölme içeriğini "Böl / Birleştir" ile düzenleyin.'); return; }
+  planSecim = null; planSecim2 = null;
+  renderAll();
+}
+function planBolmeEkleTikla(alanId){
+  if(!planBolmeEkle(planSeciliTarih, alanId)) uyar('Bir dizim alanı en çok 4 bölmeye ayrılabilir.');
+  renderAll();
+}
+function planBolmeBirlestirTikla(alanId){
+  if(!planBolmeBirlestir(planSeciliTarih, alanId)) uyar('Alanda tek bölme var, birleştirilecek bir şey yok.');
+  renderAll();
+}
+function planGirisKaldirTikla(alanId, bolmeId, tarlaId){
+  planGirisKaldir(planSeciliTarih, alanId, bolmeId, tarlaId);
+  planCopTopla(planSeciliTarih);
+  renderAll();
+}
+/* ---- Araç + şoför kipi ----
+   Şoför adı serbest metin (her gün değişiyor) ama son 30 günün planlarında
+   geçen adlar öneri olarak sunulur — "Ahmet / ahmet / Ahmet A." kaymasın. */
+function planSoforOnerileri(){
+  const sinir = new Date(Date.now() - 30*86400000).toISOString().slice(0,10);
+  const kume = new Set();
+  state.sahaPlanlari.forEach(p=>{
+    if((p.tarih||'') < sinir) return;
+    p.alanlar.forEach(a=>a.bolmeler.forEach(b=>b.girisler.forEach(g=>{ if(g.sofor) kume.add(g.sofor); })));
+  });
+  return [...kume].sort((x,y)=>x.localeCompare(y,'tr'));
+}
+function openPlanGirisModal(alanId, bolmeId, tarlaId){
+  const t = tarlaBul(tarlaId) || {};
+  const alanAd = (dizimAlaniBul(alanId)||{}).ad || '';
+  openModal(`
+    <h3>${escapeHtml(t.ad||'')} → ${escapeHtml(alanAd)}</h3>
+    <div class="field"><label>${i18n('Araç')}</label>
+      <select id="planGirisArac">${ARACLAR.map(a=>`<option value="${a.id}">${escapeHtml(a.ad)}</option>`).join('')}</select>
+    </div>
+    <div class="field"><label>${i18n('Şoför')}</label>
+      <input id="planGirisSofor" list="planSoforListe" placeholder="${i18n('Şoför adı')}">
+      <datalist id="planSoforListe">${planSoforOnerileri().map(s=>`<option value="${escapeHtml(s)}"></option>`).join('')}</datalist>
+    </div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeModal()">${i18n('Vazgeç')}</button>
+      <button class="btn btn-primary" onclick="submitPlanGiris('${alanId}','${bolmeId}','${tarlaId}')">${i18n('Bağla')}</button>
+    </div>`);
+}
+function submitPlanGiris(alanId, bolmeId, tarlaId){
+  const arac = document.getElementById('planGirisArac').value;
+  const sofor = document.getElementById('planGirisSofor').value;
+  if(!planGirisEkle(planSeciliTarih, alanId, bolmeId, tarlaId, arac, sofor)){
+    uyar('Bu tarla zaten bu bölmede.');
+  }
+  closeModal();
+  renderAll();
+}
+/* Sol sütuna yeni tarla eklemek: tarlayı seçtirir, sonra kullanıcı bir bölmeye
+   dokunarak bağlar. Doğrudan bağlamak mümkün değil — hangi bölmeye gideceğini
+   bu aşamada bilmiyoruz. */
+function openPlanTarlaSecModal(){
+  const liste = [...state.tarlalar].sort((a,b)=>(a.ad||'').localeCompare(b.ad||'','tr',{numeric:true}));
+  openModal(`
+    <h3>${i18n('Tarla Seç')}</h3>
+    <div class="hint-text">${i18n('Tarlayı seçtikten sonra bir dizim alanı bölmesine dokunarak bağlayın.')}</div>
+    <div class="tarla-grid">${liste.map(t=>
+      `<button class="tarla-tile" type="button" onclick="planTarlaSecildi('${t.id}')"><b>${escapeHtml(t.ad||'-')}</b><span>${escapeHtml(t.cesit||'')}</span></button>`
+    ).join('')}</div>
+    <div class="modal-actions"><button class="btn" onclick="closeModal()">${i18n('Vazgeç')}</button></div>`);
+}
+function planTarlaSecildi(tarlaId){
+  planSecim = { tur:'tarla', id:tarlaId };
+  planSecim2 = null;
+  closeModal();
+  renderSahaPlanlama();
+}
 
 /* Sol sütun yalnız PLANA BAĞLI tarlaları gösterir: sahada 25+ tarla var,
    hepsini çizmek şemayı okunmaz yapardı. Yeni tarla "+ Tarla" ile eklenir. */
@@ -3557,6 +3708,7 @@ function renderSahaPlanlama(){
       ? u.map(m=>`<div class="uyari-satiri">⚠ ${escapeHtml(m)}</div>`).join('')
       : `<div class="uyari-satiri">${i18n('Uyarı yok.')}</div>`;
   }
+  planDegistirDugmeleriGuncelle();
 }
 
 function renderSahaSayfasi(){
