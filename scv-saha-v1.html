@@ -531,6 +531,34 @@ input[type=number],.num,td,th,.badge b,.quickstats b{font-variant-numeric:tabula
 .plan-arac-cubugu{display:flex;align-items:center;gap:var(--sp-1);flex-wrap:wrap;}
 .plan-arac-cubugu input[type=date]{font:inherit;padding:2px 6px;border:1px solid var(--border);border-radius:var(--r-xs);background:var(--surface);color:var(--ink);}
 .plan-sema{position:relative;overflow:auto;flex:1;min-height:220px;}
+.plan-sutunlar{display:grid;grid-template-columns:minmax(96px,1fr) minmax(150px,1.4fr) minmax(120px,1.3fr);gap:var(--sp-3);align-items:start;position:relative;}
+.plan-sutun-baslik{font-size:var(--fs-xs);font-weight:var(--fw-kalin);letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:var(--sp-1);}
+.plan-kutu{border:2px solid var(--border-strong);border-radius:var(--r-sm);background:var(--surface);padding:var(--sp-1) var(--sp-2);cursor:pointer;position:relative;}
+.plan-kutu.sel{border-color:var(--green-700);box-shadow:0 0 0 3px var(--green-100);}
+.plan-tarla{border-color:var(--green-700);margin-bottom:var(--sp-2);}
+.plan-tarla b{display:block;font-size:var(--fs-md);font-weight:var(--fw-kalin);}
+.plan-tarla span{display:block;font-size:var(--fs-xs);color:var(--muted);}
+.plan-alan{padding:0;margin-bottom:var(--sp-2);overflow:hidden;}
+.plan-alan-bos{opacity:.45;}
+.plan-alan-bas{display:flex;align-items:baseline;justify-content:space-between;gap:var(--sp-1);padding:var(--sp-1) var(--sp-2);border-bottom:1px solid var(--border);}
+.plan-alan-bas b{font-size:var(--fs-lg);font-weight:var(--fw-kalin);}
+.plan-alan-rozet{font-size:var(--fs-xs);letter-spacing:.08em;color:var(--muted);}
+.plan-bolme{padding:var(--sp-1) var(--sp-2);border-top:1px dashed var(--border);cursor:pointer;}
+.plan-alan .plan-bolme:first-of-type{border-top:none;}
+.plan-bolme.sel{background:var(--green-100);}
+.plan-bolme-karisik{border-left:3px solid var(--red);background:var(--red-soft);}
+.plan-bolme-bas{display:flex;align-items:center;justify-content:space-between;gap:var(--sp-1);}
+.plan-bolme-cesit{font-size:var(--fs-sm);font-weight:var(--fw-orta);}
+.plan-giris{font-size:var(--fs-xs);color:var(--muted);display:flex;align-items:center;gap:4px;}
+.plan-giris-nokta{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+.plan-alan-dugmeler{display:flex;gap:var(--sp-1);padding:var(--sp-1) var(--sp-2);border-top:1px solid var(--border);}
+.plan-sera-grup{display:flex;flex-wrap:wrap;gap:var(--sp-1);margin-bottom:var(--sp-2);}
+.plan-sera{min-width:52px;text-align:center;padding:var(--sp-1);}
+.plan-sera b{display:block;font-size:var(--fs-sm);font-weight:var(--fw-kalin);}
+.plan-sera-cubuk{height:4px;border-radius:var(--r-pill);background:var(--border);margin:3px 0 2px;overflow:hidden;}
+.plan-sera-cubuk i{display:block;height:100%;}
+.plan-sera-pct{font-size:var(--fs-xs);color:var(--muted);}
+.plan-sera-dolu{opacity:.5;}
 
 /* ---------- SOL: DIZIM ALANI ---------- */
 /* Ana eylem düğmesi. Gölgesi eskiden --tobacco-deep'ti; o belirteç koyu temada
@@ -2083,7 +2111,7 @@ const AYARLAR = {
   UNITE_PX: 40                // referans kapasitedeki sera-box genişliği (px) — kroki oranı
 };
 const STORAGE_KEY = 'scvSahaKrokiV1';
-const APP_SURUM = 'v100'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
+const APP_SURUM = 'v101'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
 
 /* =========================================================
    HATA / DONMA GÜNLÜĞÜ — "bazen donuyor" şikayetini araştırmak için.
@@ -2263,6 +2291,11 @@ const I18N_EN = {
   '📋 Dünü Kopyala':'📋 Copy Yesterday', '⇄ Değiştir':'⇄ Swap',
   '× Seçimi bırak':'× Clear selection', '⚙ Dizim Alanları':'⚙ Stringing Areas',
   'Uyarı yok.':'No warnings.',
+  'Dizim Alanları':'Stringing Areas', 'DİZİM':'STRING', 'Böl':'Split', 'Birleştir':'Merge',
+  '+ Tarla':'+ Field', 'tarla yok':'no field', 'araç yok':'no vehicle', 'Kaldır':'Remove',
+  'Kırım Kaydına Dönüştür':'Convert to Harvest Record',
+  'Henüz dizim alanı yok.':'No stringing areas yet.',
+  'Sahadaki 8 dizim alanını oluştur':'Create the 8 stringing areas',
   'Boş':'Empty', 'Tarla':'Field', 'Sera':'Greenhouse', 'Sera Doluluk':'Greenhouse Occupancy',
   'Dolu Sera':'Full', 'Boş Sera':'Empty', 'kg/da (kırılan)':'kg/da (harvested)', 'kg/da (tüm saha)':'kg/da (all land)',
   'Seralar':'Greenhouses', 'Sera ara…':'Search greenhouses…',
@@ -3417,10 +3450,106 @@ function planTarihKaydir(gunFarki){
   d.setUTCDate(d.getUTCDate() + gunFarki);
   planTarihSecildi(d.toISOString().slice(0,10));
 }
+/* Seçim durumu Task 7'de gerçek mantığıyla dolduruluyor; şema render'ı buradan okur. */
+let planSecim = null;   // { tur:'tarla'|'alan'|'bolme'|'sera', id, alanId, bolmeId }
+function planSecimEsitMi(tur, id){ return !!planSecim && planSecim.tur===tur && planSecim.id===id; }
+
+/* Sol sütun yalnız PLANA BAĞLI tarlaları gösterir: sahada 25+ tarla var,
+   hepsini çizmek şemayı okunmaz yapardı. Yeni tarla "+ Tarla" ile eklenir. */
+function planSemaTarlaIdleri(tarih){
+  const plan = planBul(tarih);
+  if(!plan) return [];
+  const idler = [...new Set(plan.alanlar.flatMap(a=>a.bolmeler.flatMap(b=>b.girisler.map(g=>g.tarlaId))))];
+  return idler.filter(tarlaBul).sort((x,y)=>
+    ((tarlaBul(x)||{}).ad||'').localeCompare(((tarlaBul(y)||{}).ad||''),'tr',{numeric:true}));
+}
+/* Tohumlama yalnız buradan ve yönetim kipinden tetiklenir — açılışta ÇAĞRILMAZ
+   (bkz. dizimAlanlariTohumla açıklaması: senkron yarışı ve sahte yedek). */
+function dizimAlanlariTohumlaTikla(){
+  dizimAlanlariTohumla();
+  renderAll();
+}
+function planSeraKutusuHtml(seraId, alanId, bolmeId){
+  const s = seraBul(seraId);
+  if(!s) return '';
+  const pct = s.kapasite>0 ? (seraGuncelDolu(s)/s.kapasite*100) : 0;
+  const doluMu = pct >= 100;
+  return `<div class="plan-kutu plan-sera${doluMu?' plan-sera-dolu':''}${planSecimEsitMi('sera',seraId)?' sel':''}"
+      data-plan-sera="${seraId}" onclick="planSeraTikla('${seraId}','${alanId}','${bolmeId}')">
+    <b>${escapeHtml(s.ad)}</b>
+    <div class="plan-sera-cubuk"><i class="${seraDurumSinifiExact(pct)}" style="width:${Math.min(pct,100)}%"></i></div>
+    <div class="plan-sera-pct">${fmt(pct,0)}%</div>
+  </div>`;
+}
+function planBolmeHtml(alanId, bolme, sira){
+  const girisler = bolme.girisler.map(g=>{
+    const t = tarlaBul(g.tarlaId), arac = aracBul(g.aracId);
+    return `<div class="plan-giris">
+      <span class="plan-giris-nokta" style="background:${arac?arac.renk:'var(--border-strong)'}"></span>
+      ${escapeHtml((t&&t.ad)||'?')} · ${escapeHtml(arac?arac.ad:i18n('araç yok'))}${g.sofor?' · '+escapeHtml(g.sofor):''}
+      <button class="dizim-del" title="${i18n('Kaldır')}" onclick="event.stopPropagation();planGirisKaldirTikla('${alanId}','${bolme.id}','${g.tarlaId}')">×</button>
+    </div>`;
+  }).join('');
+  return `<div class="plan-bolme${planBolmeKarisikMi(bolme)?' plan-bolme-karisik':''}${planSecimEsitMi('bolme',bolme.id)?' sel':''}"
+      data-plan-bolme="${bolme.id}" onclick="planBolmeTikla('${alanId}','${bolme.id}')">
+    <div class="plan-bolme-bas">
+      <span class="plan-bolme-cesit">${sira}. ${escapeHtml(planBolmeEtiketi(bolme))}</span>
+      <button class="icon-btn kare-ikon-dugmesi" title="${i18n('Kırım Kaydına Dönüştür')}"
+        onclick="event.stopPropagation();planBolmedenKirimAc('${alanId}','${bolme.id}')">${bolme.kirimId?'✓':'‹'}</button>
+    </div>
+    ${girisler || `<div class="plan-giris">${i18n('tarla yok')}</div>`}
+  </div>`;
+}
+function planSemaHtml(tarih){
+  const alanlar = dizimAlanlariSirali();
+  if(!alanlar.length){
+    return `<div class="empty-hint">${i18n('Henüz dizim alanı yok.')}
+      <button class="btn btn-primary" onclick="dizimAlanlariTohumlaTikla()">${i18n('Sahadaki 8 dizim alanını oluştur')}</button></div>`;
+  }
+  const plan = planBul(tarih);
+  const tarlaSutun = planSemaTarlaIdleri(tarih).map(id=>{
+    const t = tarlaBul(id);
+    return `<div class="plan-kutu plan-tarla${planSecimEsitMi('tarla',id)?' sel':''}"
+        data-plan-tarla="${id}" onclick="planTarlaTikla('${id}')">
+      <b>${escapeHtml(t.ad||'-')}</b><span>${escapeHtml(t.cesit||'—')}</span>
+    </div>`;
+  }).join('') + `<button class="btn" onclick="openPlanTarlaSecModal()">${i18n('+ Tarla')}</button>`;
+
+  const alanSutun = alanlar.map(al=>{
+    const a = plan && plan.alanlar.find(x=>x.alanId===al.id);
+    const bolmeler = a ? a.bolmeler : [];
+    const bosMu = !bolmeler.some(b=>b.girisler.length || b.seraIds.length);
+    const kisaAd = al.ad.replace(/^D\./,'');
+    return `<div class="plan-kutu plan-alan${bosMu?' plan-alan-bos':''}${planSecimEsitMi('alan',al.id)?' sel':''}"
+        data-plan-alan="${al.id}" title="${escapeHtml(al.ad)}" onclick="planAlanTikla('${al.id}')">
+      <div class="plan-alan-bas"><b>${escapeHtml(kisaAd)}</b><span class="plan-alan-rozet">${i18n('DİZİM')}</span></div>
+      ${bolmeler.map((b,i)=>planBolmeHtml(al.id, b, i+1)).join('')}
+      <div class="plan-alan-dugmeler">
+        <button class="btn" onclick="event.stopPropagation();planBolmeEkleTikla('${al.id}')" title="${i18n('Böl')}">⊞</button>
+        <button class="btn" onclick="event.stopPropagation();planBolmeBirlestirTikla('${al.id}')" title="${i18n('Birleştir')}">⊟</button>
+      </div>
+    </div>`;
+  }).join('');
+
+  const seraSutun = alanlar.map(al=>{
+    const a = plan && plan.alanlar.find(x=>x.alanId===al.id);
+    const kutular = (a ? a.bolmeler : []).flatMap(b=>b.seraIds.map(sid=>planSeraKutusuHtml(sid, al.id, b.id))).join('');
+    return `<div class="plan-sera-grup" data-plan-sera-grup="${al.id}">${kutular}</div>`;
+  }).join('');
+
+  return `<div class="plan-sutunlar">
+    <div><div class="plan-sutun-baslik">${i18n('Tarlalar')}</div>${tarlaSutun}</div>
+    <div><div class="plan-sutun-baslik">${i18n('Dizim Alanları')}</div>${alanSutun}</div>
+    <div><div class="plan-sutun-baslik">${i18n('Seralar')}</div>${seraSutun}</div>
+  </div>`;
+}
+
 function renderSahaPlanlama(){
   if(sahaGenelSekmeAktif!=='planlama') return;
   const tarihEl = document.getElementById('planTarihInput');
   if(tarihEl) tarihEl.value = planSeciliTarih;
+  const semaEl = document.getElementById('planSema');
+  if(semaEl) semaEl.innerHTML = planSemaHtml(planSeciliTarih);
   const uyariEl = document.getElementById('planUyarilar');
   if(uyariEl){
     const u = planUyarilari(planSeciliTarih);

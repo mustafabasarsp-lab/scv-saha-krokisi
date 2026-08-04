@@ -902,6 +902,78 @@ const tik = () => new Promise(r => setImmediate(r));
     app._temizle();
   }
 
+  /* ---------------------------------------------------------------
+     Saha Planlama — şema çizimi
+     Şema kullanıcının tek bilgi kaynağı; boş alanın görünür kalması ve
+     kutulardaki kimliklerin doğru basılması davranışın kendisi.
+     --------------------------------------------------------------- */
+  bolum('Saha Planlama — şema çizimi');
+  {
+    const { app, T } = planOrtami();
+    app.sahaGenelSekmeGecis('planlama');
+    app.planTarihSecildi(T);
+    const html = app._belge.getElementById('planSema').innerHTML;
+
+    // Kutuda sahadaki tabelanın karşılığı yazar (kısa ad + DİZİM rozeti);
+    // 'D.' önekli tam ad title olarak durur — arama/rapor/yedek tarafı onu kullanır.
+    dogru(html.includes('>A1<'), 'kutuda kısa ad yazar');
+    dogru(html.includes('title="D.A1"'), 'tam ad title olarak taşınır');
+    dogru(html.includes('title="D.B4"'), '8 alanın sonuncusu da çizilir');
+    dogru(html.includes(app.i18n('DİZİM')), 'DİZİM rozeti basılır');
+    dogru(html.includes('plan-alan-bos'), 'boş alan solgun sınıfla işaretlenir');
+    yanlis(html.includes('K11'), 'plana bağlanmamış tarla sol sütunda görünmez');
+    app._temizle();
+  }
+  {
+    const { app, T, a1 } = planOrtami();
+    const plan = app.planGetir(T);
+    const b1 = app.planAlanGetir(plan, a1).bolmeler[0].id;
+    app.planGirisEkle(T, a1, b1, 't0', 'traktor1', 'Ahmet');
+    app.planGirisEkle(T, a1, b1, 't1', 'traktor1', 'Ahmet');
+    app.planSeraEkle(T, a1, b1, 's0');
+    app.sahaGenelSekmeGecis('planlama');
+    app.planTarihSecildi(T);
+    const html = app._belge.getElementById('planSema').innerHTML;
+
+    dogru(html.includes('K11') && html.includes('K21'), 'bağlanan tarlalar sol sütunda');
+    dogru(html.includes('BSB 6195'), 'bölme çeşidi yazılır');
+    dogru(html.includes('Ahmet'), 'şoför adı görünür');
+    dogru(html.includes('Traktör 1'), 'araç adı görünür');
+    dogru(html.includes('D1'), 'hedef sera sağ sütunda');
+    dogru(html.includes('data-plan-tarla="t0"'), 'tarla kimliği kutuya basılır');
+    dogru(html.includes('data-plan-sera="s0"'), 'sera kimliği kutuya basılır');
+    esit(app.planSemaTarlaIdleri(T), ['t0','t1'], 'sol sütun tarlaları ad sırasıyla');
+    app._temizle();
+  }
+  {
+    // Karışık bölme kırmızı sınıf alır
+    const { app, T, a1 } = planOrtami();
+    const plan = app.planGetir(T);
+    const b1 = app.planAlanGetir(plan, a1).bolmeler[0].id;
+    app.planGirisEkle(T, a1, b1, 't0', 'traktor1', 'Ahmet');
+    app.sahaGenelSekmeGecis('planlama');
+    app.planTarihSecildi(T);
+    yanlis(app._belge.getElementById('planSema').innerHTML.includes('plan-bolme-karisik'), 'tek çeşitte uyarı sınıfı yok');
+
+    app.planGirisEkle(T, a1, b1, 't2', 'transit1', 'Veli');
+    app.renderSahaPlanlama();
+    dogru(app._belge.getElementById('planSema').innerHTML.includes('plan-bolme-karisik'), 'karışık bölme uyarı sınıfı alır');
+    app._temizle();
+  }
+  {
+    // Dizim alanı hiç yoksa tohumlama düğmesi çıkar (açılışta kendiliğinden tohumlanmıyor)
+    const app = kur();
+    app.sahaGenelSekmeGecis('planlama');
+    const html = app._belge.getElementById('planSema').innerHTML;
+    dogru(html.includes('dizimAlanlariTohumlaTikla'), 'alan yoksa tohumlama düğmesi gösterilir');
+    esit(app.state.dizimAlanlari.length, 0, 'düğme gösterilmesi tohumlamaz');
+
+    app.dizimAlanlariTohumlaTikla();
+    esit(app.state.dizimAlanlari.length, 8, 'düğmeye basınca 8 alan kurulur');
+    yanlis(app._belge.getElementById('planSema').innerHTML.includes('dizimAlanlariTohumlaTikla'), 'kurulduktan sonra düğme kaybolur');
+    app._temizle();
+  }
+
   /* --------------------------------------------------------------- */
   console.log(`\n${'─'.repeat(52)}`);
   if (kalan.length) {
