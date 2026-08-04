@@ -524,8 +524,15 @@ const tik = () => new Promise(r => setImmediate(r));
       id: 's' + i, ad, kapasite: 1000, bolge: 'kalemli', donemler: []
     }));
     const alanlar = app.dizimAlanlariSirali();
-    const yarin = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
-    return { app, T: yarin, a1: alanlar[0].id, a2: alanlar[1].id };
+    /* "Yarın" YEREL bugünden türetilir. Önce Date.now()+86400000 üzerinden
+       toISOString ile hesaplanıyordu ve bu gizli bir hataydı: toISOString UTC
+       verdiği için UTC+3'te gece yarısı–03:00 arasında "UTC şimdi + 1 gün"
+       bugünün yerel tarihine denk geliyor, yani T bugüne eşitleniyor ve
+       "başka günün planı bugünkü işareti yakmaz" testi yanlış kalıyordu.
+       todayStr()'i 'T00:00:00Z' ile sabitleyip gün eklemek her saatte doğru. */
+    const d = new Date(app.todayStr() + 'T00:00:00Z');
+    d.setUTCDate(d.getUTCDate() + 1);
+    return { app, T: d.toISOString().slice(0, 10), a1: alanlar[0].id, a2: alanlar[1].id };
   }
 
   /* ---------------------------------------------------------------
@@ -866,12 +873,28 @@ const tik = () => new Promise(r => setImmediate(r));
     yanlis(b.getElementById('sahaGenelIcerikPlanlama').classList.contains('hidden'), 'planlama içeriği görünür');
     dogru(b.getElementById('sahaGenelTab_planlama').classList.contains('active'), 'planlama sekmesi etkin');
     yanlis(b.getElementById('sahaGenelTab_genel').classList.contains('active'), 'genel sekmesi etkin değil');
-    dogru(b.getElementById('sahaGenelPanelBox').classList.contains('panel-fullscreen'), 'planlamada panel tam ekran açılır');
+    // Gerileme: sekme tam ekranı ZORLAMAMALI. Zorlayınca tam ekran panel
+    // (position:fixed, inset:10px) Tarlalar ve Seralar panellerini örtüyor ve
+    // kullanıcı verisini kaybettiğini sanıyor.
+    yanlis(b.getElementById('sahaGenelPanelBox').classList.contains('panel-fullscreen'), 'sekme tam ekranı zorlamaz');
+    yanlis(b.body.classList.contains('has-fullscreen-panel'), 'sekme gövdeyi kaydırma kilidine sokmaz');
 
     app.sahaGenelSekmeGecis('genel');
     esit(app.sahaGenelSekmeAktif, 'genel', 'geri dönülür');
     yanlis(b.getElementById('sahaGenelIcerikGenel').classList.contains('hidden'), 'genel içerik geri gelir');
-    yanlis(b.getElementById('sahaGenelPanelBox').classList.contains('panel-fullscreen'), 'genele dönünce tam ekran kapanır');
+    app._temizle();
+  }
+  {
+    // Gerileme: tam ekran panel açıkken sayfa değişirse kaydırma kilidi kalmamalı.
+    // Kalırsa gidilen sayfa (Depo, Sulama…) hiç kaydırılamıyor.
+    const app = kur();
+    const b = app._belge;
+    app.panelTamEkranAc('sahaGenelPanelBox');
+    dogru(b.body.classList.contains('has-fullscreen-panel'), 'tam ekran gövdeyi kilitler');
+
+    app.sayfaGecis('pageDepo');
+    yanlis(b.body.classList.contains('has-fullscreen-panel'), 'sayfa değişince kaydırma kilidi kalkar');
+    yanlis(b.getElementById('sahaGenelPanelBox').classList.contains('panel-fullscreen'), 'sayfa değişince tam ekran kapanır');
     app._temizle();
   }
   {

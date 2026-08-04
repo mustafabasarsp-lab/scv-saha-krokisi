@@ -1786,7 +1786,8 @@ input.dayibasi-ad-alani{flex:1;min-width:110px;border:1px solid var(--border);bo
           </div>
         </div>
         <div class="satir-ortali-dar">
-          <button class="icon-btn fullscreen-close" onclick="sahaGenelSekmeGecis('genel')" title="Tam Ekranı Kapat" data-i18n-title="Tam Ekranı Kapat">×</button>
+          <button class="icon-btn ghost" id="sahaGenelTamEkranBtn" onclick="panelTamEkranAc('sahaGenelPanelBox')" title="Tam Ekran" data-i18n-title="Tam Ekran">⤢</button>
+          <button class="icon-btn fullscreen-close" onclick="panelTamEkranKapat('sahaGenelPanelBox')" title="Tam Ekranı Kapat" data-i18n-title="Tam Ekranı Kapat">×</button>
         </div>
       </div>
       <div class="panel-body">
@@ -2129,7 +2130,7 @@ const AYARLAR = {
   UNITE_PX: 40                // referans kapasitedeki sera-box genişliği (px) — kroki oranı
 };
 const STORAGE_KEY = 'scvSahaKrokiV1';
-const APP_SURUM = 'v108'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
+const APP_SURUM = 'v109'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
 
 /* =========================================================
    HATA / DONMA GÜNLÜĞÜ — "bazen donuyor" şikayetini araştırmak için.
@@ -3470,8 +3471,13 @@ function sahaGenelSekmeGecis(sekme){
   document.getElementById('sahaGenelTab_planlama').classList.toggle('active', planlamaMi);
   document.getElementById('sahaGenelIcerikGenel').classList.toggle('hidden', planlamaMi);
   document.getElementById('sahaGenelIcerikPlanlama').classList.toggle('hidden', !planlamaMi);
-  if(planlamaMi){ panelTamEkranAc('sahaGenelPanelBox'); renderSahaPlanlama(); }
-  else panelTamEkranKapat('sahaGenelPanelBox');
+  /* Sekme tam ekranı ZORLAMAZ. Zorluyordu ve yanlıştı: tam ekran panel
+     position:fixed/inset:10px ile ekranın tamamını kaplıyor, yani sekmeye
+     basan kullanıcının Tarlalar ve Seralar panelleri gözden kayboluyordu —
+     "seralar gitmiş" paniği buradan çıktı. Artık uygulamadaki diğer bütün
+     panellerle aynı: tam ekran ⤢ ile istenerek açılır, × ile kapanır.
+     Şema dar orta sütunda da okunur, çünkü zaten kart düzenine düşüyor. */
+  if(planlamaMi) renderSahaPlanlama();
 }
 function planTarihSecildi(deger){
   planSeciliTarih = /^\d{4}-\d{2}-\d{2}$/.test(deger||'') ? deger : todayStr();
@@ -7615,6 +7621,10 @@ function csvDisaAktar(){
    SAYFA GEÇİŞİ
    ========================================================= */
 function sayfaGecis(sayfaId){
+  /* Açık tam ekran panel sayfa değişirken kapatılır. Kapatılmazsa panelin
+     kendisi sayfayla birlikte gizleniyor ama body'deki has-fullscreen-panel
+     (overflow:hidden) üzerinde kalıyor ve gidilen sayfa hiç kaydırılamıyor. */
+  if(fullscreenPanelId) panelTamEkranKapat(fullscreenPanelId);
   ['pageSaha','pageHaritalar','pageDepo','pageSulama','pageIklim','pageOdemeler','pageRapor'].forEach(id=>{
     document.getElementById(id).classList.toggle('hidden', id!==sayfaId);
     document.getElementById('tab_'+id).classList.toggle('active', id===sayfaId);
