@@ -511,6 +511,23 @@ const tik = () => new Promise(r => setImmediate(r));
     app._temizle();
   }
 
+  /* Saha Planlama testleri için ortak kurulum: 8 dizim alanı, 3 tarla, 4 sera.
+     T bilerek YARIN: çalışma işareti BUGÜNÜN planından türetiliyor, sabit bir
+     tarih kullansaydık test o gün çalıştırıldığında yanlış geçerdi. */
+  function planOrtami() {
+    const app = kur();
+    app.dizimAlanlariTohumla();
+    ['K11','K21','K13'].forEach((ad, i) => app.state.tarlalar.push({
+      id: 't' + i, ad, dekar: 10, cesit: ad === 'K13' ? 'PVH 2310' : 'BSB 6195', bolge: 'kalemli'
+    }));
+    ['D1','D2','D4','C2'].forEach((ad, i) => app.state.seralar.push({
+      id: 's' + i, ad, kapasite: 1000, bolge: 'kalemli', donemler: []
+    }));
+    const alanlar = app.dizimAlanlariSirali();
+    const yarin = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
+    return { app, T: yarin, a1: alanlar[0].id, a2: alanlar[1].id };
+  }
+
   /* ---------------------------------------------------------------
      Saha Planlama — veri katmanı
      Plan belgeleri TEMBEL oluşur: boş günler için çöp belge birikmemeli.
@@ -577,6 +594,132 @@ const tik = () => new Promise(r => setImmediate(r));
     dogru(app.planBosMu(plan), 'boş bölmeden ibaret plan hâlâ boş sayılır');
     dogru(app.planCopTopla('2026-08-05'), 'boş plan çöp toplanır');
     esit(app.state.sahaPlanlari.length, 0, 'çöp toplama sonrası belge kalmaz');
+    app._temizle();
+  }
+
+  /* ---------------------------------------------------------------
+     Saha Planlama — mutasyonlar
+     Sahada bir dizim alanı kartonla bölünüp farklı kodlar ayrı ayrı indirilebiliyor;
+     bölme mekaniği bunun karşılığı. Bir sera aynı anda tek bölmeye ait olabilir.
+     --------------------------------------------------------------- */
+  bolum('Saha Planlama — mutasyonlar');
+  {
+    // Bölme ekleme 4'te durur
+    const { app, T, a1 } = planOrtami();
+    esit(app.planAlanGetir(app.planGetir(T), a1).bolmeler.length, 1, 'alan tek bölmeyle başlar');
+    dogru(app.planBolmeEkle(T, a1), '2. bölme eklenir');
+    dogru(app.planBolmeEkle(T, a1), '3. bölme eklenir');
+    dogru(app.planBolmeEkle(T, a1), '4. bölme eklenir');
+    yanlis(app.planBolmeEkle(T, a1), '5. bölme reddedilir');
+    esit(app.planAlanGetir(app.planGetir(T), a1).bolmeler.length, 4, 'bölme sayısı 4 te kalır');
+    app._temizle();
+  }
+  {
+    // Birleştirme içerikleri üst bölmeye taşır, yinelenen sera tekrar yazılmaz
+    const { app, T, a1 } = planOrtami();
+    const plan = app.planGetir(T);
+    const alan = app.planAlanGetir(plan, a1);
+    const b1 = alan.bolmeler[0].id;
+    app.planBolmeEkle(T, a1);
+    const b2 = alan.bolmeler[1].id;
+    app.planGirisEkle(T, a1, b1, 't0', 'traktor1', 'Ahmet');
+    app.planSeraEkle(T, a1, b1, 's0');
+    app.planGirisEkle(T, a1, b2, 't2', 'transit1', 'Veli');
+    app.planSeraEkle(T, a1, b2, 's1');
+
+    dogru(app.planBolmeBirlestir(T, a1), 'son bölme birleştirilir');
+    esit(alan.bolmeler.length, 1, 'birleştirme sonrası tek bölme');
+    esit(alan.bolmeler[0].girisler.map(g => g.tarlaId), ['t0','t2'], 'girişler üst bölmeye taşındı');
+    esit(alan.bolmeler[0].seraIds, ['s0','s1'], 'seralar üst bölmeye taşındı');
+    yanlis(app.planBolmeBirlestir(T, a1), 'tek bölme daha fazla birleştirilemez');
+    app._temizle();
+  }
+  {
+    // Sera tekil sahiplik: ikinci bölmeye eklenince öncekinden düşer
+    const { app, T, a1, a2 } = planOrtami();
+    const plan = app.planGetir(T);
+    const b1 = app.planAlanGetir(plan, a1).bolmeler[0].id;
+    const b2 = app.planAlanGetir(plan, a2).bolmeler[0].id;
+    app.planSeraEkle(T, a1, b1, 's0');
+    app.planSeraEkle(T, a1, b1, 's1');
+    esit(app.planAlanGetir(plan, a1).bolmeler[0].seraIds, ['s0','s1'], 'iki sera eklendi');
+
+    app.planSeraEkle(T, a2, b2, 's0');
+    esit(app.planAlanGetir(plan, a1).bolmeler[0].seraIds, ['s1'], 's0 önceki bölmeden düştü');
+    esit(app.planAlanGetir(plan, a2).bolmeler[0].seraIds, ['s0'], 's0 yeni bölmeye geçti');
+
+    yanlis(app.planSeraEkle(T, a2, b2, 's0'), 'aynı seranın tekrarı yok sayılır');
+    esit(app.planAlanGetir(plan, a2).bolmeler[0].seraIds, ['s0'], 'liste yinelenmedi');
+    app._temizle();
+  }
+  {
+    // Aynı tarla aynı bölmede yinelenmez ama farklı bölmelerde olabilir
+    const { app, T, a1, a2 } = planOrtami();
+    const plan = app.planGetir(T);
+    const b1 = app.planAlanGetir(plan, a1).bolmeler[0].id;
+    const b2 = app.planAlanGetir(plan, a2).bolmeler[0].id;
+    dogru(app.planGirisEkle(T, a1, b1, 't0', 'traktor1', 'Ahmet'), 'giriş eklenir');
+    yanlis(app.planGirisEkle(T, a1, b1, 't0', 'transit1', 'Veli'), 'aynı bölmeye aynı tarla iki kez girmez');
+    esit(app.planAlanGetir(plan, a1).bolmeler[0].girisler.length, 1, 'giriş yinelenmedi');
+    dogru(app.planGirisEkle(T, a2, b2, 't0', 'transit1', 'Veli'), 'aynı tarla başka bölmeye girebilir');
+
+    dogru(app.planGirisKaldir(T, a1, b1, 't0'), 'giriş kaldırılır');
+    esit(app.planAlanGetir(plan, a1).bolmeler[0].girisler, [], 'giriş listesi boşaldı');
+    yanlis(app.planGirisKaldir(T, a1, b1, 't0'), 'olmayan giriş kaldırılamaz');
+    app._temizle();
+  }
+  {
+    // Takas — iki tarla
+    const { app, T, a1, a2 } = planOrtami();
+    const plan = app.planGetir(T);
+    const b1 = app.planAlanGetir(plan, a1).bolmeler[0].id;
+    const b2 = app.planAlanGetir(plan, a2).bolmeler[0].id;
+    app.planGirisEkle(T, a1, b1, 't0', 'traktor1', 'Ahmet');
+    app.planGirisEkle(T, a2, b2, 't2', 'transit1', 'Veli');
+
+    dogru(app.planTarlaTakas(T, 't0', 't2'), 'iki tarla takas edilir');
+    esit(app.planAlanGetir(plan, a1).bolmeler[0].girisler[0].tarlaId, 't2', 'a1 bölmesine t2 geçti');
+    esit(app.planAlanGetir(plan, a1).bolmeler[0].girisler[0].sofor, 'Ahmet', 'araç ve şoför yerinde kalır');
+    esit(app.planAlanGetir(plan, a2).bolmeler[0].girisler[0].tarlaId, 't0', 'a2 bölmesine t0 geçti');
+    app._temizle();
+  }
+  {
+    // Takas — iki sera
+    const { app, T, a1, a2 } = planOrtami();
+    const plan = app.planGetir(T);
+    const b1 = app.planAlanGetir(plan, a1).bolmeler[0].id;
+    const b2 = app.planAlanGetir(plan, a2).bolmeler[0].id;
+    app.planSeraEkle(T, a1, b1, 's0');
+    app.planSeraEkle(T, a2, b2, 's1');
+    dogru(app.planSeraTakas(T, 's0', 's1'), 'iki sera takas edilir');
+    esit(app.planAlanGetir(plan, a1).bolmeler[0].seraIds, ['s1'], 'a1 bölmesine s1 geçti');
+    esit(app.planAlanGetir(plan, a2).bolmeler[0].seraIds, ['s0'], 'a2 bölmesine s0 geçti');
+    app._temizle();
+  }
+  {
+    // Takas — iki dizim alanı: bütün bölme içerikleri yer değiştirir
+    const { app, T, a1, a2 } = planOrtami();
+    const plan = app.planGetir(T);
+    const b1 = app.planAlanGetir(plan, a1).bolmeler[0].id;
+    app.planGirisEkle(T, a1, b1, 't0', 'traktor1', 'Ahmet');
+    app.planSeraEkle(T, a1, b1, 's0');
+    app.planBolmeEkle(T, a1);
+    app.planAlanGetir(plan, a2); // a2 boş ama var
+
+    dogru(app.planAlanTakas(T, a1, a2), 'iki alan takas edilir');
+    esit(app.planAlanGetir(plan, a2).bolmeler.length, 2, 'bölme sayısı a2 ye geçti');
+    esit(app.planAlanGetir(plan, a2).bolmeler[0].girisler[0].tarlaId, 't0', 'giriş a2 ye geçti');
+    esit(app.planAlanGetir(plan, a2).bolmeler[0].seraIds, ['s0'], 'sera a2 ye geçti');
+    esit(app.planAlanGetir(plan, a1).bolmeler.length, 1, 'a1 boş alanın içeriğini aldı');
+    esit(app.planAlanGetir(plan, a1).bolmeler[0].girisler, [], 'a1 girişsiz kaldı');
+    app._temizle();
+  }
+  {
+    // Takas kendiyle yapılamaz
+    const { app, T, a1 } = planOrtami();
+    yanlis(app.planTarlaTakas(T, 't0', 't0'), 'tarla kendiyle takas edilmez');
+    yanlis(app.planSeraTakas(T, 's0', 's0'), 'sera kendiyle takas edilmez');
+    yanlis(app.planAlanTakas(T, a1, a1), 'alan kendiyle takas edilmez');
     app._temizle();
   }
 

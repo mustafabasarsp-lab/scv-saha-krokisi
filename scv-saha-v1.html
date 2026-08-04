@@ -2053,7 +2053,7 @@ const AYARLAR = {
   UNITE_PX: 40                // referans kapasitedeki sera-box genişliği (px) — kroki oranı
 };
 const STORAGE_KEY = 'scvSahaKrokiV1';
-const APP_SURUM = 'v96'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
+const APP_SURUM = 'v97'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
 
 /* =========================================================
    HATA / DONMA GÜNLÜĞÜ — "bazen donuyor" şikayetini araştırmak için.
@@ -4885,6 +4885,123 @@ function planCopTopla(tarih){
   const p = planBul(tarih);
   if(!p || !planBosMu(p)) return false;
   state.sahaPlanlari = state.sahaPlanlari.filter(x=>x!==p);
+  return true;
+}
+
+/* ---- Plan mutasyonları ----
+   Hepsi tarih + alanId + bolmeId üçlüsüyle çalışır ve değişiklik olduysa true
+   döner; çağıran taraf dönüşe bakıp gereksiz yeniden çizimden kaçınabilir.
+   Değişiklik yapan her fonksiyon plan belgesine sonIslemDamgasi yazar —
+   senkron katmanı bu damgayla neyin gönderileceğine karar veriyor. */
+const PLAN_BOLME_SINIRI = 4;
+
+function planDamgala(plan){ Object.assign(plan, sonIslemDamgasi()); }
+function planBolmeBul(plan, alanId, bolmeId){
+  const a = plan && plan.alanlar.find(x=>x.alanId===alanId);
+  return a && a.bolmeler.find(b=>b.id===bolmeId);
+}
+function planBolmeEkle(tarih, alanId){
+  const plan = planGetir(tarih);
+  const alan = planAlanGetir(plan, alanId);
+  if(alan.bolmeler.length >= PLAN_BOLME_SINIRI) return false;
+  alan.bolmeler.push(bosBolme());
+  planDamgala(plan);
+  return true;
+}
+/* Son bölmeyi bir öncekine katar. Sahadaki karşılığı: aradaki kartonu almak —
+   iki yığın tek yığın olur, hiçbir şey silinmez. */
+function planBolmeBirlestir(tarih, alanId){
+  const plan = planGetir(tarih);
+  const alan = planAlanGetir(plan, alanId);
+  if(alan.bolmeler.length < 2) return false;
+  const son = alan.bolmeler.pop();
+  const hedef = alan.bolmeler[alan.bolmeler.length-1];
+  son.girisler.forEach(g=>{ if(!hedef.girisler.some(x=>x.tarlaId===g.tarlaId)) hedef.girisler.push(g); });
+  son.seraIds.forEach(id=>{ if(!hedef.seraIds.includes(id)) hedef.seraIds.push(id); });
+  planDamgala(plan);
+  return true;
+}
+function planGirisEkle(tarih, alanId, bolmeId, tarlaId, aracId, sofor){
+  const plan = planGetir(tarih);
+  const bolme = planBolmeBul(plan, alanId, bolmeId);
+  if(!bolme || bolme.girisler.some(g=>g.tarlaId===tarlaId)) return false;
+  bolme.girisler.push({ tarlaId, aracId: aracId||'', sofor: (sofor||'').trim() });
+  planDamgala(plan);
+  return true;
+}
+function planGirisKaldir(tarih, alanId, bolmeId, tarlaId){
+  const plan = planBul(tarih);
+  const bolme = planBolmeBul(plan, alanId, bolmeId);
+  if(!bolme) return false;
+  const once = bolme.girisler.length;
+  bolme.girisler = bolme.girisler.filter(g=>g.tarlaId!==tarlaId);
+  if(bolme.girisler.length === once) return false;
+  planDamgala(plan);
+  return true;
+}
+/* Bir sera aynı planda YALNIZ bir bölmeye ait olabilir: aynı seraya iki ayrı
+   koddan tütün gitmesi sahada hata demek. Başka bölmedeyse sessizce değil,
+   taşınarak çözülür — çağıran taraf kullanıcıyı bilgilendirir. */
+function planSeraEkle(tarih, alanId, bolmeId, seraId){
+  const plan = planGetir(tarih);
+  const hedef = planBolmeBul(plan, alanId, bolmeId);
+  if(!hedef || hedef.seraIds.includes(seraId)) return false;
+  plan.alanlar.forEach(a=>a.bolmeler.forEach(b=>{
+    if(b!==hedef) b.seraIds = b.seraIds.filter(id=>id!==seraId);
+  }));
+  hedef.seraIds.push(seraId);
+  planDamgala(plan);
+  return true;
+}
+function planSeraKaldir(tarih, alanId, bolmeId, seraId){
+  const plan = planBul(tarih);
+  const bolme = planBolmeBul(plan, alanId, bolmeId);
+  if(!bolme || !bolme.seraIds.includes(seraId)) return false;
+  bolme.seraIds = bolme.seraIds.filter(id=>id!==seraId);
+  planDamgala(plan);
+  return true;
+}
+/* ---- Takas ("futbol değişikliği") ----
+   Tarla ve sera takasında YER değil KİMLİK değişir: araç/şoför bulunduğu
+   bacakta kalır, çünkü değişen şey "bu bacağa hangi tarla düşüyor" sorusu. */
+function planTarlaTakas(tarih, tarlaIdA, tarlaIdB){
+  if(!tarlaIdA || !tarlaIdB || tarlaIdA===tarlaIdB) return false;
+  const plan = planBul(tarih);
+  if(!plan) return false;
+  let degisti = false;
+  plan.alanlar.forEach(a=>a.bolmeler.forEach(b=>b.girisler.forEach(g=>{
+    if(g.tarlaId===tarlaIdA){ g.tarlaId = tarlaIdB; degisti = true; }
+    else if(g.tarlaId===tarlaIdB){ g.tarlaId = tarlaIdA; degisti = true; }
+  })));
+  if(degisti) planDamgala(plan);
+  return degisti;
+}
+function planSeraTakas(tarih, seraIdA, seraIdB){
+  if(!seraIdA || !seraIdB || seraIdA===seraIdB) return false;
+  const plan = planBul(tarih);
+  if(!plan) return false;
+  let degisti = false;
+  plan.alanlar.forEach(a=>a.bolmeler.forEach(b=>{
+    b.seraIds = b.seraIds.map(id=>{
+      if(id===seraIdA){ degisti = true; return seraIdB; }
+      if(id===seraIdB){ degisti = true; return seraIdA; }
+      return id;
+    });
+  }));
+  if(degisti) planDamgala(plan);
+  return degisti;
+}
+/* Alan takasında bölmelerin TAMAMI yer değiştirir — "bu işi A1 yerine A2 yapsın"
+   demek, bölme yapısıyla birlikte taşınır. */
+function planAlanTakas(tarih, alanIdA, alanIdB){
+  if(!alanIdA || !alanIdB || alanIdA===alanIdB) return false;
+  const plan = planGetir(tarih);
+  const a = planAlanGetir(plan, alanIdA);
+  const b = planAlanGetir(plan, alanIdB);
+  const gecici = a.bolmeler;
+  a.bolmeler = b.bolmeler;
+  b.bolmeler = gecici;
+  planDamgala(plan);
   return true;
 }
 
