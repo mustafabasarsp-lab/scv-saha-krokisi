@@ -1299,6 +1299,27 @@ const tik = () => new Promise(r => setImmediate(r));
     app._temizle();
   }
 
+  /* ---------------------------------------------------------------
+     Saha Planlama — çeviri bütünlüğü
+     Yeni eklenen her kullanıcı metninin İngilizce karşılığı olmalı; eksik
+     karşılık İngilizce arayüzde Türkçe metin olarak sızar.
+     --------------------------------------------------------------- */
+  bolum('Saha Planlama — çeviri');
+  {
+    const app = kur();
+    const gerekli = [
+      'Genel Bilgiler','Saha Planlama','Dizim Alanları','DİZİM','Böl','Birleştir',
+      '+ Tarla','tarla yok','araç yok','Kaldır','Kırım Kaydına Dönüştür',
+      'Araç','Şoför','Şoför adı','Bağla','Tarla Seç','Uyarı yok.',
+      '📋 Dünü Kopyala','⇄ Değiştir','× Seçimi bırak','⚙ Dizim Alanları',
+      'Yeni Alan Adı','planda kullanılıyor','hiç kullanılmamış','Henüz dizim alanı yok.',
+      'Önceki gün','Sonraki gün','Sahadaki 8 dizim alanını oluştur','gelen','giden'
+    ];
+    const eksik = gerekli.filter(k => !(k in app.I18N_EN));
+    esit(eksik, [], 'tüm yeni metinlerin İngilizce karşılığı var');
+    app._temizle();
+  }
+
   /* --------------------------------------------------------------- */
   console.log(`\n${'─'.repeat(52)}`);
   if (kalan.length) {

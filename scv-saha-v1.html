@@ -562,6 +562,16 @@ input[type=number],.num,td,th,.badge b,.quickstats b{font-variant-numeric:tabula
 .plan-cizgi-svg{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;overflow:visible;}
 .plan-cizgi-svg path{fill:none;stroke-width:2.5;}
 .plan-cizgi-svg text{font-size:10px;font-weight:700;paint-order:stroke;stroke:var(--surface);stroke-width:3px;}
+/* Dar ekranda üç sütun yan yana sığmaz: sütunlar alt alta iner ve şema
+   "gelen / giden" kart düzenine dönüşür. Çizgiler kapatılır — dikey düzende
+   kutuları birleştiren eğriler okunmaz hâle geliyor, gruplama yeterli. */
+@media (max-width:900px){
+  .plan-sutunlar{grid-template-columns:1fr;gap:var(--sp-2);}
+  .plan-cizgi-svg{display:none;}
+  .plan-sutun-baslik{position:sticky;top:0;background:var(--surface);padding:var(--sp-1) 0;z-index:1;}
+  .plan-sera-grup{padding-left:var(--sp-3);border-left:3px solid var(--border);}
+  .plan-sera-grup:empty{display:none;}
+}
 
 /* ---------- SOL: DIZIM ALANI ---------- */
 /* Ana eylem düğmesi. Gölgesi eskiden --tobacco-deep'ti; o belirteç koyu temada
@@ -2114,7 +2124,7 @@ const AYARLAR = {
   UNITE_PX: 40                // referans kapasitedeki sera-box genişliği (px) — kroki oranı
 };
 const STORAGE_KEY = 'scvSahaKrokiV1';
-const APP_SURUM = 'v106'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
+const APP_SURUM = 'v107'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
 
 /* =========================================================
    HATA / DONMA GÜNLÜĞÜ — "bazen donuyor" şikayetini araştırmak için.
@@ -2314,6 +2324,7 @@ const I18N_EN = {
   'Bu bölmede tarla yok — önce bir tarla bağlayın.':'No field in this section — connect a field first.',
   'Kopyalanacak önceki bir plan yok.':'There is no earlier plan to copy.',
   'Bu günün planı zaten dolu. Kopyalamadan önce mevcut planı boşaltın.':'This day already has a plan. Clear it before copying.',
+  'gelen':'incoming', 'giden':'outgoing',
   'Boş':'Empty', 'Tarla':'Field', 'Sera':'Greenhouse', 'Sera Doluluk':'Greenhouse Occupancy',
   'Dolu Sera':'Full', 'Boş Sera':'Empty', 'kg/da (kırılan)':'kg/da (harvested)', 'kg/da (tüm saha)':'kg/da (all land)',
   'Seralar':'Greenhouses', 'Sera ara…':'Search greenhouses…',
@@ -3848,8 +3859,8 @@ function planSemaHtml(tarih){
 
   return `<div class="plan-sutunlar">
     <div><div class="plan-sutun-baslik">${i18n('Tarlalar')}</div>${tarlaSutun}</div>
-    <div><div class="plan-sutun-baslik">${i18n('Dizim Alanları')}</div>${alanSutun}</div>
-    <div><div class="plan-sutun-baslik">${i18n('Seralar')}</div>${seraSutun}</div>
+    <div><div class="plan-sutun-baslik">${i18n('Dizim Alanları')} ⬅ ${i18n('gelen')}</div>${alanSutun}</div>
+    <div><div class="plan-sutun-baslik">${i18n('Seralar')} ➡ ${i18n('giden')}</div>${seraSutun}</div>
   </div>`;
 }
 
