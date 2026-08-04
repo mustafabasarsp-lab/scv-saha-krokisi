@@ -1092,6 +1092,33 @@ const tik = () => new Promise(r => setImmediate(r));
     app._temizle();
   }
 
+  /* ---------------------------------------------------------------
+     Saha Planlama — bağlantı çizgileri
+     Geometri gerçek düzene bağlı; testin işi çizimin ölçüm alınamayan
+     ortamda (ve şema boşken) patlamadan sessizce geçmesi.
+     --------------------------------------------------------------- */
+  bolum('Saha Planlama — çizgiler');
+  {
+    const { app, T, a1 } = planOrtami();
+    const plan = app.planGetir(T);
+    const b1 = app.planAlanGetir(plan, a1).bolmeler[0].id;
+    app.planGirisEkle(T, a1, b1, 't0', 'traktor1', 'Ahmet');
+    app.planSeraEkle(T, a1, b1, 's0');
+    app.sahaGenelSekmeGecis('planlama');
+    app.planTarihSecildi(T);
+    app.planCizgileriCiz(); // ölçüm sıfır dönse de hata atmamalı
+    dogru(true, 'ölçüm alınamayan ortamda çizim sessizce geçer');
+    app._temizle();
+  }
+  {
+    // Plan hiç yokken de patlamamalı
+    const app = kur();
+    app.sahaGenelSekmeGecis('planlama');
+    app.planCizgileriCiz();
+    dogru(true, 'plansız günde çizim sessizce geçer');
+    app._temizle();
+  }
+
   /* --------------------------------------------------------------- */
   console.log(`\n${'─'.repeat(52)}`);
   if (kalan.length) {

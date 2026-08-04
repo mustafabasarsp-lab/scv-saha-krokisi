@@ -559,6 +559,9 @@ input[type=number],.num,td,th,.badge b,.quickstats b{font-variant-numeric:tabula
 .plan-sera-cubuk i{display:block;height:100%;}
 .plan-sera-pct{font-size:var(--fs-xs);color:var(--muted);}
 .plan-sera-dolu{opacity:.5;}
+.plan-cizgi-svg{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;overflow:visible;}
+.plan-cizgi-svg path{fill:none;stroke-width:2.5;}
+.plan-cizgi-svg text{font-size:10px;font-weight:700;paint-order:stroke;stroke:var(--surface);stroke-width:3px;}
 
 /* ---------- SOL: DIZIM ALANI ---------- */
 /* Ana eylem düğmesi. Gölgesi eskiden --tobacco-deep'ti; o belirteç koyu temada
@@ -2111,7 +2114,7 @@ const AYARLAR = {
   UNITE_PX: 40                // referans kapasitedeki sera-box genişliği (px) — kroki oranı
 };
 const STORAGE_KEY = 'scvSahaKrokiV1';
-const APP_SURUM = 'v102'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
+const APP_SURUM = 'v103'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
 
 /* =========================================================
    HATA / DONMA GÜNLÜĞÜ — "bazen donuyor" şikayetini araştırmak için.
@@ -3695,6 +3698,55 @@ function planSemaHtml(tarih){
   </div>`;
 }
 
+/* Bağlantı çizgileri şemanın üstüne mutlak konumlu tek bir SVG olarak çizilir.
+   Konumlar gerçek DOM ölçümünden alınır — kutu boyları içeriğe göre değiştiği
+   için sabit koordinat hesaplamak mümkün değil. Ölçüm alınamayan ortamda
+   (ör. test koşumu, panel gizliyken) sessizce çıkılır: yarım çizilmiş çizgiler
+   yanlış plan okumasına yol açardı. */
+function planCizgileriCiz(){
+  const kap = document.getElementById('planSema');
+  if(!kap || typeof kap.querySelector !== 'function') return;
+  const eski = kap.querySelector('.plan-cizgi-svg');
+  if(eski) eski.remove();
+  const kapKutu = kap.getBoundingClientRect();
+  if(!kapKutu || !kapKutu.width) return;
+
+  const plan = planBul(planSeciliTarih);
+  if(!plan) return;
+  const yollar = [];
+  const merkezSag = el=>{ const r = el.getBoundingClientRect(); return { x:r.right-kapKutu.left+kap.scrollLeft, y:r.top+r.height/2-kapKutu.top+kap.scrollTop }; };
+  const merkezSol = el=>{ const r = el.getBoundingClientRect(); return { x:r.left-kapKutu.left+kap.scrollLeft, y:r.top+r.height/2-kapKutu.top+kap.scrollTop }; };
+  const egri = (a,b)=>`M${a.x},${a.y} C${(a.x+b.x)/2},${a.y} ${(a.x+b.x)/2},${b.y} ${b.x},${b.y}`;
+
+  plan.alanlar.forEach(alan=>{
+    alan.bolmeler.forEach(bolme=>{
+      const bolmeEl = kap.querySelector(`[data-plan-bolme="${bolme.id}"]`);
+      if(!bolmeEl) return;
+      bolme.girisler.forEach(g=>{
+        const tarlaEl = kap.querySelector(`[data-plan-tarla="${g.tarlaId}"]`);
+        if(!tarlaEl) return;
+        const arac = aracBul(g.aracId);
+        const a = merkezSag(tarlaEl), b = merkezSol(bolmeEl);
+        yollar.push(`<path d="${egri(a,b)}" stroke="${arac?arac.renk:'var(--border-strong)'}"></path>`);
+        const etiket = [arac?arac.ad:'', g.sofor].filter(Boolean).join(' · ');
+        if(etiket) yollar.push(`<text x="${(a.x+b.x)/2}" y="${(a.y+b.y)/2-4}" text-anchor="middle" fill="${arac?arac.renk:'var(--muted)'}">${escapeHtml(etiket)}</text>`);
+      });
+      bolme.seraIds.forEach(sid=>{
+        const seraEl = kap.querySelector(`[data-plan-sera="${sid}"]`);
+        if(!seraEl) return;
+        yollar.push(`<path d="${egri(merkezSag(bolmeEl), merkezSol(seraEl))}" stroke="var(--border-strong)"></path>`);
+      });
+    });
+  });
+  if(!yollar.length) return;
+  kap.insertAdjacentHTML('beforeend', `<svg class="plan-cizgi-svg">${yollar.join('')}</svg>`);
+}
+/* Sütunlar yeniden akınca çizgiler eski koordinatlarda kalır; boyut değişiminde
+   yeniden ölçülür. Şema kapalıyken planCizgileriCiz zaten erken çıkıyor. */
+window.addEventListener('resize', function(){
+  if(sahaGenelSekmeAktif==='planlama') planCizgileriCiz();
+});
+
 function renderSahaPlanlama(){
   if(sahaGenelSekmeAktif!=='planlama') return;
   const tarihEl = document.getElementById('planTarihInput');
@@ -3708,6 +3760,9 @@ function renderSahaPlanlama(){
       ? u.map(m=>`<div class="uyari-satiri">⚠ ${escapeHtml(m)}</div>`).join('')
       : `<div class="uyari-satiri">${i18n('Uyarı yok.')}</div>`;
   }
+  // Düzen oturduktan sonra ölç: aynı turda ölçmek eski kutu boylarını verir
+  if(typeof requestAnimationFrame==='function') requestAnimationFrame(planCizgileriCiz);
+  else planCizgileriCiz();
   planDegistirDugmeleriGuncelle();
 }
 
