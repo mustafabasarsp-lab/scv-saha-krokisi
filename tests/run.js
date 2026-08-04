@@ -794,6 +794,63 @@ const tik = () => new Promise(r => setImmediate(r));
     app._temizle();
   }
 
+  /* ---------------------------------------------------------------
+     Saha Planlama — çalışma işareti türetimi
+     Mevcut işaret bayrak değil TARİH tutuyor; gece yarısı kendiliğinden düşüyor.
+     Plan bu alanlara YAZMAZ, işaret plandan türetilir — temizlik derdi doğmasın.
+     --------------------------------------------------------------- */
+  bolum('Saha Planlama — çalışma işareti');
+  {
+    const { app, T, a1 } = planOrtami();
+    const bugun = app.todayStr();
+    const t0 = app.tarlaBul('t0'), s0 = app.seraBul('s0');
+
+    yanlis(app.tarlaKirimYapiliyorMu(t0), 'plan yokken tarla işareti kapalı');
+    yanlis(app.seraDolduruluyorMu(s0), 'plan yokken sera işareti kapalı');
+
+    // Yarının planı bugünü etkilemez
+    const plan = app.planGetir(T);
+    const bY = app.planAlanGetir(plan, a1).bolmeler[0].id;
+    app.planGirisEkle(T, a1, bY, 't0', 'traktor1', 'Ahmet');
+    app.planSeraEkle(T, a1, bY, 's0');
+    yanlis(app.tarlaKirimYapiliyorMu(t0), 'başka günün planı bugünkü işareti yakmaz');
+    yanlis(app.seraDolduruluyorMu(s0), 'başka günün planı sera işaretini yakmaz');
+
+    // Bugünün planı işareti yakar
+    const bugunPlan = app.planGetir(bugun);
+    const bB = app.planAlanGetir(bugunPlan, a1).bolmeler[0].id;
+    app.planGirisEkle(bugun, a1, bB, 't0', 'traktor1', 'Ahmet');
+    app.planSeraEkle(bugun, a1, bB, 's0');
+    dogru(app.tarlaKirimYapiliyorMu(t0), 'bugünkü plan tarla işaretini yakar');
+    dogru(app.seraDolduruluyorMu(s0), 'bugünkü plan sera işaretini yakar');
+
+    // Kırım kaydına dönüşen bölme artık "yapılıyor" değildir
+    app.planBolmeBul(bugunPlan, a1, bB).kirimId = 'k1';
+    yanlis(app.tarlaKirimYapiliyorMu(t0), 'kayda dönüşen bölme tarla işaretini düşürür');
+    yanlis(app.seraDolduruluyorMu(s0), 'kayda dönüşen bölme sera işaretini düşürür');
+    app._temizle();
+  }
+  {
+    // Elle konan işaret plandan bağımsız çalışmaya devam eder
+    const { app } = planOrtami();
+    const t0 = app.tarlaBul('t0'), s0 = app.seraBul('s0');
+    app.calismaIsaretiUygula(t0, 'kirimIsaretTarihi', true);
+    app.seraIsaretiUygula(s0, 'doldurma');
+    dogru(app.tarlaKirimYapiliyorMu(t0), 'elle işaret hâlâ çalışır');
+    dogru(app.seraDolduruluyorMu(s0), 'elle sera işareti hâlâ çalışır');
+    app._temizle();
+  }
+  {
+    // Boşaltma işareti plandan etkilenmez — plan yalnız doldurma yönünü tarifler
+    const { app, a1 } = planOrtami();
+    const bugun = app.todayStr();
+    const plan = app.planGetir(bugun);
+    const b = app.planAlanGetir(plan, a1).bolmeler[0].id;
+    app.planSeraEkle(bugun, a1, b, 's0');
+    yanlis(app.seraBosaltiliyorMu(app.seraBul('s0')), 'plan boşaltma işaretini yakmaz');
+    app._temizle();
+  }
+
   /* --------------------------------------------------------------- */
   console.log(`\n${'─'.repeat(52)}`);
   if (kalan.length) {

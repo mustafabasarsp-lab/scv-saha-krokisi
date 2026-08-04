@@ -2053,7 +2053,7 @@ const AYARLAR = {
   UNITE_PX: 40                // referans kapasitedeki sera-box genişliği (px) — kroki oranı
 };
 const STORAGE_KEY = 'scvSahaKrokiV1';
-const APP_SURUM = 'v98'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
+const APP_SURUM = 'v99'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
 
 /* =========================================================
    HATA / DONMA GÜNLÜĞÜ — "bazen donuyor" şikayetini araştırmak için.
@@ -3184,9 +3184,11 @@ function tarlaStats(tarlaId, sezon){
    yapılıyor, serada dizim/doldurma sürüyor. İşaret bir BAYRAK değil TARİH tutar;
    böylece dünden kalan işaret bugün kendiliğinden düşer, kimsenin temizlemesi
    gerekmez. Tarladaki işaret, o tarihe kırım kaydı girildiğinde de düşer —
-   işaretin amacı zaten "kayıt henüz girilmedi" penceresidir. */
-function tarlaKirimYapiliyorMu(t){ return !!t && t.kirimIsaretTarihi === todayStr(); }
-function seraDolduruluyorMu(s){ return !!s && s.doldurmaIsaretTarihi === todayStr(); }
+   işaretin amacı zaten "kayıt henüz girilmedi" penceresidir.
+   İşaret ayrıca BUGÜNÜN saha planından da türetilir (bkz. bugunPlanTarlaIdleri):
+   plan işaret yazmaz, okunur — böylece plan değişince temizlik gerekmez. */
+function tarlaKirimYapiliyorMu(t){ return !!t && (t.kirimIsaretTarihi === todayStr() || bugunPlanTarlaIdleri().includes(t.id)); }
+function seraDolduruluyorMu(s){ return !!s && (s.doldurmaIsaretTarihi === todayStr() || bugunPlanSeraIdleri().includes(s.id)); }
 function seraBosaltiliyorMu(s){ return !!s && s.bosaltmaIsaretTarihi === todayStr(); }
 function calismaIsaretiUygula(kayit, alan, acikMi){
   if(!kayit) return;
@@ -5049,6 +5051,25 @@ function planUyarilari(tarih){
   const bos = planBosAlanIdleri(tarih).map(id=>(dizimAlaniBul(id)||{}).ad).filter(Boolean);
   if(bos.length) cikti.push(`${bos.join(', ')} boş — atama yok.`);
   return cikti;
+}
+
+/* ---- Çalışma işareti türetimi ----
+   Plan, tarla/sera kaydına İŞARET YAZMAZ. Yazsaydı: planı değiştirmek eski
+   işareti temizlemeyi gerektirirdi ve unutulan her işaret yanlış bilgi olurdu.
+   Türetince plan neyse işaret o; üstelik mevcut "gece yarısı düşer" kuralı
+   bedavaya geliyor, çünkü yalnız BUGÜNÜN planına bakılıyor.
+   Kırım kaydına dönüşmüş bölme sayılmaz: işaretin anlamı zaten
+   "iş sürüyor ama kayıt henüz girilmedi" penceresi. */
+function bugunPlanAktifBolmeler(){
+  const plan = planBul(todayStr());
+  if(!plan) return [];
+  return plan.alanlar.flatMap(a=>a.bolmeler).filter(b=>!b.kirimId);
+}
+function bugunPlanTarlaIdleri(){
+  return [...new Set(bugunPlanAktifBolmeler().flatMap(b=>b.girisler.map(g=>g.tarlaId)))];
+}
+function bugunPlanSeraIdleri(){
+  return [...new Set(bugunPlanAktifBolmeler().flatMap(b=>b.seraIds))];
 }
 
 /* =========================================================
