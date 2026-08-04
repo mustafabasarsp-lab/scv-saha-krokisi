@@ -2114,7 +2114,7 @@ const AYARLAR = {
   UNITE_PX: 40                // referans kapasitedeki sera-box genişliği (px) — kroki oranı
 };
 const STORAGE_KEY = 'scvSahaKrokiV1';
-const APP_SURUM = 'v103'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
+const APP_SURUM = 'v104'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
 
 /* =========================================================
    HATA / DONMA GÜNLÜĞÜ — "bazen donuyor" şikayetini araştırmak için.
@@ -2307,6 +2307,9 @@ const I18N_EN = {
   'Bir dizim alanı en çok 4 bölmeye ayrılabilir.':'A stringing area can be split into at most 4 sections.',
   'Alanda tek bölme var, birleştirilecek bir şey yok.':'The area has a single section; nothing to merge.',
   'Bölmeler takas edilemez — bölme içeriğini "Böl / Birleştir" ile düzenleyin.':'Sections cannot be swapped — edit section contents with "Split / Merge".',
+  'planda kullanılıyor':'plans use it', 'hiç kullanılmamış':'never used',
+  'Yeni Alan Adı':'New Area Name',
+  'Alan adı boş olamaz ve aynı ad iki kez kullanılamaz.':'The area name cannot be empty and must be unique.',
   'Boş':'Empty', 'Tarla':'Field', 'Sera':'Greenhouse', 'Sera Doluluk':'Greenhouse Occupancy',
   'Dolu Sera':'Full', 'Boş Sera':'Empty', 'kg/da (kırılan)':'kg/da (harvested)', 'kg/da (tüm saha)':'kg/da (all land)',
   'Seralar':'Greenhouses', 'Sera ara…':'Search greenhouses…',
@@ -3606,6 +3609,80 @@ function planTarlaSecildi(tarlaId){
   planSecim2 = null;
   closeModal();
   renderSahaPlanlama();
+}
+
+/* ---- Dizim alanı yönetimi ----
+   Sera yönetiminin sadeleştirilmiş hâli: alan sayısı sahada nadiren değişir. */
+function dizimAlaniPlanSayisi(alanId){
+  return state.sahaPlanlari.filter(p=>p.alanlar.some(a=>
+    a.alanId===alanId && a.bolmeler.some(b=>b.girisler.length || b.seraIds.length)
+  )).length;
+}
+function dizimAlaniEkle(ad){
+  const temiz = (ad||'').trim();
+  if(!temiz) return false;
+  if(state.dizimAlanlari.some(a=>(a.ad||'').toLocaleLowerCase('tr')===temiz.toLocaleLowerCase('tr'))) return false;
+  const enBuyukSira = state.dizimAlanlari.reduce((m,a)=>Math.max(m, a.sira||0), 0);
+  state.dizimAlanlari.push({ id: uid(), ad: temiz, bolge:'', sira: enBuyukSira+1, olusturma: Date.now(), ...sonIslemDamgasi() });
+  return true;
+}
+function dizimAlaniAdDegistir(alanId, ad){
+  const temiz = (ad||'').trim();
+  const alan = dizimAlaniBul(alanId);
+  if(!alan || !temiz) return false;
+  alan.ad = temiz;
+  Object.assign(alan, sonIslemDamgasi());
+  return true;
+}
+/* Alan silinince planlardaki atamaları da düşer — yetim alanId bırakmak,
+   şemada adsız kutular ve okunamayan geçmiş plan demek. */
+function dizimAlaniSil(alanId){
+  if(!dizimAlaniBul(alanId)) return false;
+  state.dizimAlanlari = state.dizimAlanlari.filter(a=>a.id!==alanId);
+  state.sahaPlanlari.forEach(p=>{
+    const once = p.alanlar.length;
+    p.alanlar = p.alanlar.filter(a=>a.alanId!==alanId);
+    if(p.alanlar.length !== once) planDamgala(p);
+  });
+  return true;
+}
+function openDizimAlaniYonetimModal(){
+  const satirlar = dizimAlanlariSirali().map(a=>{
+    const kullanim = dizimAlaniPlanSayisi(a.id);
+    return `<div class="dizim-row">
+      <div class="dizim-row-main">
+        <input value="${escapeHtml(a.ad)}" onchange="dizimAlaniAdDegistir('${a.id}', this.value); renderAll(); openDizimAlaniYonetimModal();">
+        <div class="dizim-meta">${kullanim ? kullanim + ' ' + i18n('planda kullanılıyor') : i18n('hiç kullanılmamış')}</div>
+      </div>
+      <button class="dizim-del" onclick="dizimAlaniSilTikla('${a.id}')" title="${i18n('Sil')}">×</button>
+    </div>`;
+  }).join('');
+  openModal(`
+    <h3>${i18n('Dizim Alanları')}</h3>
+    <div class="list-small">${satirlar || `<div class="empty-hint">${i18n('Henüz dizim alanı yok.')}</div>`}</div>
+    <div class="field"><label>${i18n('Yeni Alan Adı')}</label><input id="yeniDizimAlaniAd" placeholder="D.C1"></div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeModal()">${i18n('Kapat')}</button>
+      <button class="btn btn-primary" onclick="submitDizimAlaniEkle()">${i18n('Ekle')}</button>
+    </div>`);
+}
+function submitDizimAlaniEkle(){
+  const el = document.getElementById('yeniDizimAlaniAd');
+  if(!dizimAlaniEkle(el.value)){ uyar('Alan adı boş olamaz ve aynı ad iki kez kullanılamaz.'); return; }
+  renderAll();
+  openDizimAlaniYonetimModal();
+}
+function dizimAlaniSilTikla(alanId){
+  const alan = dizimAlaniBul(alanId);
+  if(!alan) return;
+  const kullanim = dizimAlaniPlanSayisi(alanId);
+  const mesaj = kullanim
+    ? `${alan.ad} ${kullanim} planda kullanılıyor. Silinirse o planlardaki atamaları da düşer. Silinsin mi?`
+    : `${alan.ad} silinsin mi?`;
+  if(!onayla(mesaj)) return;
+  dizimAlaniSil(alanId);
+  renderAll();
+  openDizimAlaniYonetimModal();
 }
 
 /* Sol sütun yalnız PLANA BAĞLI tarlaları gösterir: sahada 25+ tarla var,

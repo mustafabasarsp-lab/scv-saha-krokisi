@@ -1119,6 +1119,55 @@ const tik = () => new Promise(r => setImmediate(r));
     app._temizle();
   }
 
+  /* ---------------------------------------------------------------
+     Saha Planlama — dizim alanı yönetimi
+     Alan silmek geçmiş planlardaki atamaları da düşürür; kullanıcı kaç planda
+     kullanıldığını GÖRMEDEN silmemeli.
+     --------------------------------------------------------------- */
+  bolum('Saha Planlama — alan yönetimi');
+  {
+    const { app, T, a1 } = planOrtami();
+    esit(app.dizimAlaniPlanSayisi(a1), 0, 'kullanılmayan alan 0 planda');
+    const plan = app.planGetir(T);
+    const b1 = app.planAlanGetir(plan, a1).bolmeler[0].id;
+    app.planGirisEkle(T, a1, b1, 't0', 'traktor1', 'Ahmet');
+    esit(app.dizimAlaniPlanSayisi(a1), 1, 'kullanılan alan 1 planda');
+    app._temizle();
+  }
+  {
+    const { app } = planOrtami();
+    esit(app.state.dizimAlanlari.length, 8, 'başlangıçta 8 alan');
+    dogru(app.dizimAlaniEkle('D.C1'), 'yeni alan eklenir');
+    esit(app.state.dizimAlanlari.length, 9, 'alan sayısı arttı');
+    yanlis(app.dizimAlaniEkle('D.C1'), 'aynı adlı alan tekrar eklenmez');
+    yanlis(app.dizimAlaniEkle('   '), 'boş ad eklenmez');
+    esit(app.dizimAlanlariSirali().slice(-1)[0].ad, 'D.C1', 'yeni alan sona eklenir');
+    app._temizle();
+  }
+  {
+    const { app, a1 } = planOrtami();
+    dogru(app.dizimAlaniAdDegistir(a1, 'D.A1 Üst'), 'ad değiştirilir');
+    esit(app.dizimAlaniBul(a1).ad, 'D.A1 Üst', 'yeni ad yazıldı');
+    yanlis(app.dizimAlaniAdDegistir(a1, ''), 'boş ada izin verilmez');
+    yanlis(app.dizimAlaniAdDegistir('yok', 'X'), 'olmayan alan değiştirilemez');
+    app._temizle();
+  }
+  {
+    // Silme: alanın planlardaki girdileri de düşer
+    const { app, T, a1, a2 } = planOrtami();
+    const plan = app.planGetir(T);
+    const b1 = app.planAlanGetir(plan, a1).bolmeler[0].id;
+    app.planGirisEkle(T, a1, b1, 't0', 'traktor1', 'Ahmet');
+    app.planAlanGetir(plan, a2);
+
+    dogru(app.dizimAlaniSil(a1), 'alan silinir');
+    esit(app.dizimAlaniBul(a1), undefined, 'alan listeden düştü');
+    yanlis(plan.alanlar.some(x => x.alanId === a1), 'plandaki atama da düştü');
+    dogru(plan.alanlar.some(x => x.alanId === a2), 'diğer alan etkilenmedi');
+    yanlis(app.dizimAlaniSil('yok'), 'olmayan alan silinemez');
+    app._temizle();
+  }
+
   /* --------------------------------------------------------------- */
   console.log(`\n${'─'.repeat(52)}`);
   if (kalan.length) {
