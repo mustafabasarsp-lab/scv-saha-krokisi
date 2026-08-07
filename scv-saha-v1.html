@@ -1596,7 +1596,23 @@ body.has-fullscreen-panel{overflow:hidden;}
      kaydırmak yerine, tüm sayfa tek parça olarak kayar (iç içe mini-scroll
      kutuları yerine tek, doğal bir kaydırma). */
   .panel{height:auto;min-height:0;max-height:none;}
-  .panel-body{-webkit-overflow-scrolling:touch;}
+  /* Panel YÜKSEKLİĞİ auto'ya alınıyordu ama gövdesi taban kuraldaki
+     overflow-y:auto ile kalıyordu — yani panel-body hiç kaymadığı hâlde bir
+     KAYDIRMA KABI olmaya devam ediyordu. Bunun iki bedeli var:
+      • position:sticky çocuklar kendi kabının alt kenarına göre itiliyor ve
+        hiç kaymayan bir kapta bu itme kalıcı oluyor (Ödemeler genel toplam
+        şeridi son dayıbaşı kartına bu yüzden biniyordu).
+      • Sayfanın "tek parça kayar" niyeti ile çelişiyor.
+     overflow-x:clip yatay taşmayı hidden gibi keser AMA kaydırma kabı YARATMAZ;
+     hidden'ın aksine yanında overflow-y:visible durabilir (hidden olsaydı
+     visible → auto'ya çevrilir ve kap geri gelirdi). clip'i desteklemeyen eski
+     tarayıcı bu satırı atar, önündeki hidden geçerli kalır ve davranış bugünkü
+     hâline döner — düzelmez ama bozulmaz. */
+  .panel-body{overflow-x:hidden;overflow-x:clip;overflow-y:visible;}
+  /* Tam ekran panel İSTİSNA: position:fixed bir kutu ve gövde kaydırması
+     kilitli (body.has-fullscreen-panel{overflow:hidden}), yani içerik ancak
+     kendi içinde kayabilir. Burada kaydırma kabı olmak zorunlu. */
+  .panel-fullscreen .panel-body{overflow-x:hidden;overflow-y:auto;-webkit-overflow-scrolling:touch;}
   .bottom-panel{height:auto;}
   .tarla-plot{-webkit-overflow-scrolling:touch;}
   /* ---- Başlık hiyerarşisi (telefon) ----
@@ -2340,7 +2356,7 @@ const AYARLAR = {
   UNITE_PX: 40                // referans kapasitedeki sera-box genişliği (px) — kroki oranı
 };
 const STORAGE_KEY = 'scvSahaKrokiV1';
-const APP_SURUM = 'v113'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
+const APP_SURUM = 'v114'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
 
 /* =========================================================
    HATA / DONMA GÜNLÜĞÜ — "bazen donuyor" şikayetini araştırmak için.
