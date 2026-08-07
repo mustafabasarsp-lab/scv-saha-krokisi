@@ -1613,6 +1613,47 @@ const tik = () => new Promise(r => setImmediate(r));
     app._temizle();
   }
 
+  /* ---------------------------------------------------------------
+     Ödemeler — günlük giriş listesi
+     Genel toplam listenin SONUNDA durmalı. Eskiden position:sticky'di ve
+     telefonda kalıcı olarak son dayıbaşı kartının üstüne biniyordu; kaydırma
+     kabı (.panel-body) hiç kaymadığı için de düzelmiyordu. Buradaki testler
+     yerleşimi ölçemez ama iki şeyi bağlar: şerit son kartın ARDINDAN basılır,
+     ve bir daha sticky sınıfı almaz.
+     --------------------------------------------------------------- */
+  bolum('Ödemeler — günlük liste');
+  {
+    const app = kur();
+    ['Ali', 'Veli', 'Zeki'].forEach((ad, i) => app.state.dayibasilar.push({
+      id: 'd' + i, ad, bolge: 'tekeliler', aktif: true
+    }));
+    app.state.yevmiyeKayitlari.push({
+      id: 'y0', tarih: app.todayStr(), bolge: 'tekeliler', dayibasiId: 'd2',
+      sayilar: { kirim: 3, sulama: 0, dizimAsim: 0, sera: 0, capa: 0 }
+    });
+    app.odemeBolgeSekmeGecis('tekeliler');
+    app.odemeGunlukTarihDegisti(app.todayStr());
+    const html = app._belge.getElementById('odemeGunlukListe').innerHTML;
+
+    dogru(html.includes('odeme-genel-toplam-serit'), 'genel toplam şeridi basılır');
+    yanlis(html.includes('odeme-genel-toplam-sticky'), 'sticky sınıfı geri gelmemeli');
+    // Sıra: son dayıbaşı kartı, şeritten ÖNCE gelmeli.
+    dogru(html.lastIndexOf('odeme-kart') < html.indexOf('odeme-genel-toplam-serit'),
+      'şerit son dayıbaşı kartının ardından gelir');
+    dogru(html.indexOf('Zeki') < html.indexOf('odeme-genel-toplam-serit'),
+      'alfabetik son dayıbaşı da şeritten önce');
+    app._temizle();
+  }
+  {
+    // Dayıbaşı yoksa şerit hiç basılmaz — boş listenin altında "Genel Toplam: 0"
+    // asılı kalması anlamsız olurdu.
+    const app = kur();
+    app.odemeBolgeSekmeGecis('tekeliler');
+    const html = app._belge.getElementById('odemeGunlukListe').innerHTML;
+    yanlis(html.includes('odeme-genel-toplam-serit'), 'kayıt yokken şerit basılmaz');
+    app._temizle();
+  }
+
   /* --------------------------------------------------------------- */
   console.log(`\n${'─'.repeat(52)}`);
   if (kalan.length) {

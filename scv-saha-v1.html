@@ -1465,8 +1465,17 @@ body.has-fullscreen-panel{overflow:hidden;}
 /* Kartın sonucu: ödenecek tutar. Ölçekte bir basamak yukarı — kartın en
    büyük sayısı adı değil, parası olmalı. */
 .odeme-kart-toplam{margin-top:8px;text-align:right;font-size:var(--fs-lg);font-weight:var(--fw-kalin);color:var(--green-900);}
-.odeme-genel-toplam-sticky{
-  position:sticky;bottom:0;margin-top:4px;
+/* Listenin SONUNDA duran genel toplam şeridi.
+   Eskiden position:sticky + bottom idi ve BOZUKTU: sticky en yakın kaydırma
+   kabına göre çalışır, burada o kap .panel-body (overflow-y:auto). Telefonda
+   .panel yüksekliği auto olduğu için panel-body hiç kaydırmıyor — ama sticky
+   kısıtı yine de uygulanıyor ve "alt kenarın kabın altından 65px yukarıda
+   olsun" kuralı şeridi kalıcı olarak son dayıbaşı kartının üstüne bindiriyordu.
+   Kaydırmayla düzelmiyordu, çünkü düzelmesi için kabın kayması gerekiyordu.
+   "Hep görünür kalsın" niyeti bu yapıda zaten karşılanamıyor; şerit artık
+   olması gereken yerde, son kartın altında duruyor. Vurgusu rengiyle veriliyor. */
+.odeme-genel-toplam-serit{
+  margin-top:4px;
   background:var(--green-700);color:var(--on-accent);border-radius:var(--r-md);
   /* Ekranın en önemli tek sayısı: o günün toplam ödemesi. */
   padding:10px 14px;font-weight:var(--fw-kalin);text-align:center;font-size:var(--fs-lg);
@@ -1718,7 +1727,6 @@ body.has-fullscreen-panel{overflow:hidden;}
   body.has-fullscreen-panel .kirim-fab{display:none;}
   .odeme-table-wrap{display:none;}
   .odeme-card-list{display:block;}
-  .odeme-genel-toplam-sticky{bottom:calc(var(--alt-nav-h) + var(--alt-aralik) + env(safe-area-inset-bottom,0px));}
   /* İklim grafiği: telefonda okunaklı olması için modalı tam ekran aç */
   .modal-iklim-grafik{
     width:calc(100% + 32px);max-width:calc(100% + 32px);
@@ -2332,7 +2340,7 @@ const AYARLAR = {
   UNITE_PX: 40                // referans kapasitedeki sera-box genişliği (px) — kroki oranı
 };
 const STORAGE_KEY = 'scvSahaKrokiV1';
-const APP_SURUM = 'v112'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
+const APP_SURUM = 'v113'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
 
 /* =========================================================
    HATA / DONMA GÜNLÜĞÜ — "bazen donuyor" şikayetini araştırmak için.
@@ -9959,7 +9967,7 @@ function renderOdemeGunluk(){
     </div>
     <div class="odeme-card-list">
       ${kartlar || `<div class="item">${i18n('Bu bölgede aktif dayıbaşı yok')}</div>`}
-      ${satirVerileri.length ? `<div class="odeme-genel-toplam-sticky">${i18n('Genel Toplam')}: ${fmt(genelToplam,0)}</div>` : ''}
+      ${satirVerileri.length ? `<div class="odeme-genel-toplam-serit">${i18n('Genel Toplam')}: ${fmt(genelToplam,0)}</div>` : ''}
     </div>
   `;
 }
