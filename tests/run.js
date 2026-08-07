@@ -679,7 +679,8 @@ const tik = () => new Promise(r => setImmediate(r));
     app._temizle();
   }
   {
-    // Sera tekil sahiplik: ikinci bölmeye eklenince öncekinden düşer
+    // Sera paylaşılabilir: aynı sera birden fazla bölmeye bağlanır, öncekinden
+    // DÜŞMEZ. Sahada dört dizim alanının tütünü aynı seralara asılabiliyor.
     const { app, T, a1, a2 } = planOrtami();
     const plan = app.planGetir(T);
     const b1 = app.planAlanGetir(plan, a1).bolmeler[0].id;
@@ -689,8 +690,8 @@ const tik = () => new Promise(r => setImmediate(r));
     esit(app.planAlanGetir(plan, a1).bolmeler[0].seraIds, ['s0','s1'], 'iki sera eklendi');
 
     app.planSeraEkle(T, a2, b2, 's0');
-    esit(app.planAlanGetir(plan, a1).bolmeler[0].seraIds, ['s1'], 's0 önceki bölmeden düştü');
-    esit(app.planAlanGetir(plan, a2).bolmeler[0].seraIds, ['s0'], 's0 yeni bölmeye geçti');
+    esit(app.planAlanGetir(plan, a1).bolmeler[0].seraIds, ['s0','s1'], 's0 önceki bölmede kalır');
+    esit(app.planAlanGetir(plan, a2).bolmeler[0].seraIds, ['s0'], 's0 ikinci bölmeye de bağlandı');
 
     yanlis(app.planSeraEkle(T, a2, b2, 's0'), 'aynı seranın tekrarı yok sayılır');
     esit(app.planAlanGetir(plan, a2).bolmeler[0].seraIds, ['s0'], 'liste yinelenmedi');
@@ -964,8 +965,9 @@ const tik = () => new Promise(r => setImmediate(r));
 
   /* ---------------------------------------------------------------
      Saha Planlama — şema çizimi
-     Şema kullanıcının tek bilgi kaynağı; boş alanın görünür kalması ve
-     kutulardaki kimliklerin doğru basılması davranışın kendisi.
+     Şema kullanıcının tek bilgi kaynağı. Yeni düzende her dizim alanı bir
+     KART; 8 alanın 8 kartının da her koşulda çizilmesi ve toplanmış kartın
+     sabit kalması (taşan çipler "+N" olur) davranışın kendisi.
      --------------------------------------------------------------- */
   bolum('Saha Planlama — şema çizimi');
   {
@@ -974,14 +976,15 @@ const tik = () => new Promise(r => setImmediate(r));
     app.planTarihSecildi(T);
     const html = app._belge.getElementById('planSema').innerHTML;
 
-    // Kutuda sahadaki tabelanın karşılığı yazar (kısa ad + DİZİM rozeti);
+    // Düğümde sahadaki tabelanın karşılığı yazar (kısa ad + DİZİM rozeti);
     // 'D.' önekli tam ad title olarak durur — arama/rapor/yedek tarafı onu kullanır.
-    dogru(html.includes('>A1<'), 'kutuda kısa ad yazar');
+    dogru(html.includes('>A1<'), 'düğümde kısa ad yazar');
     dogru(html.includes('title="D.A1"'), 'tam ad title olarak taşınır');
     dogru(html.includes('title="D.B4"'), '8 alanın sonuncusu da çizilir');
+    esit((html.match(/class="plan-kart/g) || []).length, 8, '8 alanın 8 kartı da çizilir');
     dogru(html.includes(app.i18n('DİZİM')), 'DİZİM rozeti basılır');
     dogru(html.includes('plan-alan-bos'), 'boş alan solgun sınıfla işaretlenir');
-    yanlis(html.includes('K11'), 'plana bağlanmamış tarla sol sütunda görünmez');
+    dogru(html.includes('plan-cip-bos'), 'boş uçta "+ Tarla / + Sera" yer tutucusu var');
     app._temizle();
   }
   {
@@ -995,29 +998,75 @@ const tik = () => new Promise(r => setImmediate(r));
     app.planTarihSecildi(T);
     const html = app._belge.getElementById('planSema').innerHTML;
 
-    dogru(html.includes('K11') && html.includes('K21'), 'bağlanan tarlalar sol sütunda');
-    dogru(html.includes('BSB 6195'), 'bölme çeşidi yazılır');
-    dogru(html.includes('Ahmet'), 'şoför adı görünür');
-    dogru(html.includes('Traktör 1'), 'araç adı görünür');
-    dogru(html.includes('D1'), 'hedef sera sağ sütunda');
-    dogru(html.includes('data-plan-tarla="t0"'), 'tarla kimliği kutuya basılır');
-    dogru(html.includes('data-plan-sera="s0"'), 'sera kimliği kutuya basılır');
-    esit(app.planSemaTarlaIdleri(T), ['t0','t1'], 'sol sütun tarlaları ad sırasıyla');
+    dogru(html.includes('K11') && html.includes('K21'), 'bağlanan tarlalar kartın sol ucunda');
+    dogru(html.includes('D1'), 'hedef sera kartın sağ ucunda');
+    dogru(html.includes('ikon-traktor'), 'araç türü ikonla gösterilir');
+    dogru(html.includes('ikon-sera'), 'sera ikonu basılır');
+    dogru(html.includes('plan-konektor'), 'uçlar konektörle bağlanır');
+    dogru(html.includes('Traktör 1') && html.includes('Ahmet'), 'araç ve şoför çipin başlığında');
     app._temizle();
   }
   {
-    // Karışık bölme kırmızı sınıf alır
+    // Toplanmış kart sabit kalmalı: sınırı aşan çipler "+N" olarak katlanır,
+    // yoksa dolu bir gün 8 alanı ekrandan taşırırdı.
+    const { app, T, a1 } = planOrtami();
+    const plan = app.planGetir(T);
+    const b1 = app.planAlanGetir(plan, a1).bolmeler[0].id;
+    ['t0','t1','t2'].forEach(id => app.planGirisEkle(T, a1, b1, id, 'traktor1', 'Ahmet'));
+    app.sahaGenelSekmeGecis('planlama');
+    app.planTarihSecildi(T);
+    const html = app._belge.getElementById('planSema').innerHTML;
+    dogru(html.includes('plan-cip-fazla'), 'üçüncü giriş "+N" olarak katlanır');
+    dogru(html.includes('+1'), 'katlanan sayı yazılır');
+    app._temizle();
+  }
+  {
+    // Kart açılınca bölme ayrıntısı ve düzenleme düğmeleri görünür
     const { app, T, a1 } = planOrtami();
     const plan = app.planGetir(T);
     const b1 = app.planAlanGetir(plan, a1).bolmeler[0].id;
     app.planGirisEkle(T, a1, b1, 't0', 'traktor1', 'Ahmet');
     app.sahaGenelSekmeGecis('planlama');
     app.planTarihSecildi(T);
-    yanlis(app._belge.getElementById('planSema').innerHTML.includes('plan-bolme-karisik'), 'tek çeşitte uyarı sınıfı yok');
+    yanlis(app._belge.getElementById('planSema').innerHTML.includes('plan-detay-bolme'), 'toplanmış kartta bölme ayrıntısı yok');
+
+    app.planKartTikla(a1);
+    const acik = app._belge.getElementById('planSema').innerHTML;
+    esit(app.planAcikAlanId, a1, 'karta dokunmak onu açar');
+    dogru(acik.includes('plan-detay-bolme'), 'açık kartta bölme ayrıntısı var');
+    dogru(acik.includes('BSB 6195'), 'açık kartta bölme çeşidi yazılır');
+    dogru(acik.includes('planBolmeEkleTikla'), 'açık kartta Böl düğmesi var');
+
+    app.planKartTikla(a1);
+    esit(app.planAcikAlanId, null, 'aynı karta tekrar dokunmak kapatır');
+    app._temizle();
+  }
+  {
+    // Karışık bölme kırmızı sınıf alır — yalnız açık kartta görünür,
+    // toplanmış kartta bölme ayrımı zaten gösterilmiyor.
+    const { app, T, a1 } = planOrtami();
+    const plan = app.planGetir(T);
+    const b1 = app.planAlanGetir(plan, a1).bolmeler[0].id;
+    app.planGirisEkle(T, a1, b1, 't0', 'traktor1', 'Ahmet');
+    app.sahaGenelSekmeGecis('planlama');
+    app.planTarihSecildi(T);
+    app.planKartTikla(a1);
+    yanlis(app._belge.getElementById('planSema').innerHTML.includes('plan-detay-bolme karisik'), 'tek çeşitte uyarı sınıfı yok');
 
     app.planGirisEkle(T, a1, b1, 't2', 'transit1', 'Veli');
     app.renderSahaPlanlama();
-    dogru(app._belge.getElementById('planSema').innerHTML.includes('plan-bolme-karisik'), 'karışık bölme uyarı sınıfı alır');
+    dogru(app._belge.getElementById('planSema').innerHTML.includes('plan-detay-bolme karisik'), 'karışık bölme uyarı sınıfı alır');
+    app._temizle();
+  }
+  {
+    // Akış animasyonu yalnız BUGÜNÜN planında oynar
+    const { app } = planOrtami();
+    const bugun = app.todayStr();
+    app.sahaGenelSekmeGecis('planlama');
+    app.planTarihSecildi(bugun);
+    dogru(app._belge.getElementById('planSema').classList.contains('plan-bugun'), 'bugünün planında akış açık');
+    app.planTarihSecildi('2020-01-01');
+    yanlis(app._belge.getElementById('planSema').classList.contains('plan-bugun'), 'başka günde akış kapalı');
     app._temizle();
   }
   {
@@ -1035,66 +1084,140 @@ const tik = () => new Promise(r => setImmediate(r));
   }
 
   /* ---------------------------------------------------------------
-     Saha Planlama — seçim ve bağlama
-     "Futbol değişikliği": iki aynı türden kutu seçilir, Değiştir'e basılır.
+     Saha Planlama — bağlama ve kipler
+     Normal kipte karta dokunmak onu açar. İki geçici kip var: 'cogalt' bir
+     girişi başka alanlara indirir, 'takas' aynı türden iki öğeyi değiştirir.
      --------------------------------------------------------------- */
-  bolum('Saha Planlama — seçim ve bağlama');
+  bolum('Saha Planlama — bağlama ve kipler');
   {
-    const { app, T } = planOrtami();
-    app.sahaGenelSekmeGecis('planlama');
-    app.planTarihSecildi(T);
-    const b = app._belge;
-
-    app.planTarlaTikla('t0');
-    dogru(app.planSecimEsitMi('tarla','t0'), 'tarla seçilir');
-    dogru(b.getElementById('planDegistirBtn').disabled, 'tek seçimde Değiştir kapalı');
-    yanlis(b.getElementById('planSecimBirakBtn').disabled, 'seçim varken bırak açık');
-
-    app.planTarlaTikla('t0');
-    yanlis(app.planSecimEsitMi('tarla','t0'), 'aynı kutuya tekrar tıklamak seçimi bırakır');
-    dogru(b.getElementById('planSecimBirakBtn').disabled, 'seçim yokken bırak kapalı');
-    app._temizle();
-  }
-  {
-    // Tarla → bölme bağlama (kip onayı submitPlanGiris ile taklit edilir)
+    // Tarla + araç + şoför tek kipte sorulur
     const { app, T, a1 } = planOrtami();
     app.sahaGenelSekmeGecis('planlama');
     app.planTarihSecildi(T);
     const plan = app.planGetir(T);
     const b1 = app.planAlanGetir(plan, a1).bolmeler[0].id;
 
-    app.planTarlaTikla('t0');
-    app.planBolmeTikla(a1, b1);            // araç/şoför kipini açar
-    dogru(app._belge.getElementById('modalContent').innerHTML.includes('Traktör 1'), 'araç seçenekleri kipte');
+    app.openPlanGirisModal(a1, b1);
+    const kip = app._belge.getElementById('modalContent').innerHTML;
+    dogru(kip.includes('K11'), 'tarla listesi kipte');
+    dogru(kip.includes('Traktör 1') && kip.includes('Transit 1'), 'araç seçenekleri kipte');
+    dogru(kip.includes('ikon-transit'), 'araç seçenekleri ikonlu');
 
-    app._belge.getElementById('planGirisArac').value = 'transit1';
+    app.planGirisTarlaSec('t0');
+    app.planGirisAracSec('transit1');
     app._belge.getElementById('planGirisSofor').value = ' Ahmet ';
-    app.submitPlanGiris(a1, b1, 't0');
+    app.submitPlanGiris(a1, b1);
 
     const bolme = app.planBolmeBul(plan, a1, b1);
     esit(bolme.girisler.length, 1, 'giriş eklendi');
     esit(bolme.girisler[0].aracId, 'transit1', 'seçilen araç yazıldı');
     esit(bolme.girisler[0].sofor, 'Ahmet', 'şoför adının boşlukları kırpıldı');
-    esit(app.planSecim, null, 'bağlamadan sonra seçim bırakılır');
     app._temizle();
   }
   {
-    // Bölme → sera bağlama
+    // Tarla seçilmeden Bağla'ya basmak kaydetmez, uyarır
     const { app, T, a1 } = planOrtami();
     app.sahaGenelSekmeGecis('planlama');
     app.planTarihSecildi(T);
-    const plan = app.planGetir(T);
-    const b1 = app.planAlanGetir(plan, a1).bolmeler[0].id;
-
-    app.planBolmeTikla(a1, b1);
-    dogru(app.planSecimEsitMi('bolme', b1), 'bölme seçildi');
-    app.planSeraTikla('s0', '', '');
-    esit(app.planBolmeBul(plan, a1, b1).seraIds, ['s0'], 'sera bölmeye bağlandı');
-    esit(app.planSecim, null, 'bağlamadan sonra seçim bırakılır');
+    app.openPlanGirisModal(a1, '');
+    app.submitPlanGiris(a1, '');
+    dogru(app._gunluk.uyarilar.some(m => /tarla/i.test(m)), 'tarlasız gönderim uyarır');
+    yanlis(!!app.planBul(T), 'uyarı verilen denemede plan belgesi yazılmaz');
     app._temizle();
   }
   {
-    // İki tarla seçip Değiştir
+    // Plan hiç yokken kartın "+ Tarla" yolu: bölme kimliği YAZMA anında çözülür
+    const { app, T, a1 } = planOrtami();
+    app.sahaGenelSekmeGecis('planlama');
+    app.planTarihSecildi(T);
+    yanlis(!!app.planBul(T), 'şemaya bakmak plan belgesi yaratmaz');
+
+    app.openPlanGirisModal(a1, '');
+    app.planGirisTarlaSec('t0');
+    app._belge.getElementById('planGirisSofor').value = 'Ahmet';
+    app.submitPlanGiris(a1, '');
+    const alan = app.planGetir(T).alanlar.find(x => x.alanId === a1);
+    esit(alan.bolmeler[0].girisler.length, 1, 'boş bölme kimliği ilk bölmeye çözülür');
+    app._temizle();
+  }
+  {
+    // Sera bağlama kipi: çoklu seçim, kaydette fark uygulanır
+    const { app, T, a1 } = planOrtami();
+    const plan = app.planGetir(T);
+    const b1 = app.planAlanGetir(plan, a1).bolmeler[0].id;
+    app.planSeraEkle(T, a1, b1, 's0');
+    app.sahaGenelSekmeGecis('planlama');
+    app.planTarihSecildi(T);
+
+    app.openPlanSeraSecModal(a1, b1);
+    esit(app.planSeraSecim, ['s0'], 'kip mevcut seralarla açılır');
+    app.planSeraSecTikla('s1');   // ekle
+    app.planSeraSecTikla('s0');   // çıkar
+    app.submitPlanSera(a1, b1);
+    esit(app.planBolmeBul(plan, a1, b1).seraIds, ['s1'], 'fark uygulanır: s0 düştü, s1 eklendi');
+    app._temizle();
+  }
+  {
+    // ÇOKLU BAĞLANTI: aynı sera birden fazla alana bağlanabilir.
+    // Eski kural serayı öncekinden düşürüyordu; sahada D.A1…D.A4 aynı seralara
+    // asabildiği için o kısıt kaldırıldı.
+    const { app, T, a1, a2 } = planOrtami();
+    const plan = app.planGetir(T);
+    const b1 = app.planAlanGetir(plan, a1).bolmeler[0].id;
+    const b2 = app.planAlanGetir(plan, a2).bolmeler[0].id;
+
+    dogru(app.planSeraEkle(T, a1, b1, 's0'), 'sera ilk alana bağlandı');
+    dogru(app.planSeraEkle(T, a2, b2, 's0'), 'aynı sera ikinci alana da bağlanır');
+    esit(app.planBolmeBul(plan, a1, b1).seraIds, ['s0'], 'ilk bağlantı yerinde kaldı');
+    esit(app.planBolmeBul(plan, a2, b2).seraIds, ['s0'], 'ikinci bağlantı da kuruldu');
+    yanlis(app.planSeraEkle(T, a1, b1, 's0'), 'aynı bölmeye ikinci kez yazılmaz');
+
+    app.planSeraKaldir(T, a1, b1, 's0');
+    esit(app.planBolmeBul(plan, a1, b1).seraIds, [], 'kaldırma yalnız hedef bölmeyi etkiler');
+    esit(app.planBolmeBul(plan, a2, b2).seraIds, ['s0'], 'öteki bağlantı dokunulmadan durur');
+    app._temizle();
+  }
+  {
+    // Bugünün çalışma işareti çoklu bağlantıda tekilleşir
+    const { app, a1, a2 } = planOrtami();
+    const bugun = app.todayStr();
+    const plan = app.planGetir(bugun);
+    const b1 = app.planAlanGetir(plan, a1).bolmeler[0].id;
+    const b2 = app.planAlanGetir(plan, a2).bolmeler[0].id;
+    app.planSeraEkle(bugun, a1, b1, 's0');
+    app.planSeraEkle(bugun, a2, b2, 's0');
+    esit(app.bugunPlanSeraIdleri(), ['s0'], 'iki alana bağlı sera işarette bir kez sayılır');
+    app._temizle();
+  }
+  {
+    // ÇOĞALTMA KİPİ: bir giriş başka alanlara aynı araç/şoförle iner
+    const { app, T, a1, a2 } = planOrtami();
+    const plan = app.planGetir(T);
+    const b1 = app.planAlanGetir(plan, a1).bolmeler[0].id;
+    app.planGirisEkle(T, a1, b1, 't0', 'transit1', 'Ahmet');
+    app.sahaGenelSekmeGecis('planlama');
+    app.planTarihSecildi(T);
+
+    app.planCogaltBaslat(a1, b1, 't0');
+    esit(app.planKip.tur, 'cogalt', 'çoğaltma kipi açıldı');
+    const html = app._belge.getElementById('planSema').innerHTML;
+    dogru(html.includes('hedef'), 'diğer kartlar hedef olarak işaretlenir');
+    dogru(html.includes('kaynak'), 'kaynak kart ayrı işaretlenir');
+    dogru(app._belge.getElementById('planKipSerit').innerHTML.includes('Ahmet'), 'kip şeridi ne kopyalandığını yazar');
+
+    app.planKartTikla(a2);
+    const hedef = app.planGetir(T).alanlar.find(x => x.alanId === a2).bolmeler[0];
+    esit(hedef.girisler.length, 1, 'giriş hedef alana kopyalandı');
+    esit(hedef.girisler[0].aracId, 'transit1', 'araç birlikte kopyalanır');
+    esit(hedef.girisler[0].sofor, 'Ahmet', 'şoför birlikte kopyalanır');
+    esit(app.planKip.tur, 'cogalt', 'kip açık kalır — aynı tarla birden çok alana iner');
+
+    app.planKipBirak();
+    esit(app.planKip, null, 'Bitir kipi kapatır');
+    app._temizle();
+  }
+  {
+    // TAKAS KİPİ: iki tarla, ikinci dokunuşta anında takas
     const { app, T, a1, a2 } = planOrtami();
     const plan = app.planGetir(T);
     const b1 = app.planAlanGetir(plan, a1).bolmeler[0].id;
@@ -1104,24 +1227,42 @@ const tik = () => new Promise(r => setImmediate(r));
     app.sahaGenelSekmeGecis('planlama');
     app.planTarihSecildi(T);
 
-    app.planTarlaTikla('t0');
-    app.planTarlaTikla('t2');
-    yanlis(app._belge.getElementById('planDegistirBtn').disabled, 'iki aynı tür seçilince Değiştir açılır');
-    app.planDegistirUygula();
+    app.planTakasKipiAc();
+    esit(app.planKip.tur, 'takas', 'takas kipi açıldı');
+    app.planGirisCipTikla(a1, 't0');
+    dogru(app.planTakasIsaretliMi('tarla','t0'), 'ilk öğe işaretlendi');
+    app.planGirisCipTikla(a2, 't2');
     esit(app.planBolmeBul(plan, a1, b1).girisler[0].tarlaId, 't2', 'tarlalar takas edildi');
-    esit(app.planSecim, null, 'takastan sonra seçim bırakılır');
-    dogru(app._belge.getElementById('planDegistirBtn').disabled, 'takastan sonra Değiştir kapanır');
+    esit(app.planKip, null, 'takastan sonra kip kapanır');
     app._temizle();
   }
   {
-    // Uyumsuz çift: tarla seçiliyken seraya tıklamak sadece serayı seçer
-    const { app, T } = planOrtami();
+    // Takas kipinde uyumsuz çift: tarla işaretliyken seraya dokunmak uyarır
+    const { app, T, a1 } = planOrtami();
+    const plan = app.planGetir(T);
+    const b1 = app.planAlanGetir(plan, a1).bolmeler[0].id;
+    app.planGirisEkle(T, a1, b1, 't0', 'traktor1', 'Ahmet');
+    app.planSeraEkle(T, a1, b1, 's0');
     app.sahaGenelSekmeGecis('planlama');
     app.planTarihSecildi(T);
-    app.planTarlaTikla('t0');
-    app.planSeraTikla('s0', '', '');
-    dogru(app.planSecimEsitMi('sera','s0'), 'sera tek seçim olur');
-    dogru(app._belge.getElementById('planDegistirBtn').disabled, 'uyumsuz çiftte Değiştir kapalı');
+
+    app.planTakasKipiAc();
+    app.planGirisCipTikla(a1, 't0');
+    app.planSeraCipTikla(a1, 's0');
+    dogru(app._gunluk.uyarilar.some(m => /aynı türden/i.test(m)), 'uyumsuz çift uyarır');
+    dogru(app.planTakasIsaretliMi('tarla','t0'), 'ilk işaret korunur');
+    app._temizle();
+  }
+  {
+    // Normal kipte çipe dokunmak kartı açar (düzenleme oradan yapılır)
+    const { app, T, a1 } = planOrtami();
+    const plan = app.planGetir(T);
+    const b1 = app.planAlanGetir(plan, a1).bolmeler[0].id;
+    app.planGirisEkle(T, a1, b1, 't0', 'traktor1', 'Ahmet');
+    app.sahaGenelSekmeGecis('planlama');
+    app.planTarihSecildi(T);
+    app.planGirisCipTikla(a1, 't0');
+    esit(app.planAcikAlanId, a1, 'çipe dokunmak kartı açar');
     app._temizle();
   }
   {
@@ -1157,8 +1298,11 @@ const tik = () => new Promise(r => setImmediate(r));
      Geometri gerçek düzene bağlı; testin işi çizimin ölçüm alınamayan
      ortamda (ve şema boşken) patlamadan sessizce geçmesi.
      --------------------------------------------------------------- */
-  bolum('Saha Planlama — çizgiler');
+  bolum('Saha Planlama — konektörler');
   {
+    // Gerileme: konektör ÖLÇÜMSÜZ olmalı. Eski çizim getBoundingClientRect'e
+    // dayanıyordu ve ölçüm alınamayan her ortamda (arka plandaki sekme, gizli
+    // panel, test koşumu) çizgiler hiç çizilmiyordu.
     const { app, T, a1 } = planOrtami();
     const plan = app.planGetir(T);
     const b1 = app.planAlanGetir(plan, a1).bolmeler[0].id;
@@ -1166,32 +1310,21 @@ const tik = () => new Promise(r => setImmediate(r));
     app.planSeraEkle(T, a1, b1, 's0');
     app.sahaGenelSekmeGecis('planlama');
     app.planTarihSecildi(T);
-    app.planCizgileriCiz(); // ölçüm sıfır dönse de hata atmamalı
-    dogru(true, 'ölçüm alınamayan ortamda çizim sessizce geçer');
+    const html = app._belge.getElementById('planSema').innerHTML;
+    dogru(html.includes('<svg viewBox="0 0 28 64"'), 'konektör sabit viewBox ile çizilir');
+    dogru(html.includes('vector-effect') === false, 'kalınlık CSS tarafında tutulur, yolda değil');
+    dogru((html.match(/<path d="M0,/g) || []).length >= 2, 'gelen ve giden için birer yol çizilir');
     app._temizle();
   }
   {
-    // Plan hiç yokken de patlamamalı
+    // Yolun rengi ARACIN rengidir: hangi çizginin kimin taşıdığını anlatır.
     const app = kur();
-    app.sahaGenelSekmeGecis('planlama');
-    app.planCizgileriCiz();
-    dogru(true, 'plansız günde çizim sessizce geçer');
-    app._temizle();
-  }
-  {
-    // Gerileme: çizim rAF'a BAĞLI OLMAMALI. Arka plandaki sekmede rAF hiç
-    // çalışmıyor; tek başına ona güvenildiğinde çizgiler hiç çizilmiyordu.
-    const app = kur();
-    let rafCagrildi = false;
-    const gercekRaf = app.requestAnimationFrame;
-    app.requestAnimationFrame = () => { rafCagrildi = true; };  // hiç tetiklenmeyen rAF
-    let cizimSayisi = 0;
-    const gercekCizim = app.planCizgileriCiz;
-    app.planCizgileriCiz = function(){ cizimSayisi++; return gercekCizim.apply(this, arguments); };
-    app.sahaGenelSekmeGecis('planlama');
-    dogru(cizimSayisi > 0, 'render, rAF beklemeden de çizim yapar');
-    dogru(rafCagrildi, 'yazı tipi geç yüklenirse diye rAF yine de planlanır');
-    app.requestAnimationFrame = gercekRaf;
+    esit(
+      (app.planKonektorSvg(['tomato'], 'sol').match(/stroke="tomato"/g) || []).length,
+      1, 'tek giriş, aracın renginde tek yol'
+    );
+    esit((app.planKonektorSvg(['a','b','c'], 'sol').match(/<path /g) || []).length, 3, 'üç giriş, üç yol');
+    yanlis(app.planKonektorSvg([], 'sol').includes('<svg'), 'bağlantı yoksa svg basılmaz');
     app._temizle();
   }
 
@@ -1385,11 +1518,20 @@ const tik = () => new Promise(r => setImmediate(r));
     const app = kur();
     const gerekli = [
       'Genel Bilgiler','Saha Planlama','Dizim Alanları','DİZİM','Böl','Birleştir',
-      '+ Tarla','tarla yok','araç yok','Kaldır','Kırım Kaydına Dönüştür',
-      'Araç','Şoför','Şoför adı','Bağla','Tarla Seç','Uyarı yok.',
-      '📋 Dünü Kopyala','⇄ Değiştir','× Seçimi bırak','⚙ Dizim Alanları',
+      'tarla yok','araç yok','Kaldır','Kırım Kaydına Dönüştür',
+      'Araç','Şoför','Şoför adı','Bağla','Uyarı yok.',
+      '📋 Dünü Kopyala','⇄ Değiştir','⚙ Dizim Alanları',
       'Yeni Alan Adı','planda kullanılıyor','hiç kullanılmamış','Henüz dizim alanı yok.',
-      'Önceki gün','Sonraki gün','Sahadaki 8 dizim alanını oluştur','gelen','giden'
+      'Önceki gün','Sonraki gün','Sahadaki 8 dizim alanını oluştur',
+      // kart düzeniyle gelen metinler
+      'Tarla','Sera','Tarla Bağla','Sera Bağla','Gelen','Giden','Kapat',
+      'Başka alanlara çoğalt','Bitir','Kırım kaydına dönüştürüldü',
+      'bu girişi indirmek istediğin alanlara dokun.',
+      'Takas edilecek ilk öğeye dokun (tarla, sera ya da alan).',
+      'Şimdi takas edilecek ikinci öğeye dokun.',
+      'Yalnız aynı türden iki öğe takas edilebilir.',
+      'Aynı sera birden fazla dizim alanına bağlanabilir.',
+      'Önce bir tarla seçin.','Henüz tarla yok.','Henüz sera yok.'
     ];
     const eksik = gerekli.filter(k => !(k in app.I18N_EN));
     esit(eksik, [], 'tüm yeni metinlerin İngilizce karşılığı var');
