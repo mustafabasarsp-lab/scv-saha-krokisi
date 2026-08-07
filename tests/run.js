@@ -1007,17 +1007,29 @@ const tik = () => new Promise(r => setImmediate(r));
     app._temizle();
   }
   {
-    // Toplanmış kart sabit kalmalı: sınırı aşan çipler "+N" olarak katlanır,
-    // yoksa dolu bir gün 8 alanı ekrandan taşırırdı.
-    const { app, T, a1 } = planOrtami();
+    // Uç satır bütçesi: kartın sabit yüksekliği buna dayanıyor, ve "+" yer
+    // kaldıkça görünür kalmalı — ikinci tarlayı eklemek için kartı açmak
+    // gerektiği anlaşılmıyordu.
+    const app = kur();
+    esit(app.planUcDagilimi([]),            { gorunen: [],       ekle: true,  fazla: 0 }, '0 öğe → yalnız +');
+    esit(app.planUcDagilimi(['a']),         { gorunen: ['a'],    ekle: true,  fazla: 0 }, '1 öğe → çip + ekle');
+    esit(app.planUcDagilimi(['a','b']),     { gorunen: ['a','b'],ekle: false, fazla: 0 }, '2 öğe → iki çip, yer yok');
+    esit(app.planUcDagilimi(['a','b','c']), { gorunen: ['a'],    ekle: false, fazla: 2 }, '3 öğe → çip + "+2"');
+    app._temizle();
+  }
+  {
+    // Aynısı gerçek şemada: dolu uçta "+N", tek girişli uçta hâlâ "+" var
+    const { app, T, a1, a2 } = planOrtami();
     const plan = app.planGetir(T);
     const b1 = app.planAlanGetir(plan, a1).bolmeler[0].id;
+    const b2 = app.planAlanGetir(plan, a2).bolmeler[0].id;
     ['t0','t1','t2'].forEach(id => app.planGirisEkle(T, a1, b1, id, 'traktor1', 'Ahmet'));
+    app.planGirisEkle(T, a2, b2, 't0', 'traktor1', 'Ahmet');
     app.sahaGenelSekmeGecis('planlama');
     app.planTarihSecildi(T);
     const html = app._belge.getElementById('planSema').innerHTML;
-    dogru(html.includes('plan-cip-fazla'), 'üçüncü giriş "+N" olarak katlanır');
-    dogru(html.includes('+1'), 'katlanan sayı yazılır');
+    dogru(html.includes('plan-cip-fazla') && html.includes('+2'), 'taşan uç "+2" olarak katlanır');
+    dogru(html.includes('plan-cip-bos'), 'yer kalan uçta ekleme çipi durur');
     app._temizle();
   }
   {
@@ -1112,6 +1124,67 @@ const tik = () => new Promise(r => setImmediate(r));
     esit(bolme.girisler.length, 1, 'giriş eklendi');
     esit(bolme.girisler[0].aracId, 'transit1', 'seçilen araç yazıldı');
     esit(bolme.girisler[0].sofor, 'Ahmet', 'şoför adının boşlukları kırpıldı');
+    app._temizle();
+  }
+  {
+    // ÇOKLU TARLA: bir dizim alanına aynı kipte birkaç tarla birden bağlanır
+    const { app, T, a1 } = planOrtami();
+    app.sahaGenelSekmeGecis('planlama');
+    app.planTarihSecildi(T);
+    const plan = app.planGetir(T);
+    const b1 = app.planAlanGetir(plan, a1).bolmeler[0].id;
+
+    app.openPlanGirisModal(a1, b1);
+    app.planGirisTarlaSec('t0');
+    app.planGirisTarlaSec('t1');
+    app.planGirisTarlaSec('t2');
+    app.planGirisTarlaSec('t1');           // tekrar dokunmak seçimi kaldırır
+    esit(app.planGirisTarlaIds, ['t0','t2'], 'seçim çoklu ve geri alınabilir');
+    app.planGirisAracSec('traktor2');
+    app._belge.getElementById('planGirisSofor').value = 'Osman';
+    app.submitPlanGiris(a1, b1);
+
+    const bolme = app.planBolmeBul(plan, a1, b1);
+    esit(bolme.girisler.map(g => g.tarlaId), ['t0','t2'], 'iki tarla birden eklendi');
+    dogru(bolme.girisler.every(g => g.aracId === 'traktor2' && g.sofor === 'Osman'),
+      'hepsi aynı araç ve şoförle bağlandı');
+    app._temizle();
+  }
+  {
+    // Zaten bağlı olanlar atlanır, yenisi yine de eklenir
+    const { app, T, a1 } = planOrtami();
+    const plan = app.planGetir(T);
+    const b1 = app.planAlanGetir(plan, a1).bolmeler[0].id;
+    app.planGirisEkle(T, a1, b1, 't0', 'traktor1', 'Ahmet');
+    app.sahaGenelSekmeGecis('planlama');
+    app.planTarihSecildi(T);
+
+    app.openPlanGirisModal(a1, b1);
+    app.planGirisTarlaSec('t0');           // zaten bölmede
+    app.planGirisTarlaSec('t1');           // yeni
+    app.submitPlanGiris(a1, b1);
+    esit(app.planBolmeBul(plan, a1, b1).girisler.map(g => g.tarlaId), ['t0','t1'],
+      'yeni olan eklendi, yinelenen atlandı');
+    dogru(app._gunluk.uyarilar.some(m => /bir kısmı/i.test(m)), 'kısmi atlama bildirilir');
+    app._temizle();
+  }
+  {
+    // AYNI TARLA BİRDEN FAZLA ALANA: kip her alanda ayrı ayrı açılabilir
+    const { app, T, a1, a2 } = planOrtami();
+    app.sahaGenelSekmeGecis('planlama');
+    app.planTarihSecildi(T);
+
+    [a1, a2].forEach(alanId => {
+      app.openPlanGirisModal(alanId, '');
+      app.planGirisTarlaSec('t0');
+      app.planGirisTarlaSec('t1');
+      app.submitPlanGiris(alanId, '');
+    });
+    const plan = app.planGetir(T);
+    [a1, a2].forEach(alanId => {
+      const b = app.planAlanGetir(plan, alanId).bolmeler[0];
+      esit(b.girisler.map(g => g.tarlaId), ['t0','t1'], 'aynı tarlalar bu alana da bağlandı');
+    });
     app._temizle();
   }
   {
@@ -1531,7 +1604,9 @@ const tik = () => new Promise(r => setImmediate(r));
       'Şimdi takas edilecek ikinci öğeye dokun.',
       'Yalnız aynı türden iki öğe takas edilebilir.',
       'Aynı sera birden fazla dizim alanına bağlanabilir.',
-      'Önce bir tarla seçin.','Henüz tarla yok.','Henüz sera yok.'
+      'Önce bir tarla seçin.','Henüz tarla yok.','Henüz sera yok.',
+      'Birden fazla tarla seçebilirsin; hepsi aynı araç ve şoförle bağlanır. Aynı tarlayı başka alanlara da bağlayabilirsin.',
+      'Seçilenlerin bir kısmı zaten bu bölmedeydi, onlar atlandı.'
     ];
     const eksik = gerekli.filter(k => !(k in app.I18N_EN));
     esit(eksik, [], 'tüm yeni metinlerin İngilizce karşılığı var');

@@ -353,7 +353,7 @@ function kur(secenekler) {
   planSeciliTarih:     { get: () => planSeciliTarih, set: v => { planSeciliTarih = v; }, enumerable: true },
   planKip:             { get: () => planKip, set: v => { planKip = v; }, enumerable: true },
   planAcikAlanId:      { get: () => planAcikAlanId, set: v => { planAcikAlanId = v; }, enumerable: true },
-  planGirisTarlaId:    { get: () => planGirisTarlaId, set: v => { planGirisTarlaId = v; }, enumerable: true },
+  planGirisTarlaIds:   { get: () => planGirisTarlaIds, set: v => { planGirisTarlaIds = v; }, enumerable: true },
   planGirisAracId:     { get: () => planGirisAracId, set: v => { planGirisAracId = v; }, enumerable: true },
   planSeraSecim:       { get: () => planSeraSecim, set: v => { planSeraSecim = v; }, enumerable: true },
   planKirimBaglami:    { get: () => planKirimBaglami, set: v => { planKirimBaglami = v; }, enumerable: true },

@@ -2332,7 +2332,7 @@ const AYARLAR = {
   UNITE_PX: 40                // referans kapasitedeki sera-box genişliği (px) — kroki oranı
 };
 const STORAGE_KEY = 'scvSahaKrokiV1';
-const APP_SURUM = 'v111'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
+const APP_SURUM = 'v112'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
 
 /* =========================================================
    HATA / DONMA GÜNLÜĞÜ — "bazen donuyor" şikayetini araştırmak için.
@@ -2528,6 +2528,8 @@ const I18N_EN = {
   'Yalnız aynı türden iki öğe takas edilebilir.':'Only two items of the same kind can be swapped.',
   'Aynı sera birden fazla dizim alanına bağlanabilir.':'The same greenhouse can be connected to more than one stringing area.',
   'Önce bir tarla seçin.':'Select a field first.',
+  'Birden fazla tarla seçebilirsin; hepsi aynı araç ve şoförle bağlanır. Aynı tarlayı başka alanlara da bağlayabilirsin.':'You can select more than one field; they are all connected with the same vehicle and driver. The same field can also be connected to other areas.',
+  'Seçilenlerin bir kısmı zaten bu bölmedeydi, onlar atlandı.':'Some of the selected fields were already in this section and were skipped.',
   'Henüz tarla yok.':'No fields yet.', 'Henüz sera yok.':'No greenhouses yet.',
   'Bu tarla zaten bu bölmede.':'This field is already in this section.',
   'Bir dizim alanı en çok 4 bölmeye ayrılabilir.':'A stringing area can be split into at most 4 sections.',
@@ -3820,17 +3822,21 @@ function planSoforOnerileri(){
   });
   return [...kume].sort((x,y)=>x.localeCompare(y,'tr'));
 }
-let planGirisTarlaId = null;
+/* Tarla seçimi ÇOKLU: bir dizim alanına aynı anda birkaç tarla inebiliyor ve
+   tek tek eklemek dört ayrı kip açmak demekti. Seçilenlerin hepsi aynı araç ve
+   şoförle bağlanır; farklı araç gerekiyorsa kip ikinci kez açılır. */
+let planGirisTarlaIds = [];
 /* ARACLAR bu noktadan SONRA (veri bölümünde) tanımlanıyor; başlangıç değeri
    burada okunamaz, kip açılırken atanır. */
 let planGirisAracId = '';
 function openPlanGirisModal(alanId, bolmeId){
-  planGirisTarlaId = null;
+  planGirisTarlaIds = [];
   planGirisAracId = ARACLAR[0].id;
   const alanAd = (dizimAlaniBul(alanId)||{}).ad || '';
   const liste = [...state.tarlalar].sort((a,b)=>(a.ad||'').localeCompare(b.ad||'','tr',{numeric:true}));
   openModal(`
     <h3>${escapeHtml(alanAd)} · ${i18n('Tarla Bağla')}</h3>
+    <div class="hint-text">${i18n('Birden fazla tarla seçebilirsin; hepsi aynı araç ve şoförle bağlanır. Aynı tarlayı başka alanlara da bağlayabilirsin.')}</div>
     <div class="plan-detay-etiket">${i18n('Tarla')}</div>
     <div class="tarla-grid" id="planGirisTarlaGrid">${liste.map(t=>
       `<button class="tarla-tile" type="button" data-tarla="${t.id}" onclick="planGirisTarlaSec('${t.id}')"><b>${escapeHtml(t.ad||'-')}</b><span>${escapeHtml(t.cesit||'')}</span></button>`
@@ -3849,8 +3855,9 @@ function openPlanGirisModal(alanId, bolmeId){
     </div>`);
 }
 function planGirisTarlaSec(tarlaId){
-  planGirisTarlaId = tarlaId;
-  planSecimIsaretle('planGirisTarlaGrid', '.tarla-tile', 'data-tarla', id=>id===tarlaId);
+  const i = planGirisTarlaIds.indexOf(tarlaId);
+  if(i<0) planGirisTarlaIds.push(tarlaId); else planGirisTarlaIds.splice(i,1);
+  planSecimIsaretle('planGirisTarlaGrid', '.tarla-tile', 'data-tarla', id=>planGirisTarlaIds.includes(id));
 }
 function planGirisAracSec(aracId){
   planGirisAracId = aracId;
@@ -3866,14 +3873,21 @@ function planSecimIsaretle(kapId, secici, nitelik, seciliMi){
   });
 }
 function submitPlanGiris(alanId, bolmeId){
-  if(!planGirisTarlaId){ uyar('Önce bir tarla seçin.'); return; }
+  if(!planGirisTarlaIds.length){ uyar('Önce bir tarla seçin.'); return; }
   const sofor = document.getElementById('planGirisSofor').value;
   /* Bölme kimliği YAZMA anında çözülür. Okuma yolu (kart çizimi) o günün plan
      belgesini yaratmaz — hiç dokunulmamış gün için boş belge yazmamak kuralı —
      bu yüzden kip açılırken elde kimlik olmayabilir. */
   bolmeId = bolmeId || planIlkBolmeId(alanId);
-  if(!planGirisEkle(planSeciliTarih, alanId, bolmeId, planGirisTarlaId, planGirisAracId, sofor)){
-    uyar('Bu tarla zaten bu bölmede.');
+  const atlanan = planGirisTarlaIds.filter(id=>
+    !planGirisEkle(planSeciliTarih, alanId, bolmeId, id, planGirisAracId, sofor));
+  /* Hepsi zaten bölmedeyse hiçbir şey yazılmadı; planIlkBolmeId'nin açtığı boş
+     belge geride kalmasın. Yazma olduysa çöp toplama zaten hiçbir şey yapmaz. */
+  planCopTopla(planSeciliTarih);
+  if(atlanan.length){
+    uyar(atlanan.length===planGirisTarlaIds.length
+      ? 'Bu tarla zaten bu bölmede.'
+      : 'Seçilenlerin bir kısmı zaten bu bölmedeydi, onlar atlandı.');
   }
   closeModal();
   renderAll();
@@ -4072,10 +4086,23 @@ function dizimAlanlariTohumlaTikla(){
 }
 /* ---- Şema çizimi ----
    Her dizim alanı bir kart; kart soldan sağa okunur: tarla girişleri ▸ alan
-   düğümü ▸ seralar. Toplanan kart sabit yükseklikte kalsın diye uçlarda en çok
-   PLAN_CIP_SINIRI kadar çip gösterilir, gerisi "+N" olur; tam liste kart
-   açılınca görünür. */
-const PLAN_CIP_SINIRI = 2;
+   düğümü ▸ seralar. Toplanmış kartın SABİT yüksekliği, uçların en çok
+   PLAN_UC_SATIR satır göstermesine dayanır — 8 alanın tek bakışta görünmesi
+   bu sabitlikten geliyor. */
+const PLAN_UC_SATIR = 2;
+/* Satır bütçesi şöyle paylaştırılır:
+     0 öğe  → yalnız "+"            (ekleme her zaman bir dokunuş uzakta)
+     1 öğe  → çip + "+"
+     2 öğe  → iki çip
+     3+ öğe → ilk çip + "+N"        (tamamı kart açılınca görünür)
+   "+"in yer kalınca görünmesi bilinçli: eskiden yalnız uç bomboşken çıkıyordu
+   ve ikinci tarlayı eklemek için kartı açmak gerektiği anlaşılmıyordu. */
+function planUcDagilimi(hepsi){
+  if(!hepsi.length)                 return { gorunen: [],                        ekle: true,  fazla: 0 };
+  if(hepsi.length < PLAN_UC_SATIR)  return { gorunen: hepsi,                     ekle: true,  fazla: 0 };
+  if(hepsi.length === PLAN_UC_SATIR)return { gorunen: hepsi,                     ekle: false, fazla: 0 };
+  return { gorunen: hepsi.slice(0, PLAN_UC_SATIR-1), ekle: false, fazla: hepsi.length-(PLAN_UC_SATIR-1) };
+}
 
 function planIkon(id, sinif, renk){
   return `<svg class="${sinif||'plan-cip-ikon'}" aria-hidden="true"${renk?` style="color:${renk}"`:''}><use href="#${id}"></use></svg>`;
@@ -4156,20 +4183,20 @@ function planAlanDugumHtml(al, a){
 
 /* Toplanmış kart: beş sütun (giriş | konektör | düğüm | konektör | çıkış). */
 function planKartToplanmisHtml(al, a){
-  const girisler = planAlanGirisleri(a);
-  const seralar = planAlanSeralari(a);
-  const gorunenG = girisler.slice(0, PLAN_CIP_SINIRI);
-  const gorunenS = seralar.slice(0, PLAN_CIP_SINIRI);
-  const solCipler = gorunenG.map(x=>planGirisCipHtml(al.id, x.bolmeId, x.g, false)).join('')
-    + (girisler.length>gorunenG.length ? `<div class="plan-cip plan-cip-fazla">+${girisler.length-gorunenG.length}</div>` : '')
-    + (girisler.length ? '' : planEkleCipHtml('Tarla', `openPlanGirisModal('${al.id}','${planIlkBolmeIdOku(al.id)}')`));
-  const sagCipler = gorunenS.map(x=>planSeraCipHtml(al.id, x.bolmeId, x.seraId, false)).join('')
-    + (seralar.length>gorunenS.length ? `<div class="plan-cip plan-cip-fazla">+${seralar.length-gorunenS.length}</div>` : '')
-    + (seralar.length ? '' : planEkleCipHtml('Sera', `openPlanSeraSecModal('${al.id}','${planIlkBolmeIdOku(al.id)}')`));
+  const bolmeId = planIlkBolmeIdOku(al.id);
+  const fazlaCip = n=>`<div class="plan-cip plan-cip-fazla">+${n}</div>`;
+  const g = planUcDagilimi(planAlanGirisleri(a));
+  const s = planUcDagilimi(planAlanSeralari(a));
+  const solCipler = g.gorunen.map(x=>planGirisCipHtml(al.id, x.bolmeId, x.g, false)).join('')
+    + (g.fazla ? fazlaCip(g.fazla) : '')
+    + (g.ekle ? planEkleCipHtml('Tarla', `openPlanGirisModal('${al.id}','${bolmeId}')`) : '');
+  const sagCipler = s.gorunen.map(x=>planSeraCipHtml(al.id, x.bolmeId, x.seraId, false)).join('')
+    + (s.fazla ? fazlaCip(s.fazla) : '')
+    + (s.ekle ? planEkleCipHtml('Sera', `openPlanSeraSecModal('${al.id}','${bolmeId}')`) : '');
   return `<div class="plan-uc">${solCipler}</div>
-    ${planKonektorSvg(gorunenG.map(x=>{ const ar = aracBul(x.g.aracId); return ar?ar.renk:''; }), 'sol')}
+    ${planKonektorSvg(g.gorunen.map(x=>{ const ar = aracBul(x.g.aracId); return ar?ar.renk:''; }), 'sol')}
     ${planAlanDugumHtml(al, a)}
-    ${planKonektorSvg(gorunenS.map(()=>'var(--green-500)'), 'sag')}
+    ${planKonektorSvg(s.gorunen.map(()=>'var(--green-500)'), 'sag')}
     <div class="plan-uc">${sagCipler}</div>`;
 }
 
