@@ -204,6 +204,19 @@ if(window.matchMedia){
   --shadow-md:0 2px 4px rgba(16,40,26,.06),0 8px 20px rgba(16,40,26,.05);
   --shadow-lg:0 8px 32px rgba(16,40,26,.14);
   --overlay:rgba(12,24,17,.45);
+
+  /* --- HAREKET ÖLÇEĞİ ---
+     Renk, tipografi (v90-v93) ve yarıçap (v94) için ölçek vardı; hareket için
+     yoktu ve 6 geçiş + 13 animasyon elle, dağınık yazılmıştı. Süreler bilerek
+     kısa: sahada güneş altında bekleyen bir arayüz hızlı olmalı, hareket
+     "oldu bitti" demeli, gösteri yapmamalı. */
+  --gecis-hizli:120ms;   /* basılı hâl, dokunma geri bildirimi */
+  --gecis-orta:220ms;    /* modal, panel, kart */
+  --gecis-yavas:420ms;   /* uzaktan gelen değişimin sönümü */
+  --egri-yumusak:cubic-bezier(.4,0,.2,1);
+  --egri-cikis:cubic-bezier(.2,0,0,1);
+  /* JS'teki UZUN_BASMA_MS ile AYNI olmalı — ilerleme göstergesi tam o anda dolar. */
+  --uzun-basma-sure:500ms;
 }
 
 /* Koyu tema. Yeşiller açılır (koyu zeminde okunması için), accent üzerine basılan
@@ -721,14 +734,6 @@ input[type=number],.num,td,th,.badge b,.quickstats b{font-variant-numeric:tabula
 .plan-sera-tile .cubuk{position:absolute;left:0;bottom:0;height:4px;}
 .plan-sera-tile.sel{border-color:var(--green-700);background:var(--green-100);color:var(--green-900);}
 
-/* Sahada güneş altında hareket yardımcıdır, ama tercih eden kullanıcı için
-   hepsi kapanır — bilgi kaybı olmaz, çünkü renk ve konum zaten anlamı taşıyor. */
-@media (prefers-reduced-motion: reduce){
-  .plan-tuval.plan-bugun .plan-konektor path{animation:none;stroke-dasharray:none;}
-  .plan-kart.hedef{animation:none;box-shadow:0 0 0 3px var(--green-100),var(--shadow);}
-  .plan-cip-kilit{animation:none;}
-  .plan-cip-sera .cubuk{transition:none;}
-}
 
 /* ---------- SOL: DIZIM ALANI ---------- */
 /* Ana eylem düğmesi. Gölgesi eskiden --tobacco-deep'ti; o belirteç koyu temada
@@ -1059,9 +1064,6 @@ body.has-fullscreen-panel{overflow:hidden;}
 }
 .calisma-bant b{font-weight:800;text-transform:uppercase;letter-spacing:.04em;animation:calismaSolma 1.1s ease-in-out infinite;}
 .calisma-bant span{color:var(--ink);font-weight:600;}
-@media (prefers-reduced-motion:reduce){
-  .tarla-box.calisma-isaretli,.sera-box.calisma-isaretli,.calisma-serit-kutu,.calisma-bant b{animation:none;}
-}
 
 /* ---------- TOPLU GİRİŞ / SEÇİM LİSTELERİ ---------- */
 .toplu-satir{
@@ -1614,7 +1616,6 @@ body.has-fullscreen-panel{overflow:hidden;}
    uyarı. Çevrimdışı girilen kayıt artık cihazda saklanamıyor demektir. */
 .sync-status.depo-dolu{background:var(--red);color:#fff;}
 .sync-status.depo-dolu .dot{background:#fff;animation:syncPulse 1.1s ease-in-out infinite;}
-@media (prefers-reduced-motion:reduce){ .sync-status.saving .dot,.sync-status.depo-dolu .dot{animation:none;} }
 @keyframes syncPulse{0%,100%{opacity:1;}50%{opacity:.35;}}
 
 .bottom-nav, .kirim-fab{display:none;}
@@ -1876,6 +1877,29 @@ input.dayibasi-ad-alani{flex:1;min-width:110px;border:1px solid var(--border);bo
 .gecmis-not-satiri{font-size:var(--fs-xs);padding:3px 0;}
 .gecmis-icerik-kaydirmali{max-height:52vh;overflow-y:auto;padding-right:var(--sp-1);}
 .gecmis-onay-dugmesi:disabled{opacity:.5;}
+
+/* ==========================================================
+   HAREKET TERCİHİ — TEK YER
+   Eskiden üç ayrı blokta (satır 739 / 1075 / 1630) parça parça duruyordu ve
+   yeni bir animasyon eklerken hangisine yazılacağı belirsizdi; biri unutulunca
+   da sessizce açık kalıyordu. Hepsi burada toplandı.
+
+   Sahada güneş altında hareket yardımcıdır, ama tercih eden kullanıcı için
+   kapanır — bilgi kaybı olmaz, çünkü renk ve konum anlamı zaten taşıyor.
+   YENİ HAREKET EKLERKEN karşılığını buraya yaz.
+   ========================================================== */
+@media (prefers-reduced-motion: reduce){
+  /* Saha Planlama */
+  .plan-tuval.plan-bugun .plan-konektor path{animation:none;stroke-dasharray:none;}
+  .plan-kart.hedef{animation:none;box-shadow:0 0 0 3px var(--green-100),var(--shadow);}
+  .plan-cip-kilit{animation:none;}
+  .plan-cip-sera .cubuk{transition:none;}
+  /* Çalışma işaretleri */
+  .tarla-box.calisma-isaretli,.sera-box.calisma-isaretli,
+  .calisma-serit-kutu,.calisma-bant b{animation:none;}
+  /* Senkron rozeti */
+  .sync-status.saving .dot,.sync-status.depo-dolu .dot{animation:none;}
+}
 </style>
 </head>
 <!-- fab-acik: açılış sayfası Saha, yani "Kırım Gir" butonu görünür durumda.
@@ -2393,7 +2417,7 @@ const AYARLAR = {
    sera bu formülle 17px kalıyor, etiketi 39px yer istiyordu — ekranda "8." diye
    görünüyordu. Kutu artık eşit genişlikte (bkz. .sera-box). */
 const STORAGE_KEY = 'scvSahaKrokiV1';
-const APP_SURUM = 'v117'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
+const APP_SURUM = 'v118'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
 
 /* =========================================================
    HATA / DONMA GÜNLÜĞÜ — "bazen donuyor" şikayetini araştırmak için.
