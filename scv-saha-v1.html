@@ -826,13 +826,25 @@ input[type=number],.num,td,th,.badge b,.quickstats b{font-variant-numeric:tabula
   cursor:pointer;
   background:var(--empty);
 }
+/* İki satıra kadar sarılır (kutu 64-78px yüksek, yer bol). Kelime ORTASINDAN
+   bölünmez: 44px'e geçerken "100cm" bir kez "100c / m" diye bölündü ve
+   okunmuyordu. Boşluklu adlar boşluktan iner ("80 cm"), boşluksuz uzun adlar
+   .uzun-ad ile tek kademe küçülüp tek satırda kalır (bkz. renderSeralar). */
 .sera-box .label{
   position:absolute;top:50%;left:0;right:0;
   transform:translateY(-50%);
   text-align:center;font-size:11px;font-weight:700;color:var(--ink);
   z-index:3;text-shadow:0 1px 3px var(--metin-halo),0 0 4px var(--metin-halo);
-  padding:0 4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  padding:0 3px;
+  overflow:hidden;
+  overflow-wrap:normal;
+  word-break:keep-all;
+  hyphens:none;
+  line-height:1.1;
 }
+/* Boşluksuz uzun ad (100cm gibi) tek satırda kalsın diye. 9.5px, 12px tabanın
+   altında — kroki kutucukları :root'ta zaten belgeli istisna kümesinde. */
+.sera-box .label.uzun-ad{font-size:9.5px;letter-spacing:-.02em;}
 .sera-box .pct{
   position:absolute;bottom:3px;left:0;right:0;
   text-align:center;font-size:10px;font-weight:600;color:var(--ink);
@@ -929,9 +941,19 @@ body.has-fullscreen-panel{overflow:hidden;}
    9-10.5px'te kalmıştı; aynı ızgarada, aynı bakışta sera etiketleri okunurken
    tarla adları sıkışıktı. Yatay dolgu 6→4px kısaldı: 11px'e çıkarken ada aynı
    yer kalsın diye — ölçüldü, kırpılan ad sayısı artmıyor. */
+/* Sera etiketiyle aynı kural: kelime ortasından bölünmez, boşluktan iki satıra
+   iner. "T2 Yol Üstü" 64px kutuya punto ne olursa olsun tek satırda sığmıyordu;
+   iki satırda sığıyor. */
 .tarla-box .name{
   font-weight:700;font-size:11px;color:var(--etiket-ink);
-  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  overflow:hidden;
+  overflow-wrap:normal;
+  word-break:keep-all;
+  hyphens:none;
+  line-height:1.15;
+  /* Esnek sıkışma ikinci satırı kırpıyordu: metin 24.6px isterken öğe 19.2px'e
+     ezilmişti. Ad kutunun en önemli bilgisi, sıkışacak son şey olmalı. */
+  flex-shrink:0;
   background:var(--etiket-bg);
   align-self:flex-start;
   max-width:100%;
@@ -947,7 +969,9 @@ body.has-fullscreen-panel{overflow:hidden;}
   border-width:3px 3px 0 0;border-style:solid;
   border-color:var(--etiket-bg) transparent transparent transparent;
 }
-.tarla-box .sub{font-size:10px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+/* flex-shrink:0 — uzun ad iki satıra indiğinde dekar satırı 1.7px'e eziliyordu,
+   yani bilgi sessizce kayboluyordu (v75'teki uyarı kutusu hatasının aynısı). */
+.tarla-box .sub{font-size:10px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex-shrink:0;}
 .tarla-box .kirim-row{display:flex;align-items:center;gap:2px;margin-top:auto;flex-wrap:wrap;}
 /* KIRIM SIRASI GÖSTERGESİ — uygulamanın imzası.
    Altı nokta, altı kırım. Dolu noktalar kendi kırımlarının tonunu taşır
@@ -1678,7 +1702,10 @@ body.has-fullscreen-panel{overflow:hidden;}
      44'e çıkarken yatay dolgu dar tutuldu, böylece satır sayısı artmıyor. */
   .btn-csv{padding:6px 9px;font-size:var(--fs-xs);min-height:44px;}
   .header .brand{font-size:var(--fs-lg);}
-  .tarla-box{width:64px;height:64px;padding:4px 5px;}
+  /* height değil MIN-height: "T2 Yol Üstü" gibi uzun bir ad iki satıra indiğinde
+     kutu büyüsün, dekar satırı ezilmesin. Adların çoğu tek satır olduğu için
+     ızgara pratikte yine hizalı kalıyor; yalnızca uzun adın olduğu satır uzuyor. */
+  .tarla-box{width:64px;min-height:64px;padding:4px 5px;}
   /* Telefonda ayrı punto override'ı KALDIRILDI: kutu 82→64px'e düşse de
      11/10 sığıyor (dar şerit dolgusuyla ölçüldü), ve sera kutusunun zaten
      telefonda override'ı yok. İki kutu tipi artık her genişlikte aynı
@@ -2366,7 +2393,7 @@ const AYARLAR = {
    sera bu formülle 17px kalıyor, etiketi 39px yer istiyordu — ekranda "8." diye
    görünüyordu. Kutu artık eşit genişlikte (bkz. .sera-box). */
 const STORAGE_KEY = 'scvSahaKrokiV1';
-const APP_SURUM = 'v116'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
+const APP_SURUM = 'v117'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
 
 /* =========================================================
    HATA / DONMA GÜNLÜĞÜ — "bazen donuyor" şikayetini araştırmak için.
@@ -4656,9 +4683,12 @@ function renderSeralar(){
     const fillH = Math.min(pct,100);
     // Kutuya sığan kısa şerit; tam ibare panelin üstündeki bantta (bkz. calismaBandiHtml)
     const seritMetni = seraDolduruluyorMu(s) ? i18n('DOLUYOR') : (seraBosaltiliyorMu(s) ? i18n('BOŞALIYOR') : '');
+    /* Boşluksuz ve uzun ad iki satıra inemez (bölünecek yer yok); tek kademe
+       küçülerek tek satırda kalır. Boşluklu adlar bu sınıfı almaz, sarılırlar. */
+    const uzunAd = !/\s/.test(s.ad||'') && (s.ad||'').length > 4;
     return `<div class="sera-box${seritMetni?' calisma-isaretli':''}" onclick="openSeraDetay('${s.id}')">
       <button class="sera-close" title="Sil" onclick="event.stopPropagation();seraSil('${s.id}')">×</button>
-      <div class="label">${escapeHtml(s.ad)}</div>
+      <div class="label${uzunAd?' uzun-ad':''}">${escapeHtml(s.ad)}</div>
       <div class="fill ${cls}" style="height:${fillH}%"></div>
       ${seritMetni ? `<div class="calisma-serit-kutu${seritMetni.length>7?' serit-uzun':''}">${seritMetni}</div>` : `<div class="pct">${fmt(pct,0)}%</div>`}
     </div>`;

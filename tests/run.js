@@ -1855,6 +1855,26 @@ const tik = () => new Promise(r => setImmediate(r));
     dogru(html.includes('B1'), 'normal sera yine çizilir');
     app._temizle();
   }
+  {
+    /* Boşluksuz uzun ad iki satıra inemez (bölünecek yer yok) — tek kademe
+       küçülerek tek satırda kalır. Boşluklu adlar sarıldığı için küçülmez. */
+    const app = kur();
+    app.state.seralar.push(
+      { id: 's1', ad: '100cm', bolge: 'kalemli', kapasite: 400, donemler: [] },
+      { id: 's2', ad: '80 cm', bolge: 'kalemli', kapasite: 200, donemler: [] },
+      { id: 's3', ad: 'B1', bolge: 'kalemli', kapasite: 400, donemler: [] }
+    );
+    app.renderSeralar();
+    const html = app._belge.getElementById('seraPlot').innerHTML;
+    const sinif = ad => {
+      const m = html.match(new RegExp('<div class="label([^"]*)">' + ad + '<'));
+      return m ? m[1].trim() : '(bulunamadı)';
+    };
+    esit(sinif('100cm'), 'uzun-ad', 'boşluksuz uzun ad küçük puntoya düşer');
+    esit(sinif('80 cm'), '', 'boşluklu ad küçülmez, sarılır');
+    esit(sinif('B1'), '', 'kısa ad küçülmez');
+    app._temizle();
+  }
 
   /* --------------------------------------------------------------- */
   console.log(`\n${'─'.repeat(52)}`);
