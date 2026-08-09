@@ -1995,6 +1995,28 @@ const tik = () => new Promise(r => setImmediate(r));
     app._temizle();
   }
 
+  /* ---------------------------------------------------------------
+     Plan çipi: düzenleme düğmeleri yalnızca AÇIK kartta. Toplanmış kartta
+     çoğalt düğmesi 65px'lik çipin 21px'ini alıyor, tarla adına 11px kalıyordu.
+     --------------------------------------------------------------- */
+  bolum('Plan çipi — düzenleme düğmeleri açık kartta');
+  {
+    const app = kur();
+    app.state.tarlalar.push({ id: 't1', ad: 'K1', bolge: 'kalemli', dekar: 10, cesit: 'Basma' });
+    const giris = { tarlaId: 't1', aracId: 'traktor1', sofor: 'Ahmet' };
+
+    const toplanmis = app.planGirisCipHtml('a1', 'b1', giris, false);
+    yanlis(toplanmis.includes('class="cogalt"'), 'toplanmış kartta çoğalt düğmesi yok');
+    yanlis(toplanmis.includes('class="kaldir"'), 'toplanmış kartta kaldır düğmesi yok');
+    dogru(toplanmis.includes('K1'), 'toplanmış kartta ad yazılır');
+
+    const acik = app.planGirisCipHtml('a1', 'b1', giris, true);
+    dogru(acik.includes('class="cogalt"'), 'açık kartta çoğalt düğmesi var');
+    dogru(acik.includes('class="kaldir"'), 'açık kartta kaldır düğmesi var');
+    dogru(acik.includes('Ahmet'), 'açık kartta şoför adı görünür');
+    app._temizle();
+  }
+
   /* --------------------------------------------------------------- */
   console.log(`\n${'─'.repeat(52)}`);
   if (kalan.length) {

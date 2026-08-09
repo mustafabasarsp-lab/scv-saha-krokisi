@@ -2512,7 +2512,7 @@ const AYARLAR = {
    sera bu formülle 17px kalıyor, etiketi 39px yer istiyordu — ekranda "8." diye
    görünüyordu. Kutu artık eşit genişlikte (bkz. .sera-box). */
 const STORAGE_KEY = 'scvSahaKrokiV1';
-const APP_SURUM = 'v122'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
+const APP_SURUM = 'v123'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
 
 /* =========================================================
    HATA / DONMA GÜNLÜĞÜ — "bazen donuyor" şikayetini araştırmak için.
@@ -4421,6 +4421,12 @@ function planAlanSeralari(a){
   return a ? a.bolmeler.flatMap(b=>b.seraIds.map(id=>({ bolmeId:b.id, seraId:id }))) : [];
 }
 
+/* Düzenleme düğmeleri (çoğalt, kaldır) YALNIZCA açık kartta.
+   Toplanmış kartta çoğalt düğmesi 65px'lik çipin 21px'ini alıyordu ve tarla
+   adına 11px kalıyordu — "K1" 20px istiyor, ekranda "K." görünüyordu. Oysa
+   toplanmış kartın tek işi "hangi tarla nereye iniyor" sorusunu okutmak; ad
+   okunmuyorsa kart hiçbir işe yaramıyor. Kaldır düğmesi zaten böyle
+   davranıyordu, çoğalt da aynı hizaya geldi. */
 function planGirisCipHtml(alanId, bolmeId, g, tam){
   const t = tarlaBul(g.tarlaId), arac = aracBul(g.aracId);
   const renk = arac ? arac.renk : 'var(--border-strong)';
@@ -4430,8 +4436,8 @@ function planGirisCipHtml(alanId, bolmeId, g, tam){
     ${planIkon(aracIkonId(arac),'plan-cip-ikon',renk)}
     <span class="ad">${escapeHtml((t&&t.ad)||'?')}</span>
     ${tam && g.sofor ? `<span class="meta">${escapeHtml(g.sofor)}</span>` : ''}
-    <button class="cogalt" title="${i18n('Başka alanlara çoğalt')}" onclick="event.stopPropagation();planCogaltBaslat('${alanId}','${bolmeId}','${g.tarlaId}')">${planIkon('ikon-cogalt','plan-cip-ikon')}</button>
-    ${tam ? `<button class="kaldir" title="${i18n('Kaldır')}" onclick="event.stopPropagation();planGirisKaldirTikla('${alanId}','${bolmeId}','${g.tarlaId}')">×</button>` : ''}
+    ${tam ? `<button class="cogalt" title="${i18n('Başka alanlara çoğalt')}" onclick="event.stopPropagation();planCogaltBaslat('${alanId}','${bolmeId}','${g.tarlaId}')">${planIkon('ikon-cogalt','plan-cip-ikon')}</button>
+    <button class="kaldir" title="${i18n('Kaldır')}" onclick="event.stopPropagation();planGirisKaldirTikla('${alanId}','${bolmeId}','${g.tarlaId}')">×</button>` : ''}
   </div>`;
 }
 function planSeraCipHtml(alanId, bolmeId, seraId, tam){
