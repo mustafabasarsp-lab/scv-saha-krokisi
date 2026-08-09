@@ -1876,6 +1876,71 @@ const tik = () => new Promise(r => setImmediate(r));
     app._temizle();
   }
 
+  /* ---------------------------------------------------------------
+     Uzun basma ile silme. Izgaradaki × düğmeleri kaldırıldı; silme artık
+     basılı tutmayı istiyor. Onay + geri alma zinciri değişmedi.
+     --------------------------------------------------------------- */
+  bolum('Kroki — uzun basma ile silme');
+  function sahteKutu() {
+    return { classList: { _k: new Set(),
+      add(c) { this._k.add(c); }, remove(c) { this._k.delete(c); },
+      contains(c) { return this._k.has(c); } } };
+  }
+  {
+    const app = kur();
+    const el = sahteKutu();
+    let calisti = 0;
+    app.uzunBasmaBaslat(el, () => calisti++);
+    dogru(el.classList.contains('uzun-basiliyor'), 'basarken ilerleme sınıfı eklenir');
+    app.uzunBasmaIptal();
+    yanlis(el.classList.contains('uzun-basiliyor'), 'bırakınca ilerleme sınıfı kalkar');
+    esit(calisti, 0, 'süre dolmadan silme çalışmaz');
+    yanlis(app.uzunBasmaTiklamaYutuldu(), 'iptal edilen basma tıklamayı yutmaz');
+    app._temizle();
+  }
+  {
+    // tests/run.js async IIFE; harness gerçek zamanlayıcı kullandığı için
+    // gerçekten bekliyoruz. Tek seferlik ~530ms, harness'a dokunmaktan ucuz.
+    const app = kur();
+    const el = sahteKutu();
+    let calisti = 0;
+    app.uzunBasmaBaslat(el, () => calisti++);
+    await new Promise(r => setTimeout(r, app.UZUN_BASMA_MS + 40));
+    esit(calisti, 1, 'süre dolunca silme çalışır');
+    yanlis(el.classList.contains('uzun-basiliyor'), 'tetiklenince ilerleme sınıfı kalkar');
+    dogru(app.uzunBasmaTiklamaYutuldu(), 'tetiklenen basma takip eden tıklamayı yutar');
+    yanlis(app.uzunBasmaTiklamaYutuldu(), 'yutma tek seferliktir');
+    app._temizle();
+  }
+  {
+    // İkinci basma birincisini iptal etmeli; yoksa iki sayaç birden dolar.
+    const app = kur();
+    const a = sahteKutu(), b = sahteKutu();
+    let ilk = 0, ikinci = 0;
+    app.uzunBasmaBaslat(a, () => ilk++);
+    app.uzunBasmaBaslat(b, () => ikinci++);
+    yanlis(a.classList.contains('uzun-basiliyor'), 'yeni basma öncekinin işaretini siler');
+    await new Promise(r => setTimeout(r, app.UZUN_BASMA_MS + 40));
+    esit(ilk, 0, 'iptal edilen ilk basma çalışmaz');
+    esit(ikinci, 1, 'yalnızca son basma çalışır');
+    app._temizle();
+  }
+  {
+    // Izgarada × düğmesi kalmamalı — silme yolu artık uzun basma.
+    const app = kur();
+    app.state.seralar.push({ id: 's1', ad: 'B1', bolge: 'kalemli', kapasite: 400, donemler: [] });
+    app.state.tarlalar.push({ id: 't1', ad: 'K1', bolge: 'kalemli', dekar: 10, cesit: 'Basma' });
+    app.renderSeralar();
+    app.renderTarlalar();
+    const seraHtml = app._belge.getElementById('seraPlot').innerHTML;
+    const tarlaHtml = app._belge.getElementById('tarlaPlot').innerHTML;
+    yanlis(seraHtml.includes('sera-close'), 'sera kutusunda × düğmesi kalmadı');
+    yanlis(tarlaHtml.includes('tarla-close'), 'tarla kutusunda × düğmesi kalmadı');
+    dogru(seraHtml.includes('uzunBasmaBaslat'), 'sera kutusu uzun basmaya bağlı');
+    dogru(tarlaHtml.includes('uzunBasmaBaslat'), 'tarla kutusu uzun basmaya bağlı');
+    app._temizle();
+  }
+
   /* --------------------------------------------------------------- */
   console.log(`\n${'─'.repeat(52)}`);
   if (kalan.length) {

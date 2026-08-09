@@ -871,12 +871,30 @@ input[type=number],.num,td,th,.badge b,.quickstats b{font-variant-numeric:tabula
 .fill-high{background-color:var(--green-500);}
 .fill-amber{background-color:var(--amber);}
 .fill-over{background-color:var(--red);}
-.sera-close{
-  position:absolute;top:2px;right:2px;z-index:4;
-  width:16px;height:16px;border-radius:50%;
-  background:rgba(0,0,0,.45);color:var(--on-accent);border:none;
-  font-size:10px;line-height:1;display:flex;align-items:center;justify-content:center;
-  padding:0;
+/* .sera-close ve .tarla-close kaldırıldı — silme uzun basmaya taşındı.
+   Aşağıdaki ilerleme şeridi ikisinin de ortak geri bildirimi. */
+
+/* Basılı tutarken dolan şerit. Kutunun ALT kenarında ince: içeriğin üstünü
+   kapatmıyor ve dolum yönü "devam ediyor" diyor. Jest görünmezse keşfedilemez,
+   bu yüzden buradaki hareket zorunlu.
+   Dokunma sırasında metin seçilmesin, iOS bağlam menüsü açılmasın diye
+   user-select ve touch-callout kapalı. */
+.sera-box,.tarla-box{
+  -webkit-touch-callout:none;
+  -webkit-user-select:none;
+  user-select:none;
+  touch-action:manipulation;
+}
+.sera-box::before,.tarla-box::before{
+  content:"";
+  position:absolute;left:0;bottom:0;height:3px;width:0;
+  background:var(--red);z-index:7;
+  border-radius:0 var(--r-xs) 0 0;
+  pointer-events:none;
+}
+.sera-box.uzun-basiliyor::before,.tarla-box.uzun-basiliyor::before{
+  width:100%;
+  transition:width var(--uzun-basma-sure) linear;
 }
 .empty-hint{color:var(--muted);font-size:var(--fs-xs);text-align:center;padding:20px 6px;}
 
@@ -1018,12 +1036,6 @@ body.has-fullscreen-panel{overflow:hidden;}
   padding:1px 4px;border-radius:3px; /* phi-badge ile aynı gerekçe: iç ≤ dış */
 }
 .zararli-badge.siddetli{background:var(--red);}
-.tarla-close{
-  position:absolute;bottom:2px;right:2px;z-index:6;
-  width:13px;height:13px;border-radius:50%;
-  background:rgba(0,0,0,.4);color:var(--on-accent);border:none;font-size:9px;
-  display:flex;align-items:center;justify-content:center;padding:0;
-}
 
 /* ---------- ÇALIŞMA İŞARETİ (bugün kırım yapılıyor / sera dolduruluyor) ----------
    Saha ekibi kaydı girmeden ÖNCE o günkü tarla/serayı işaretler. İşaret bir tarih
@@ -1899,6 +1911,9 @@ input.dayibasi-ad-alani{flex:1;min-width:110px;border:1px solid var(--border);bo
   .calisma-serit-kutu,.calisma-bant b{animation:none;}
   /* Senkron rozeti */
   .sync-status.saving .dot,.sync-status.depo-dolu .dot{animation:none;}
+  /* Uzun basma: şerit KAYBOLMAZ, anında dolar. Jestin geri bildirimi kalmalı;
+     yoksa kullanıcı bastığının işe yarayıp yaramadığını bilemez. */
+  .sera-box.uzun-basiliyor::before,.tarla-box.uzun-basiliyor::before{transition:none;}
 }
 </style>
 </head>
@@ -2417,7 +2432,7 @@ const AYARLAR = {
    sera bu formülle 17px kalıyor, etiketi 39px yer istiyordu — ekranda "8." diye
    görünüyordu. Kutu artık eşit genişlikte (bkz. .sera-box). */
 const STORAGE_KEY = 'scvSahaKrokiV1';
-const APP_SURUM = 'v118'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
+const APP_SURUM = 'v119'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
 
 /* =========================================================
    HATA / DONMA GÜNLÜĞÜ — "bazen donuyor" şikayetini araştırmak için.
@@ -4710,8 +4725,11 @@ function renderSeralar(){
     /* Boşluksuz ve uzun ad iki satıra inemez (bölünecek yer yok); tek kademe
        küçülerek tek satırda kalır. Boşluklu adlar bu sınıfı almaz, sarılırlar. */
     const uzunAd = !/\s/.test(s.ad||'') && (s.ad||'').length > 4;
-    return `<div class="sera-box${seritMetni?' calisma-isaretli':''}" onclick="openSeraDetay('${s.id}')">
-      <button class="sera-close" title="Sil" onclick="event.stopPropagation();seraSil('${s.id}')">×</button>
+    return `<div class="sera-box${seritMetni?' calisma-isaretli':''}"
+      onpointerdown="uzunBasmaBaslat(this, ()=>seraSil('${s.id}'))"
+      onpointerup="uzunBasmaIptal()" onpointerleave="uzunBasmaIptal()"
+      onpointercancel="uzunBasmaIptal()"
+      onclick="if(!uzunBasmaTiklamaYutuldu()) openSeraDetay('${s.id}')">
       <div class="label${uzunAd?' uzun-ad':''}">${escapeHtml(s.ad)}</div>
       <div class="fill ${cls}" style="height:${fillH}%"></div>
       ${seritMetni ? `<div class="calisma-serit-kutu${seritMetni.length>7?' serit-uzun':''}">${seritMetni}</div>` : `<div class="pct">${fmt(pct,0)}%</div>`}
@@ -4762,16 +4780,62 @@ function renderTarlalar(){
       dots += `<span class="kdot kdot-${i} ${i<=stats.maxKirimNo?'':'empty'}" title="${i}. ${i18n('kırım')}"></span>`;
     }
     const kirimYapiliyor = tarlaKirimYapiliyorMu(t);
-    return `<div class="tarla-box${kirimYapiliyor?' calisma-isaretli':''}" onclick="openTarlaDetay('${t.id}')">
+    return `<div class="tarla-box${kirimYapiliyor?' calisma-isaretli':''}"
+      onpointerdown="uzunBasmaBaslat(this, ()=>tarlaSil('${t.id}'))"
+      onpointerup="uzunBasmaIptal()" onpointerleave="uzunBasmaIptal()"
+      onpointercancel="uzunBasmaIptal()"
+      onclick="if(!uzunBasmaTiklamaYutuldu()) openTarlaDetay('${t.id}')">
       ${phi ? `<div class="phi-badge">${phi.kalanGun}g</div>` : ''}
       ${zararli ? `<div class="zararli-badge ${zararli.yuzde>=50?'siddetli':''}" title="${escapeHtml(zararli.ad)} — %${zararli.yuzde}">🐛 %${zararli.yuzde}</div>` : ''}
       <div class="name">${escapeHtml(t.ad)}</div>
       <div class="sub">${fmt(t.dekar,1)} da</div>
       <div class="kirim-row">${dots}</div>
       ${kirimYapiliyor ? `<div class="calisma-serit-kutu">${i18n('KIRIM YAPILIYOR')}</div>` : ''}
-      <button class="tarla-close" title="Sil" onclick="event.stopPropagation();tarlaSil('${t.id}')">×</button>
     </div>`;
   }).join('');
+}
+
+/* =========================================================
+   UZUN BASMA İLE SİLME
+   Izgaradaki × düğmeleri kaldırıldı. 148 sera ve onlarca tarla kutusunun her
+   birinde duran yıkıcı bir eylem, tozlu elle ve tek parmakla kullanılan bir
+   uygulamada yanlış dokunmaya fazla açıktı; üstelik 44px'lik kutuda en baskın
+   öğe oydu. Silme artık basılı tutmayı ister.
+
+   Erişilebilir yol GERİLEMEDİ: silme zaten detay modalinde btn-danger olarak
+   duruyor (bkz. openSeraDetay / openTarlaDetay). Izgaradaki × yedek bir
+   kısayoldu; klavye ve ekran okuyucu kullanıcısı zaten modalden gidiyordu.
+
+   Jest görünmezse keşfedilemez — bu yüzden basarken kutunun alt kenarında bir
+   şerit dolar (.uzun-basiliyor). Buradaki hareket süs değil, öğreticidir.
+   ========================================================= */
+const UZUN_BASMA_MS = 500;
+let uzunBasmaSayac = null;
+let uzunBasmaEl = null;
+let uzunBasmaTetiklendi = false;
+
+function uzunBasmaBaslat(el, calistir){
+  uzunBasmaIptal();               // ikinci basma öncekini düşürür
+  uzunBasmaTetiklendi = false;
+  uzunBasmaEl = el;
+  if(el && el.classList) el.classList.add('uzun-basiliyor');
+  uzunBasmaSayac = setTimeout(()=>{
+    uzunBasmaTetiklendi = true;
+    uzunBasmaIptal();
+    calistir();
+  }, UZUN_BASMA_MS);
+}
+function uzunBasmaIptal(){
+  if(uzunBasmaSayac){ clearTimeout(uzunBasmaSayac); uzunBasmaSayac = null; }
+  if(uzunBasmaEl && uzunBasmaEl.classList) uzunBasmaEl.classList.remove('uzun-basiliyor');
+  uzunBasmaEl = null;
+}
+/* Uzun basma tetiklendiyse takip eden click YUTULUR; yoksa silme onayının
+   arkasında detay modali de açılırdı. Tek seferlik: sonraki tıklama normaldir. */
+function uzunBasmaTiklamaYutuldu(){
+  if(!uzunBasmaTetiklendi) return false;
+  uzunBasmaTetiklendi = false;
+  return true;
 }
 
 /* =========================================================
