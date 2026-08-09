@@ -1192,8 +1192,21 @@ body.has-fullscreen-panel{overflow:hidden;}
   position:fixed;inset:0;background:var(--overlay);
   display:flex;align-items:center;justify-content:center;
   z-index:100;padding:var(--sp-4);
+  transition:opacity var(--gecis-orta) var(--egri-yumusak), visibility 0s linear 0s;
 }
-.overlay.hidden{display:none;}
+/* display:none idi ve GEÇİŞİ İMKÂNSIZ kılıyordu — display animasyonlanmaz.
+   visibility + pointer-events aynı işi görür (odak almaz, tıklama geçmez) ama
+   solma mümkün olur. Kapanışta visibility geçiş bitene kadar gecikir, açılışta
+   gecikmez. Seçici .overlay.hidden (0,2,0) olduğu için genel .hidden kuralını
+   (0,1,0) yener. */
+.overlay.hidden{
+  visibility:hidden;
+  opacity:0;
+  pointer-events:none;
+  transition:opacity var(--gecis-orta) var(--egri-yumusak),
+             visibility 0s linear var(--gecis-orta);
+}
+.overlay.hidden .modal{transform:translateY(8px);opacity:0;}
 .modal{
   background:var(--panel);
   border-radius:var(--r-md);
@@ -1206,6 +1219,9 @@ body.has-fullscreen-panel{overflow:hidden;}
      değişmiş oluyordu. contain zinciri modalda kesiyor. */
   overscroll-behavior:contain;
   padding:16px 18px;
+  /* Modal anlık beliriyordu; nereden geldiği anlaşılmıyordu. */
+  transition:transform var(--gecis-orta) var(--egri-cikis),
+             opacity var(--gecis-orta) var(--egri-cikis);
 }
 .modal h2{color:var(--green-900);font-size:var(--fs-xl);margin-bottom:10px;}
 
@@ -1907,6 +1923,40 @@ input.dayibasi-ad-alani{flex:1;min-width:110px;border:1px solid var(--border);bo
 .gecmis-onay-dugmesi:disabled{opacity:.5;}
 
 /* ==========================================================
+   CİLA — DOKUNMA, SAYFA, KART
+   Hepsi hareket belirteçlerinden besleniyor ve aşağıdaki tek reduced-motion
+   bloğunda kapanıyor.
+   ========================================================== */
+
+/* Dokunulan şeyin dokunulduğu görünmeli: sahada tozlu/eldivenli parmakla
+   basıldığında geri bildirim yoksa kullanıcı ikinci kez basıyor ve iki kayıt
+   açılıyor. */
+.btn,.icon-btn,.tarla-tile,.plan-cip{
+  transition:transform var(--gecis-hizli) var(--egri-yumusak),
+             filter var(--gecis-hizli) var(--egri-yumusak);
+}
+.btn:active,.icon-btn:active,.tarla-tile:active,.plan-cip:active{
+  transform:scale(.97);
+  filter:brightness(.96);
+}
+/* Kroki kutularında ÖLÇEK değil parlaklık: 44px'lik kutu küçülünce parmağın
+   altında kayboluyor gibi duruyor, geri bildirim ters etki yapıyordu. */
+.sera-box,.tarla-box{transition:filter var(--gecis-hizli) var(--egri-yumusak);}
+.sera-box:active,.tarla-box:active{filter:brightness(.94);}
+
+/* Sayfa değişiminde içerik hafifçe yerine oturur — hangi ekrana gelindiği
+   anlaşılsın diye. Kaydırma değil, kısa bir yerleşme. */
+@keyframes sayfaYerles{
+  from{opacity:0;transform:translateY(6px);}
+  to{opacity:1;transform:none;}
+}
+.page:not(.hidden){animation:sayfaYerles var(--gecis-orta) var(--egri-cikis);}
+
+/* Saha Planlama kartı açılırken yükselir. */
+.plan-kart{transition:box-shadow var(--gecis-orta) var(--egri-yumusak);}
+.plan-kart.acik{box-shadow:var(--shadow-lg);}
+
+/* ==========================================================
    HAREKET TERCİHİ — TEK YER
    Eskiden üç ayrı blokta (satır 739 / 1075 / 1630) parça parça duruyordu ve
    yeni bir animasyon eklerken hangisine yazılacağı belirsizdi; biri unutulunca
@@ -1935,6 +1985,12 @@ input.dayibasi-ad-alani{flex:1;min-width:110px;border:1px solid var(--border);bo
     animation:none;
     box-shadow:0 0 0 2px var(--green-500),var(--shadow);
   }
+  /* Cila: dokunma geri bildirimi PARLAKLIK olarak kalır (hareket değil, durum),
+     ölçek ve yerleşme animasyonları kapanır. */
+  .btn,.icon-btn,.tarla-tile,.plan-cip,.sera-box,.tarla-box{transition:none;}
+  .btn:active,.icon-btn:active,.tarla-tile:active,.plan-cip:active{transform:none;}
+  .overlay,.modal,.plan-kart{transition:none;}
+  .page:not(.hidden){animation:none;}
 }
 </style>
 </head>
@@ -2453,7 +2509,7 @@ const AYARLAR = {
    sera bu formülle 17px kalıyor, etiketi 39px yer istiyordu — ekranda "8." diye
    görünüyordu. Kutu artık eşit genişlikte (bkz. .sera-box). */
 const STORAGE_KEY = 'scvSahaKrokiV1';
-const APP_SURUM = 'v120'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
+const APP_SURUM = 'v121'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
 
 /* =========================================================
    HATA / DONMA GÜNLÜĞÜ — "bazen donuyor" şikayetini araştırmak için.
