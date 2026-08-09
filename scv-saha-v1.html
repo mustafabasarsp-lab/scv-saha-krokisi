@@ -808,8 +808,16 @@ input[type=number],.num,td,th,.badge b,.quickstats b{font-variant-numeric:tabula
 
 /* ---------- SAG: SERALAR ---------- */
 .sera-plot{display:flex;flex-wrap:wrap;gap:10px;align-content:flex-start;}
+/* Genişlik eskiden kapasiteden türüyordu: (kapasite/480)x40px. 200 dizilik bir
+   sera bu formülle 17px kalıyor, etiketi 39px yer istiyordu — ekranda "8." diye
+   görünüyordu ve punto düşürmek çözmüyordu, çünkü sorun kabın kendisindeydi.
+   Artık eşit: kapasite detay modalinde okunur, ızgarada doluluk yüzdesi tek
+   görsel sinyaldir. 44px aynı zamanda v88'in dokunma hedefi — eski 33px'lik
+   normal kutular bile onun ALTINDAYDI. Ölçüldü: yoğunluk değişmiyor, 148 sera
+   360px'te yine 25 satır. */
 .sera-box{
   position:relative;
+  width:44px;
   height:78px;
   border:1px solid var(--border);
   border-radius:6px;
@@ -2351,12 +2359,14 @@ input.dayibasi-ad-alani{flex:1;min-width:110px;border:1px solid var(--border);bo
    AYARLAR (tek ayar bloğu — sabitleri buradan değiştirin)
    ========================================================= */
 const AYARLAR = {
-  UNITE_KAPASITE: 480,        // sera-box genişlik ölçeği için referans kapasite (dizi)
-  GUNLUK_ISLEME_DIZI: 200,    // seranın günlük işlenen tahmini dizi hızı (boşalma tahmini için)
-  UNITE_PX: 40                // referans kapasitedeki sera-box genişliği (px) — kroki oranı
+  GUNLUK_ISLEME_DIZI: 200     // seranın günlük işlenen tahmini dizi hızı (boşalma tahmini için)
 };
+/* UNITE_KAPASITE (480) ve UNITE_PX (40) buradan söküldü. Sera kutusunun
+   genişliğini kapasiteden türetiyorlardı: (kapasite/480)x40px. 200 dizilik bir
+   sera bu formülle 17px kalıyor, etiketi 39px yer istiyordu — ekranda "8." diye
+   görünüyordu. Kutu artık eşit genişlikte (bkz. .sera-box). */
 const STORAGE_KEY = 'scvSahaKrokiV1';
-const APP_SURUM = 'v115'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
+const APP_SURUM = 'v116'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
 
 /* =========================================================
    HATA / DONMA GÜNLÜĞÜ — "bazen donuyor" şikayetini araştırmak için.
@@ -4643,11 +4653,10 @@ function renderSeralar(){
   el.innerHTML = liste.map(s=>{
     const pct = s.kapasite>0 ? (seraGuncelDolu(s)/s.kapasite*100) : 0;
     const cls = seraDurumSinifiExact(pct);
-    const width = (s.kapasite/AYARLAR.UNITE_KAPASITE) * AYARLAR.UNITE_PX;
     const fillH = Math.min(pct,100);
     // Kutuya sığan kısa şerit; tam ibare panelin üstündeki bantta (bkz. calismaBandiHtml)
     const seritMetni = seraDolduruluyorMu(s) ? i18n('DOLUYOR') : (seraBosaltiliyorMu(s) ? i18n('BOŞALIYOR') : '');
-    return `<div class="sera-box${seritMetni?' calisma-isaretli':''}" style="width:${width}px" onclick="openSeraDetay('${s.id}')">
+    return `<div class="sera-box${seritMetni?' calisma-isaretli':''}" onclick="openSeraDetay('${s.id}')">
       <button class="sera-close" title="Sil" onclick="event.stopPropagation();seraSil('${s.id}')">×</button>
       <div class="label">${escapeHtml(s.ad)}</div>
       <div class="fill ${cls}" style="height:${fillH}%"></div>

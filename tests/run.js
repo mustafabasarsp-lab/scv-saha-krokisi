@@ -1836,6 +1836,26 @@ const tik = () => new Promise(r => setImmediate(r));
     app._temizle();
   }
 
+  /* ---------------------------------------------------------------
+     Kroki: sera kutusu genişliği artık kapasiteden türemiyor.
+     Eski formül (kapasite/480)x40px, 200 dizilik serayı 17px'e indiriyor ve
+     etiketi ekranda "8." olarak bırakıyordu.
+     --------------------------------------------------------------- */
+  bolum('Kroki — sera kutusu eşit genişlik');
+  {
+    const app = kur();
+    app.state.seralar.push(
+      { id: 's1', ad: '80 cm', bolge: 'kalemli', kapasite: 200, donemler: [] },
+      { id: 's2', ad: 'B1', bolge: 'kalemli', kapasite: 400, donemler: [] }
+    );
+    app.renderSeralar();
+    const html = app._belge.getElementById('seraPlot').innerHTML;
+    yanlis(/style="width:/.test(html), 'kutu genişliği artık satır içi stille yazılmaz');
+    dogru(html.includes('80 cm'), 'düşük kapasiteli sera yine çizilir');
+    dogru(html.includes('B1'), 'normal sera yine çizilir');
+    app._temizle();
+  }
+
   /* --------------------------------------------------------------- */
   console.log(`\n${'─'.repeat(52)}`);
   if (kalan.length) {
