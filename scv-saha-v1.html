@@ -1982,16 +1982,16 @@ input.dayibasi-ad-alani{flex:1;min-width:110px;border:1px solid var(--border);bo
         <div class="toplam-istatistik">
           <h3 data-i18n="Toplam İstatistik">Toplam İstatistik</h3>
           <div class="row2">
-            <div class="field"><label data-i18n="Başlangıç">Başlangıç</label><input id="statBaslangic" type="date" oninput="renderToplamIstatistik()"></div>
-            <div class="field"><label data-i18n="Bitiş">Bitiş</label><input id="statBitis" type="date" oninput="renderToplamIstatistik()"></div>
+            <div class="field"><label for="statBaslangic" data-i18n="Başlangıç">Başlangıç</label><input id="statBaslangic" type="date" oninput="renderToplamIstatistik()"></div>
+            <div class="field"><label for="statBitis" data-i18n="Bitiş">Bitiş</label><input id="statBitis" type="date" oninput="renderToplamIstatistik()"></div>
           </div>
           <div class="row2">
             <div class="field">
-              <label data-i18n="Çeşit / Varyete">Çeşit / Varyete</label>
+              <label for="statCesit" data-i18n="Çeşit / Varyete">Çeşit / Varyete</label>
               <select id="statCesit" onchange="renderToplamIstatistik()"><option value="" data-i18n="Tümü">Tümü</option></select>
             </div>
             <div class="field">
-              <label data-i18n="Tarla Ara">Tarla Ara</label>
+              <label for="statTarlaAra" data-i18n="Tarla Ara">Tarla Ara</label>
               <input type="search" id="statTarlaAra" placeholder="Tarla ara…" data-i18n-placeholder="Tarla ara…" oninput="renderToplamIstatistik()">
             </div>
           </div>
@@ -2043,7 +2043,7 @@ input.dayibasi-ad-alani{flex:1;min-width:110px;border:1px solid var(--border);bo
         <div class="plan-body hidden" id="sahaGenelIcerikPlanlama">
           <div class="plan-arac-cubugu">
             <button class="icon-btn ghost" onclick="planTarihKaydir(-1)" title="Önceki gün" data-i18n-title="Önceki gün">‹</button>
-            <input type="date" id="planTarihInput" onchange="planTarihSecildi(this.value)">
+            <input type="date" id="planTarihInput" aria-label="Plan tarihi" data-i18n-aria-label="Plan tarihi" onchange="planTarihSecildi(this.value)">
             <button class="icon-btn ghost" onclick="planTarihKaydir(1)" title="Sonraki gün" data-i18n-title="Sonraki gün">›</button>
             <button class="btn" onclick="planDunuKopyala()" data-i18n="📋 Dünü Kopyala">📋 Dünü Kopyala</button>
             <button class="btn" id="planDegistirBtn" onclick="planTakasKipiAc()" data-i18n="⇄ Değiştir">⇄ Değiştir</button>
@@ -2238,7 +2238,7 @@ input.dayibasi-ad-alani{flex:1;min-width:110px;border:1px solid var(--border);bo
         <!-- İÇ SEKME: GÜNLÜK GİRİŞ -->
         <div id="odemeIcerikGunluk">
           <div class="odeme-gunluk-toolbar">
-            <input type="date" id="odemeGunlukTarihInput" class="odeme-tarih-input" onchange="odemeGunlukTarihDegisti(this.value)">
+            <input type="date" id="odemeGunlukTarihInput" class="odeme-tarih-input" aria-label="Yevmiye tarihi" data-i18n-aria-label="Yevmiye tarihi" onchange="odemeGunlukTarihDegisti(this.value)">
             <div class="page-tabs bolge-tabs" id="odemeBolgeTabs">
               <button class="tab-btn active" id="odemeBolgeTab_tekeliler" onclick="odemeBolgeSekmeGecis('tekeliler')">Tekeliler</button>
               <button class="tab-btn" id="odemeBolgeTab_kalemli" onclick="odemeBolgeSekmeGecis('kalemli')">Kalemli</button>
@@ -2251,9 +2251,9 @@ input.dayibasi-ad-alani{flex:1;min-width:110px;border:1px solid var(--border);bo
         <!-- İÇ SEKME: BAKİYE / ÖZET -->
         <div id="odemeIcerikBakiye" class="hidden">
           <div class="row3">
-            <div class="field"><label data-i18n="Başlangıç">Başlangıç</label><input type="date" id="odemeBakiyeBaslangic" onchange="odemeBakiyeFiltreDegisti()"></div>
-            <div class="field"><label data-i18n="Bitiş">Bitiş</label><input type="date" id="odemeBakiyeBitis" onchange="odemeBakiyeFiltreDegisti()"></div>
-            <div class="field"><label data-i18n="Bölge">Bölge</label>
+            <div class="field"><label for="odemeBakiyeBaslangic" data-i18n="Başlangıç">Başlangıç</label><input type="date" id="odemeBakiyeBaslangic" onchange="odemeBakiyeFiltreDegisti()"></div>
+            <div class="field"><label for="odemeBakiyeBitis" data-i18n="Bitiş">Bitiş</label><input type="date" id="odemeBakiyeBitis" onchange="odemeBakiyeFiltreDegisti()"></div>
+            <div class="field"><label for="odemeBakiyeBolgeSelect" data-i18n="Bölge">Bölge</label>
               <select id="odemeBakiyeBolgeSelect" onchange="odemeBakiyeFiltreDegisti()">
                 <option value="" data-i18n="Tümü">Tümü</option>
                 <option value="tekeliler">Tekeliler</option>
@@ -2337,8 +2337,8 @@ input.dayibasi-ad-alani{flex:1;min-width:110px;border:1px solid var(--border);bo
 <div class="overlay" id="loginOverlay">
   <div class="modal">
     <h2 data-i18n="SCV Saha — Giriş">SCV Saha — Giriş</h2>
-    <div class="field"><label data-i18n="Kullanıcı Adı">Kullanıcı Adı</label><input id="loginUser" type="text" placeholder="scv" autocapitalize="off" autocomplete="username"></div>
-    <div class="field"><label data-i18n="Şifre">Şifre</label><input id="loginPass" type="password" autocomplete="current-password" onkeydown="if(event.key==='Enter')girisYap()"></div>
+    <div class="field"><label for="loginUser" data-i18n="Kullanıcı Adı">Kullanıcı Adı</label><input id="loginUser" type="text" placeholder="scv" autocapitalize="off" autocomplete="username"></div>
+    <div class="field"><label for="loginPass" data-i18n="Şifre">Şifre</label><input id="loginPass" type="password" autocomplete="current-password" onkeydown="if(event.key==='Enter')girisYap()"></div>
     <div id="loginError" class="giris-hata-metni"></div>
     <div class="modal-actions eylem-ortali">
       <button class="btn btn-primary" onclick="girisYap()" data-i18n="Giriş Yap">Giriş Yap</button>
@@ -2356,7 +2356,7 @@ const AYARLAR = {
   UNITE_PX: 40                // referans kapasitedeki sera-box genişliği (px) — kroki oranı
 };
 const STORAGE_KEY = 'scvSahaKrokiV1';
-const APP_SURUM = 'v114'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
+const APP_SURUM = 'v115'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
 
 /* =========================================================
    HATA / DONMA GÜNLÜĞÜ — "bazen donuyor" şikayetini araştırmak için.
@@ -2780,7 +2780,8 @@ const I18N_EN = {
   'Yedek başarıyla geri yüklendi.':'Backup restored successfully.',
   'Geçersiz yedek dosyası.':'Invalid backup file.',
   'Dosya okunamadı, geçerli bir JSON yedeği değil.':'Could not read the file; it is not a valid JSON backup.',
-  'Bu yedek yüklenirse bu cihazdaki MEVCUT tüm veriler bunun üzerine yazılacak. Emin misiniz?':'Restoring this backup will OVERWRITE all current data on this device. Are you sure?',
+  'Bu yedek yüklenirse bu cihazdaki VE sunucudaki mevcut veriler bunun üzerine yazılacak; değişiklik tüm kullanıcılara yayılır. Emin misiniz?':'Restoring this backup will OVERWRITE the current data on this device AND on the server; the change propagates to every user. Are you sure?',
+  'Toplam Hasat':'Total Harvest',
   'Sera seçilmedi ve elle dizi sayısı girilmedi — kayıt 0 dizi ile oluşturulacak, sonradan düzenleyebilirsiniz. Devam edilsin mi?':'No greenhouse was selected and no string count was entered — the record will be created with 0 strings and can be edited later. Continue?',
   // Cihaz / tarayıcı yetenekleri
   'Bu tarayıcı bildirimleri desteklemiyor.':'This browser does not support notifications.',
@@ -2798,6 +2799,47 @@ const I18N_EN = {
   'Bildirimleri açmak için dokunun':'Tap to turn notifications on',
   'Bildirimleri kapatmak için dokunun':'Tap to turn notifications off',
   'Tarayıcı ayarlarından izin verilmesi gerekiyor':'Permission must be granted in your browser settings',
+  // Silme/geri al bildirimi — kayıt TÜRÜ çevrilir, kayıt ADI (sera/tarla adı) çevrilmez
+  'Sera':'Greenhouse',
+  'Tarla':'Field',
+  'Dizim':'Stringing',
+  'Kırım kaydı':'Harvest record',
+  'Harita pini':'Map pin',
+  'Kutu':'Box',
+  'Sulama kaydı':'Irrigation record',
+  'Sıcaklık/nem kaydı':'Temperature/humidity record',
+  'sıcaklık/nem kaydı':'temperature/humidity records',
+  // Boş liste ve ipucu metinleri
+  'Henüz kırım kaydı yok.':'No harvest records yet.',
+  'Dizi Ortalaması':'Average per String',
+  'Her satıra bir ad yazın (virgülle de ayırabilirsiniz).':'Write one name per line (commas work too).',
+  'gibi bir aralık yazarsanız B1, B2 … B41 olarak açılır. Aynı adda sera zaten varsa atlanır.':'style ranges expand to B1, B2 … B41. Greenhouses that already exist by name are skipped.',
+  'Arama yalnızca listeyi daraltır; eylemler görünmeyen ama işaretli kalan seralara da uygulanır. İşaretler bugün için geçerlidir, ertesi gün kendiliğinden düşer.':'Search only narrows the list; actions still apply to checked greenhouses that are hidden. Marks are valid for today and clear themselves the next day.',
+  'İşaret bugün için geçerlidir, ertesi gün kendiliğinden düşer. Tarlaya o güne ait kırım kaydı girildiğinde de düşer.':'The mark is valid for today and clears itself the next day. It also clears once a harvest record is entered for that field on that day.',
+  'Aktif dönem yok. Kırım eklendiğinde otomatik başlar, ya da burada elle başlatabilirsiniz.':'No active period. One starts automatically when a harvest is added, or you can start one here.',
+  'Yol tarifini başlatmak için haritayı seçin.':'Choose a map app to start directions.',
+  'Birikmiş ölçümleri tek seferde girin — her satır ayrı bir gün ve saat olabilir. Yeni satır, bir üstteki satırın serasını ve tarihini devralır. Tamamen boş satırlar yok sayılır.':'Enter accumulated readings in one go — each row can be its own day and time. A new row inherits the greenhouse and date of the row above. Completely empty rows are ignored.',
+  // uyar()/onayla() içinde birleştirilen parçalar — sözlükte tam metinle aranır
+  '(silinmiş tarla)':'(deleted field)',
+  'Dikim Tarihi':'Planting Date',
+  'Çapa Tarihi':'Hoeing Date',
+  'Dizi sayısı, seralara zaten dağıtılmış miktardan (':'The string count cannot be less than the amount already distributed to greenhouses (',
+  'Girilen dizi sayısı, kalan miktardan fazla olamaz (kalan: ':'The string count entered cannot exceed the remaining amount (remaining: ',
+  'Yedek geri yüklendi: ':'Backup restored: ',
+  'Yedek geri yüklenemedi: ':'Backup could not be restored: ',
+  'Konum alınamadı: ':'Could not get location: ',
+  // Veri Yönetimi bakım paneli + hata günlüğü
+  'gün saklanır. Yanlışlıkla silinen veya bozulan veride buradan bir önceki güne dönebilirsiniz. Bu yedekler normal senkronizasyondan ayrı durur, silme işlemleri onlara ulaşmaz.':'days are kept. If data is deleted or corrupted by mistake, you can roll back to an earlier day here. These backups sit apart from normal sync; deletions never reach them.',
+  'Asıl kayıtlarınızın silinme süresi yoktur':'Your actual records never expire',
+  'burada süresi dolan yalnızca günlük kopyalardır.':'only the daily copies expire here.',
+  'Sezon sonunda çalıştırın: her tarlanın çeşit, dikim/çapa tarihi, ilaç/gübre/zararlı geçmişi ve tahmini hasat bilgisi o sezonun arşivine taşınır, tarlalar yeni sezona temiz girer. Dekar ve bölge korunur.':'Run this at the end of the season: the variety, planting/hoeing dates, spray/fertiliser/pest history and estimated harvest of every field move into the archive for that season, and fields start the new season clean. Decares and region are kept.',
+  'Kırım, sulama, depo ve iklim kayıtlarına dokunulmaz':'Harvest, irrigation, storage and climate records are untouched',
+  'onların sezonu zaten tarihlerinden geliyor, üstteki sezon seçicisiyle her zaman görüntülenebilirler.':'their season already comes from their dates, and the season picker above always brings them back.',
+  'Hata / Donma Günlüğü':'Error / Freeze Log',
+  'Günlüğü Göster':'Show Log',
+  'Günlüğü Temizle':'Clear Log',
+  'Uygulama donduğunda/hata verdiğinde cihazda otomatik kaydediliyor. Bir donma yaşarsan buradan açıp "Kopyala" ile bana gönderebilirsin.':'Freezes and errors are recorded on the device automatically. If the app freezes, open this and send it with "Copy".',
+  'En yeni en üstte. "Kopyala" ile tamamını panoya alıp gönderebilirsin.':'Newest first. Use "Copy" to put the whole log on the clipboard.',
 };
 /* Aynı Türkçe kelimenin iki ayrı İngilizce karşılığı olabiliyor: hava
    durumunda "Açık" = Clear, temada "Açık" = Light. Sözlük anahtarı Türkçe
@@ -2859,6 +2901,11 @@ function uygulaStatikDil(){
   });
   document.querySelectorAll('[data-i18n-title]').forEach(el=>{
     el.title = i18n(el.getAttribute('data-i18n-title'));
+  });
+  /* Görünür etiketi olmayan araç çubuğu girdileri (plan tarihi, ödeme tarihi)
+     ekran okuyucuda adsız kalıyordu; adları da dille birlikte değişmeli. */
+  document.querySelectorAll('[data-i18n-aria-label]').forEach(el=>{
+    el.setAttribute('aria-label', i18n(el.getAttribute('data-i18n-aria-label')));
   });
 }
 
@@ -3438,10 +3485,20 @@ function tarlaFideTipi(tarla){
 }
 /* Bir kaynağın (seraya giren bir dizim partisi) fide tipi.
    secim: kullanıcının bu parti için elle seçtiği tip — türetmeyi EZER. */
+/* Kaynağın tarlalarından türetilen ham fide tipi.
+   ORTAK kırımdan gelen partide kaynak.tarlaId null'dur (tarlalar tarlaIds'te
+   durur); yalnızca tarlaId'ye bakmak bu partileri "bilinmiyor"a düşürüyor ve
+   saha kartında fide tipi "—" görünüyordu — iki tarla da viyol olsa bile.
+   Tek tip çıkarsa o, tarlalar farklı yöntem kullanıyorsa karma (seçim istenir). */
+function kaynakHamFideTipi(kaynak){
+  const tipler = [...new Set(kirimTarlaIdListesi(kaynak).map(tarlaBul).map(tarlaFideTipi).filter(Boolean))];
+  if(!tipler.length) return null;
+  return tipler.length===1 ? tipler[0] : FIDE_KARMA;
+}
 function kaynakFideTipi(kaynak){
   if(!kaynak) return { tip:null, secimGerekli:false };
   if(kaynak.fideTipi) return { tip:kaynak.fideTipi, secimGerekli:false, elle:true };
-  const ham = tarlaFideTipi(tarlaBul(kaynak.tarlaId));
+  const ham = kaynakHamFideTipi(kaynak);
   // Karma tarlada türetme dürüst bir cevap veremez: seçim istenir.
   if(ham===FIDE_KARMA) return { tip:FIDE_KARMA, secimGerekli:true };
   return { tip:ham, secimGerekli:false };
@@ -3719,9 +3776,16 @@ function sahaGenelSekmeGecis(sekme){
      panellerle aynı: tam ekran ⤢ ile istenerek açılır, × ile kapanır.
      Şema dar orta sütunda da okunur, çünkü zaten kart düzenine düşüyor. */
   // Şemadan çıkarken geçici kip kalmasın: dönüldüğünde ne beklendiği unutulmuş olur.
-  if(planlamaMi) renderSahaPlanlama(); else planKip = null;
+  // Boş kalmış plan belgesi de burada toplanır (bkz. planTarihSecildi).
+  if(planlamaMi) renderSahaPlanlama();
+  else { planKip = null; planCopTopla(planSeciliTarih); }
 }
 function planTarihSecildi(deger){
+  /* Günden ayrılırken o günün belgesi hâlâ boşsa (ör. kart açılıp "Böl"e basılmış
+     ama hiçbir şey bağlanmamış) geride çöp belge kalmasın. Temizlik AYRILIRKEN
+     yapılır, işlem anında değil: bölme düzeni kullanıcı o gün üzerinde
+     çalışırken yaşamalı, yoksa bastığı "Böl" gözünün önünde geri alınır. */
+  planCopTopla(planSeciliTarih);
   planSeciliTarih = /^\d{4}-\d{2}-\d{2}$/.test(deger||'') ? deger : todayStr();
   /* Kip GÜNE bağlıdır: açık kalsaydı dün için başlatılan bir çoğaltma, gün
      değiştirdikten sonraki ilk dokunuşta yanlış güne yazardı. */
@@ -4429,7 +4493,7 @@ function renderDizim(){
   if(sayfaGizliMi('pageSaha')) return;
   const son = [...sezonKirimlari()].sort((a,b)=> b.tarih.localeCompare(a.tarih) || b.olusturma-a.olusturma).slice(0,6);
   if(!son.length){
-    document.getElementById('sonKirimlarList').innerHTML = '<div class="empty-hint">Henüz kırım kaydı yok.</div>';
+    document.getElementById('sonKirimlarList').innerHTML = `<div class="empty-hint">${i18n('Henüz kırım kaydı yok.')}</div>`;
     return;
   }
   document.getElementById('sonKirimlarList').innerHTML = son.map(k=>{
@@ -4490,13 +4554,16 @@ function renderToplamIstatistik(){
   const kayitlar = sezonKirimlari().filter(k=>{
     if(baslangic && k.tarih < baslangic) return false;
     if(bitis && k.tarih > bitis) return false;
-    const t = tarlaBul(k.tarlaId);
+    /* Kaydın tarlaları tarlaIds üzerinden okunur. Yalnızca k.tarlaId'ye bakmak
+       ORTAK kırımları (aynı gün aynı kodlu iki tarla → tek kayıt) tamamen
+       eliyordu: o kayıtlarda tarlaId bilerek null, tarlalar tarlaIds'te. */
+    const tarlalar = kirimTarlaIdListesi(k).map(tarlaBul).filter(Boolean);
     if(cesit){
-      const kayitCesit = k.cesit || (t?t.cesit:'') || '';
+      const kayitCesit = k.cesit || (tarlalar[0] ? tarlalar[0].cesit : '') || '';
       if(kayitCesit !== cesit) return false;
     }
     if(tarlaArama){
-      if(!t || !(t.ad||'').toLocaleLowerCase('tr').includes(tarlaArama)) return false;
+      if(!tarlalar.some(t=>(t.ad||'').toLocaleLowerCase('tr').includes(tarlaArama))) return false;
     }
     return true;
   });
@@ -4508,7 +4575,7 @@ function renderToplamIstatistik(){
   sonucEl.innerHTML = `
     <div>Toplam Dizim<b>${fmt(toplamDizi,0)}</b></div>
     <div>Toplam Kg<b>${fmt(toplamKg,0)}</b></div>
-    <div>Dizi Ortalaması<b>${diziOrt==null?'-':fmt(diziOrt,2)+' kg'}</b></div>
+    <div>${i18n('Dizi Ortalaması')}<b>${diziOrt==null?'-':fmt(diziOrt,2)+' kg'}</b></div>
     <div>Toplam Fire<b>${fmt(toplamFire,0)}</b></div>
   `;
   if(listeEl){
@@ -4662,7 +4729,15 @@ function panelTamEkranKapat(panelElId){
   document.body.classList.remove('has-fullscreen-panel');
 }
 document.addEventListener('keydown', function(e){
-  if(e.key==='Escape' && fullscreenPanelId){ panelTamEkranKapat(fullscreenPanelId); }
+  /* Esc önce MODAL'ı kapatır, sonra tam ekran paneli: modal panelin üstünde
+     duruyor, üsttekinin kapanması beklenir. Eskiden Esc yalnızca paneli
+     kapatıyordu — modal açıkken tuş hiçbir şey yapmıyor, üstelik arkadaki panel
+     görünmeden kapanıyordu. */
+  if(e.key==='Escape'){
+    const overlay = document.getElementById('overlay');
+    if(overlay && !overlay.classList.contains('hidden')){ closeModal(); return; }
+    if(fullscreenPanelId){ panelTamEkranKapat(fullscreenPanelId); return; }
+  }
   /* Sera detayı açıkken ok tuşlarıyla komşu seraya geç. Bir alana yazı
      yazılıyorsa karışmasın: input/select/textarea içindeyken devre dışı. */
   if(acikSeraDetayId && (e.key==='ArrowLeft' || e.key==='ArrowRight')){
@@ -4793,7 +4868,7 @@ function openSeraEkleModal(bolgeVarsayilan){
         <label>${i18n('Sera Adları')}</label>
         <textarea id="fSeraCokluAdlar" rows="6" placeholder="B1-B41&#10;C1-C37&#10;Deneme 1"></textarea>
       </div>
-      <div class="hint-box">Her satıra bir ad yazın (virgülle de ayırabilirsiniz). <b>B1-B41</b> gibi bir aralık yazarsanız B1, B2 … B41 olarak açılır. Aynı adda sera zaten varsa atlanır.</div>
+      <div class="hint-box">${i18n('Her satıra bir ad yazın (virgülle de ayırabilirsiniz).')} <b>B1-B41</b> ${i18n('gibi bir aralık yazarsanız B1, B2 … B41 olarak açılır. Aynı adda sera zaten varsa atlanır.')}</div>
       <div class="row2">
         <div class="field">
           <label>${i18n('Sera Dizi Kapasitesi')}</label>
@@ -5037,7 +5112,7 @@ function openSeraTopluModal(seciliIdler){
       <button class="btn btn-muted dugme-cok-kucuk" onclick="topluTumunuSec('seraTopluListe',false)">${i18n('Seçimi Temizle')}</button>
     </div>
     <div class="secim-listesi" id="seraTopluListe">${topluSecimListesiHtml(liste,'seraTopluListe',notHtml)}</div>
-    <div class="hint-box ust-bosluk-6">Arama yalnızca listeyi daraltır; eylemler görünmeyen ama işaretli kalan seralara da uygulanır. İşaretler bugün için geçerlidir, ertesi gün kendiliğinden düşer.</div>
+    <div class="hint-box ust-bosluk-6">${i18n('Arama yalnızca listeyi daraltır; eylemler görünmeyen ama işaretli kalan seralara da uygulanır. İşaretler bugün için geçerlidir, ertesi gün kendiliğinden düşer.')}</div>
     <div class="modal-actions eylem-sola-sarmali">
       <button class="btn btn-primary" onclick="seraTopluDoldurFormuAc()">${i18n('Doldur (dönem başlat)')}</button>
       <button class="btn btn-danger" onclick="seraTopluBosalt()">${i18n('Boşalt (dönemi arşivle)')}</button>
@@ -5137,7 +5212,7 @@ function openTarlaTopluModal(){
       <button class="btn btn-muted dugme-cok-kucuk" onclick="topluTumunuSec('tarlaTopluListe',false)">${i18n('Seçimi Temizle')}</button>
     </div>
     <div class="secim-listesi" id="tarlaTopluListe">${topluSecimListesiHtml(liste,'tarlaTopluListe',notHtml)}</div>
-    <div class="hint-box ust-bosluk-6">İşaret bugün için geçerlidir, ertesi gün kendiliğinden düşer. Tarlaya o güne ait kırım kaydı girildiğinde de düşer.</div>
+    <div class="hint-box ust-bosluk-6">${i18n('İşaret bugün için geçerlidir, ertesi gün kendiliğinden düşer. Tarlaya o güne ait kırım kaydı girildiğinde de düşer.')}</div>
     <div class="modal-actions eylem-sola-sarmali">
       <button class="btn" onclick="tarlaTopluIsaret(true)">${i18n('🔴 Kırım Yapılıyor İşaretle')}</button>
       <button class="btn" onclick="tarlaTopluIsaret(false)">${i18n('İşareti Kaldır')}</button>
@@ -5155,8 +5230,9 @@ function tarlaTopluIsaret(acikMi){
 function seraSil(id){
   const s = seraBul(id);
   if(!onayla('Bu sera silinsin mi? Tüm dönem geçmişi de silinecek.')) return;
-  silmeYedekAl(['seralar'], (s?s.ad:'Sera'));
+  silmeYedekAl(['seralar','sahaPlanlari'], (s?s.ad:i18n('Sera')));
   state.seralar = state.seralar.filter(s=>s.id!==id);
+  planKayitReferanslariniKaldir('sera', id);
   closeModal(); renderAll();
 }
 function seraTermometreToggle(id){
@@ -5218,7 +5294,7 @@ function openSeraDetay(id){
       <div class="list-small liste-yukseklik-sinirli">${kaynakSatirlariHtml || `<div class="item">${i18n('Henüz kayıt yok')}</div>`}</div>
     </div>
   ` : `
-    <div class="hint-box">Aktif dönem yok. Kırım eklendiğinde otomatik başlar, ya da burada elle başlatabilirsiniz.</div>
+    <div class="hint-box">${i18n('Aktif dönem yok. Kırım eklendiğinde otomatik başlar, ya da burada elle başlatabilirsiniz.')}</div>
     <div class="field">
       <label>${i18n('Yeni Dönem Başlat')}</label>
       ${donemFormFieldsHtml()}
@@ -5564,9 +5640,9 @@ function openTarlaDetay(id){
       <div>${i18n('Çapa Tarihi')}<b>${escapeHtml(t.capaTarihi||'-')}</b></div>
       <div>${i18n('Fide Yöntemi')}<b>${fideYontemiEtiket(t)}</b></div>
       <div>${i18n('Kırım Durumu')}<b>${stats.maxKirimNo? stats.maxKirimNo+'. '+i18n('kırım yapıldı'):i18n('Henüz kırım yok')} (${stats.kayitSayisi} ${i18n('kayıt')})</b></div>
-      <div>Total Harvest<b>${fmt(stats.toplamKg,0)} kg</b></div>
+      <div>${i18n('Toplam Hasat')}<b>${fmt(stats.toplamKg,0)} kg</b></div>
       <div>${i18n('Toplam Dizi')}<b>${fmt(stats.toplamDizi,0)}</b></div>
-      <div>Estimated Harvest<b>${fmt(t.tahminiHasatKg,0)} kg</b></div>
+      <div>${i18n('Tahmini Hasat')}<b>${fmt(t.tahminiHasatKg,0)} kg</b></div>
       <div>${i18n('Son İşlem')}<b>${sonIslemEtiket(t)}</b></div>
     </div>
     <div class="field">
@@ -5695,8 +5771,9 @@ function tarlaGecmisSezonlarHtml(t){
 function tarlaSil(id){
   const t = tarlaBul(id);
   if(!onayla('Bu tarla silinsin mi?')) return;
-  silmeYedekAl(['tarlalar'], (t?t.ad:'Tarla'));
+  silmeYedekAl(['tarlalar','sahaPlanlari'], (t?t.ad:i18n('Tarla')));
   state.tarlalar = state.tarlalar.filter(t=>t.id!==id);
+  planKayitReferanslariniKaldir('tarla', id);
   closeModal(); renderAll();
 }
 function openIlacHizliEkleModal(tarlaId){
@@ -5946,6 +6023,46 @@ function planSeraKaldir(tarih, alanId, bolmeId, seraId){
   planDamgala(plan);
   return true;
 }
+/* Kırım kaydı silindiğinde plandaki bağ da KOPARILMALI. Kalırsa bölme silinmiş
+   bir kayda işaret eder ve iki şey birden bozulur:
+     • planBolmedenKirimAc "zaten dönüştürülmüş" deyip bir daha kayıt açtırmaz —
+       yanlış girilmiş kaydı silip yeniden girmenin yolu kapanır;
+     • bugunPlanAktifBolmeler bölmeyi elediği için "kırım yapılıyor" işareti,
+       ortada kayıt olmadığı hâlde kapalı kalır.
+   Silinen bir kaydın izini plan taşımamalı. */
+/* Silinen tarla/sera planlarda yetim kimlik bırakmamalı — dizimAlaniSil aynı
+   kuralı uyguluyor (bkz. oradaki açıklama). Temizlenmezse şemada adı çözülemeyen
+   "?" çipleri kalıyor ve geçmiş plan okunamaz hâle geliyordu. */
+function planKayitReferanslariniKaldir(tur, id){
+  let degisti = false;
+  state.sahaPlanlari.forEach(p=>{
+    let planDegisti = false;
+    p.alanlar.forEach(a=>a.bolmeler.forEach(b=>{
+      if(tur==='tarla'){
+        const once = b.girisler.length;
+        b.girisler = b.girisler.filter(g=>g.tarlaId!==id);
+        if(b.girisler.length!==once) planDegisti = true;
+      } else {
+        const once = b.seraIds.length;
+        b.seraIds = b.seraIds.filter(x=>x!==id);
+        if(b.seraIds.length!==once) planDegisti = true;
+      }
+    }));
+    if(planDegisti){ planDamgala(p); degisti = true; }
+  });
+  return degisti;
+}
+function planKirimBaginiKaldir(kirimId){
+  let degisti = false;
+  state.sahaPlanlari.forEach(p=>{
+    let planDegisti = false;
+    p.alanlar.forEach(a=>a.bolmeler.forEach(b=>{
+      if(b.kirimId===kirimId){ b.kirimId = null; planDegisti = true; }
+    }));
+    if(planDegisti){ planDamgala(p); degisti = true; }
+  });
+  return degisti;
+}
 /* ---- Takas ("futbol değişikliği") ----
    Tarla ve sera takasında YER değil KİMLİK değişir: araç/şoför bulunduğu
    bacakta kalır, çünkü değişen şey "bu bacağa hangi tarla düşüyor" sorusu. */
@@ -5980,6 +6097,16 @@ function planSeraTakas(tarih, seraIdA, seraIdB){
    demek, bölme yapısıyla birlikte taşınır. */
 function planAlanTakas(tarih, alanIdA, alanIdB){
   if(!alanIdA || !alanIdB || alanIdA===alanIdB) return false;
+  /* İki alan da BOŞSA takas gerçek bir değişiklik değildir. Aşağıdaki
+     planGetir/planAlanGetir yazma yolundaki fonksiyonlar olduğu için burada
+     erken çıkılmazsa, boş iki karta dokunmak dokunulmamış bir güne bomboş bir
+     plan belgesi yazıp senkronla kalıcılaştırıyordu. */
+  const mevcutPlan = planBul(tarih);
+  const alanDolu = alanId=>{
+    const al = mevcutPlan && mevcutPlan.alanlar.find(x=>x.alanId===alanId);
+    return !!al && al.bolmeler.some(b=>b.girisler.length || b.seraIds.length);
+  };
+  if(!alanDolu(alanIdA) && !alanDolu(alanIdB)) return false;
   const plan = planGetir(tarih);
   const a = planAlanGetir(plan, alanIdA);
   const b = planAlanGetir(plan, alanIdB);
@@ -6492,7 +6619,7 @@ function dizimKaldir(kirimId, dizimId){
   if(!k) return;
   const d = (k.seraDagilimi||[]).find(x=>x.id===dizimId);
   if(!d) return;
-  silmeYedekAl(['kirimlar','seralar'], 'Dizim');
+  silmeYedekAl(['kirimlar','seralar'], i18n('Dizim'));
   const sera = seraBul(d.seraId);
   if(sera){
     (sera.donemler||[]).forEach(donem=>{
@@ -6655,7 +6782,9 @@ function kirimSil(id){
   if(!onayla('Bu kırım kaydı silinsin mi? İlgili sera dönemlerinin doluluğu da buna göre geri alınacak.')) return;
   const k = state.kirimlar.find(x=>x.id===id);
   if(!k) return;
-  silmeYedekAl(['kirimlar','seralar'], 'Kırım kaydı');
+  // sahaPlanlari da yedeklenir: silme plandaki kırım bağını da kopardığı için
+  // "Geri Al" yalnızca kaydı geri getirseydi plan bağsız kalırdı.
+  silmeYedekAl(['kirimlar','seralar','sahaPlanlari'], i18n('Kırım kaydı'));
   (k.seraDagilimi||[]).forEach(d=>{
     const sera = seraBul(d.seraId);
     if(!sera) return;
@@ -6670,6 +6799,7 @@ function kirimSil(id){
     });
   });
   state.kirimlar = state.kirimlar.filter(x=>x.id!==id);
+  planKirimBaginiKaldir(id);
   renderAll();
 }
 
@@ -6682,7 +6812,12 @@ function kirimSil(id){
    kaplıyorlar ve yanlışlıkla ikinci kez basılmak veri çiftlemesine yol açabiliyor.
    Bölüm artık KAPALI geliyor ve her madde mümkün olduğunca CANLI VERİDEN kontrol
    ediliyor — cihaz hafızasından değil, böylece durum başka telefonda da doğru
-   görünür. Veriden anlaşılamayan tek madde açıkça öyle işaretleniyor. */
+   görünür. Veriden anlaşılamayan tek madde açıkça öyle işaretleniyor.
+
+   DİL: bu bölümün metinleri BİLEREK i18n'siz. Hepsi 2026 kağıt defteri aktarımına
+   özgü, bir kez çalıştırılıp bir daha çalıştırılmayacak tamir işleri; İngilizceye
+   çevirmek sözlüğü kalıcı olarak şişirir ve karşılığı hiç okunmaz. Arayüzün geri
+   kalanı i18n kapsamındadır — buradaki boşluk gözden kaçma değil, karardır. */
 function tekSeferlikDurumlari(){
   const kalemliSeraVar = ad => state.seralar.some(s=>s.bolge==='kalemli' && (s.ad||'').trim().toLocaleUpperCase('tr')===ad);
   let seraEksik = 0;
@@ -6752,14 +6887,14 @@ function openVeriYonetimiModal(){
       <div class="modal-actions eylem-sola-sarmali">
         <button class="btn" onclick="openOtomatikYedekModal()">${i18n('🕓 Günlük Yedekleri Göster')}</button>
       </div>
-      <div class="hint-box">Uygulama her gün ilk açılışında tüm verinin bir kopyasını sunucuya yazar; son ${YEDEK_SAKLAMA_GUN} gün saklanır. Yanlışlıkla silinen veya bozulan veride buradan bir önceki güne dönebilirsiniz. Bu yedekler normal senkronizasyondan ayrı durur, silme işlemleri onlara ulaşmaz. <b>Asıl kayıtlarınızın silinme süresi yoktur</b> — burada süresi dolan yalnızca günlük kopyalardır.</div>
+      <div class="hint-box">${i18n('Uygulama her gün ilk açılışında tüm verinin bir kopyasını sunucuya yazar; son')} ${YEDEK_SAKLAMA_GUN} ${i18n('gün saklanır. Yanlışlıkla silinen veya bozulan veride buradan bir önceki güne dönebilirsiniz. Bu yedekler normal senkronizasyondan ayrı durur, silme işlemleri onlara ulaşmaz.')} <b>${i18n('Asıl kayıtlarınızın silinme süresi yoktur')}</b> — ${i18n('burada süresi dolan yalnızca günlük kopyalardır.')}</div>
     </div>
     <div class="field">
       <label>${i18n('Sezon')}</label>
       <div class="modal-actions eylem-sola-sarmali">
         <button class="btn" onclick="tumTarlalarinSezonunuKapat()">${i18n('🗂️ Tüm Tarlaların Sezonunu Kapat')}</button>
       </div>
-      <div class="hint-box">Sezon sonunda çalıştırın: her tarlanın çeşit, dikim/çapa tarihi, ilaç/gübre/zararlı geçmişi ve tahmini hasat bilgisi o sezonun arşivine taşınır, tarlalar yeni sezona temiz girer. Dekar ve bölge korunur. <b>Kırım, sulama, depo ve iklim kayıtlarına dokunulmaz</b> — onların sezonu zaten tarihlerinden geliyor, üstteki sezon seçicisiyle her zaman görüntülenebilirler.</div>
+      <div class="hint-box">${i18n('Sezon sonunda çalıştırın: her tarlanın çeşit, dikim/çapa tarihi, ilaç/gübre/zararlı geçmişi ve tahmini hasat bilgisi o sezonun arşivine taşınır, tarlalar yeni sezona temiz girer. Dekar ve bölge korunur.')} <b>${i18n('Kırım, sulama, depo ve iklim kayıtlarına dokunulmaz')}</b> — ${i18n('onların sezonu zaten tarihlerinden geliyor, üstteki sezon seçicisiyle her zaman görüntülenebilirler.')}</div>
     </div>
     <div class="field">
       <label>${i18n('Rapor (dışa aktarım — geri yüklenemez)')}</label>
@@ -6770,11 +6905,11 @@ function openVeriYonetimiModal(){
     </div>
     ${tekSeferlikBolumHtml()}
     <div class="field">
-      <label>🪲 Hata / Donma Günlüğü</label>
+      <label>🪲 ${i18n('Hata / Donma Günlüğü')}</label>
       <div class="modal-actions eylem-sola-sarmali">
-        <button class="btn" onclick="openHataGunluguModal()">Günlüğü Göster (${hataGunluguOku().length})</button>
+        <button class="btn" onclick="openHataGunluguModal()">${i18n('Günlüğü Göster')} (${hataGunluguOku().length})</button>
       </div>
-      <div class="hint-box">Uygulama donduğunda/hata verdiğinde cihazda otomatik kaydediliyor. Bir donma yaşarsan buradan açıp "Kopyala" ile bana gönderebilirsin.</div>
+      <div class="hint-box">${i18n('Uygulama donduğunda/hata verdiğinde cihazda otomatik kaydediliyor. Bir donma yaşarsan buradan açıp "Kopyala" ile bana gönderebilirsin.')}</div>
     </div>
     <div class="modal-actions">
       <button class="btn btn-muted" onclick="closeModal()">${i18n('Kapat')}</button>
@@ -6800,12 +6935,12 @@ function hataGunluguMetne(){
 function openHataGunluguModal(){
   const metin = hataGunluguMetne();
   openModal(`
-    <h2>🪲 Hata / Donma Günlüğü</h2>
-    <div class="hint-box">En yeni en üstte. "Kopyala" ile tamamını panoya alıp gönderebilirsin.</div>
+    <h2>🪲 ${i18n('Hata / Donma Günlüğü')}</h2>
+    <div class="hint-box">${i18n('En yeni en üstte. "Kopyala" ile tamamını panoya alıp gönderebilirsin.')}</div>
     <textarea id="hataGunluguMetin" class="hata-gunlugu-alani" readonly>${escapeHtml(metin)}</textarea>
     <div class="modal-actions">
       <button class="btn btn-muted" onclick="closeModal()">${i18n('Kapat')}</button>
-      <button class="btn btn-danger" onclick="hataGunluguTemizle()">Günlüğü Temizle</button>
+      <button class="btn btn-danger" onclick="hataGunluguTemizle()">${i18n('Günlüğü Temizle')}</button>
       <button class="btn btn-primary" onclick="hataGunluguKopyala()">📋 Kopyala</button>
     </div>
   `);
@@ -7900,7 +8035,10 @@ function yedekDosyaYuklendi(input){
     if(!yeniState || !Array.isArray(yeniState.tarlalar)){
       uyar('Geçersiz yedek dosyası.'); input.value=''; return;
     }
-    if(!onayla('Bu yedek yüklenirse bu cihazdaki MEVCUT tüm veriler bunun üzerine yazılacak. Emin misiniz?')){ input.value=''; return; }
+    /* Onay metni sunucuyu da anmalı: geri yükleme renderAll → saveState →
+       syncOutgoingNow zincirinden geçtiği için yalnız bu cihazı değil, herkesin
+       verisini değiştirir. Eskiden yalnızca "bu cihazdaki" deniyordu. */
+    if(!onayla('Bu yedek yüklenirse bu cihazdaki VE sunucudaki mevcut veriler bunun üzerine yazılacak; değişiklik tüm kullanıcılara yayılır. Emin misiniz?')){ input.value=''; return; }
     stateYerineKoy(yeniState);
     input.value = '';
     closeModal();
@@ -7979,12 +8117,15 @@ function csvDisaAktar(){
     'İşçi Maliyeti','Sera Dağılımı','Bekleyen Dizi','Kayıp Dizi','18 Yaş Altı Yok','Çalışma Saati'
   ];
   const satirlar = sezonKirimlari().map(k=>{
-    const t = tarlaBul(k.tarlaId);
+    // Ortak kırımda tarlaId null olduğu için "Çiftçi" sütunu boş çıkıyordu;
+    // kayda bağlı tüm tarlaların çiftçileri (tekrarsız) yazılır.
+    const ciftciler = [...new Set(kirimTarlaIdListesi(k).map(tarlaBul).filter(Boolean)
+      .map(x=>x.ciftci).filter(Boolean))].join(', ');
     const tr = kirimTurev(k);
     const maliyet = (k.isciSayisi||0)*(k.yevmiye||0);
     const seradaDizilenKg = tr.atananDizi * (Number(k.ortDiziKg)||0);
     return [
-      k.tarih, kirimTarlaEtiket(k), t?t.ciftci:'', k.kirimNo, fmt(tr.diziSayisi,0), k.ortDiziKg, fmt(seradaDizilenKg,0),
+      k.tarih, kirimTarlaEtiket(k), ciftciler, k.kirimNo, fmt(tr.diziSayisi,0), k.ortDiziKg, fmt(seradaDizilenKg,0),
       fmt(tr.toplamKg,0), k.isciSayisi, k.yevmiye,
       fmt(maliyet,0), seraDagilimiEtiket(k.seraDagilimi), fmt(tr.kalanDizi,0), k.kayipDizi||'', k.altYasYok?'Evet':'Hayır', k.calismaSaati||''
     ];
@@ -8106,7 +8247,7 @@ function openPinTarlaSecModal(){
 function submitPinEkle(){
   if(!pendingPinLatLng) return;
   const tarlaId = document.getElementById('pinTarla').value;
-  state.haritaPinleri.push({ id: uid(), tarlaId, lat: pendingPinLatLng.lat, lng: pendingPinLatLng.lng });
+  state.haritaPinleri.push({ id: uid(), tarlaId, lat: pendingPinLatLng.lat, lng: pendingPinLatLng.lng, ...sonIslemDamgasi() });
   pendingPinLatLng = null;
   closeModal();
   renderAll();
@@ -8132,12 +8273,15 @@ function openKoordinatTarlaEkleModal(){
 function submitKoordinatTarlaEkle(){
   const f = tarlaFormOku();
   if(!f.ad){ uyar('Tarla adı girin.'); return; }
+  // Ad çakışma uyarısı submitTarlaEkle'de vardı, burada yoktu: koordinattan
+  // giren kullanıcı aynı isimde ikinci bir tarlayı sessizce açabiliyordu.
+  if(adCakismaVarMi(state.tarlalar, f.ad) && !onayla(`"${f.ad}" adında bir tarla zaten var. Yine de eklensin mi?`)) return;
   const lat = Number(document.getElementById('fKoordLat').value);
   const lng = Number(document.getElementById('fKoordLng').value);
   if(!lat || !lng){ uyar('Enlem ve boylam girin.'); return; }
   const tarlaId = uid();
-  state.tarlalar.push({ id: tarlaId, ...f, olusturma: Date.now() });
-  state.haritaPinleri.push({ id: uid(), tarlaId, lat, lng });
+  state.tarlalar.push({ id: tarlaId, ...f, olusturma: Date.now(), ...sonIslemDamgasi() });
+  state.haritaPinleri.push({ id: uid(), tarlaId, lat, lng, ...sonIslemDamgasi() });
   closeModal(); renderAll();
   if(haritaMap) haritaMap.setView([lat, lng], 17);
 }
@@ -8162,7 +8306,7 @@ function openTarlaGitModal(pinId){
 function haritaYolTarifiAc(lat,lng){
   openModal(`
     <h2>${i18n('Yol Tarifi')}</h2>
-    <div class="hint-box">Yol tarifini başlatmak için haritayı seçin.</div>
+    <div class="hint-box">${i18n('Yol tarifini başlatmak için haritayı seçin.')}</div>
     <div class="modal-actions satir-sarmali">
       <button class="btn btn-muted" onclick="closeModal()">${i18n('Vazgeç')}</button>
       <a class="btn harita-baglanti metin-rengi-miras" href="https://maps.apple.com/?daddr=${lat},${lng}&dirflg=d" target="_blank" rel="noopener" onclick="closeModal()">🍎 Apple Maps</a>
@@ -8189,7 +8333,7 @@ function haritaPinGpsIleGuncelle(pinId){
   navigator.geolocation.getCurrentPosition(
     pos=>{
       const pin = state.haritaPinleri.find(p=>p.id===pinId);
-      if(pin){ pin.lat = pos.coords.latitude; pin.lng = pos.coords.longitude; }
+      if(pin){ pin.lat = pos.coords.latitude; pin.lng = pos.coords.longitude; Object.assign(pin, sonIslemDamgasi()); }
       closeModal(); renderAll();
     },
     err=>uyar('Konum alınamadı: ' + err.message),
@@ -8198,7 +8342,7 @@ function haritaPinGpsIleGuncelle(pinId){
 }
 function haritaPinSilOnay(pinId){
   if(!onayla('Bu pin silinsin mi?')) return;
-  silmeYedekAl(['haritaPinleri'], 'Harita pini');
+  silmeYedekAl(['haritaPinleri'], i18n('Harita pini'));
   state.haritaPinleri = state.haritaPinleri.filter(p=>p.id!==pinId);
   closeModal(); renderAll();
 }
@@ -8207,6 +8351,9 @@ function tesisPinTiklandi(pinId){
   const p = state.tesisPinleri.find(x=>x.id===pinId);
   if(!p) return;
   if(!onayla(`"${p.etiket}" silinsin mi?`)) return;
+  // Uygulamadaki tek geri alınamaz silme buydu: pin kipinde yanlış bir dokunuş
+  // pompa/sonda noktasını kalıcı götürüyordu. Diğer bütün silmeler gibi yedeklenir.
+  silmeYedekAl(['tesisPinleri'], p.etiket);
   state.tesisPinleri = state.tesisPinleri.filter(x=>x.id!==pinId);
   renderAll();
 }
@@ -8418,12 +8565,14 @@ function submitKutuBasim(){
   closeModal(); renderAll();
   const bolgeAd = bolge==='tekeliler' ? 'Tekeliler' : 'Kalemli';
   const dokum = KUTU_KALITELERI.filter(k=>adet[k]>0).map(k=>`${adet[k]} ${k}`).join(' + ');
-  uyar(`${escapeHtml(tarih)} — ${dokum} = ${toplam} kutu eklendi (#${ilkNo}–#${kutuNo-1}, ${fmt(toplam*kg,0)} kg, ${bolgeAd})`);
+  // uyar() düz metin alert'tir; escapeHtml burada kaçış dizilerini KULLANICIYA
+  // gösterir, korumaz.
+  uyar(`${tarih} — ${dokum} = ${toplam} kutu eklendi (#${ilkNo}–#${kutuNo-1}, ${fmt(toplam*kg,0)} kg, ${bolgeAd})`);
 }
 function kutuSil(id){
   const k = state.depoKutulari.find(x=>x.id===id);
   if(!onayla('Bu kutu kaydı silinsin mi?')) return;
-  silmeYedekAl(['depoKutulari'], 'Kutu #'+(k?k.kutuNo:''));
+  silmeYedekAl(['depoKutulari'], i18n('Kutu')+' #'+(k?k.kutuNo:''));
   state.depoKutulari = state.depoKutulari.filter(k=>k.id!==id);
   renderAll();
 }
@@ -8457,6 +8606,7 @@ function kutuGeriAl(id){
   if(!onayla('Bu kutu tekrar depoya alınsın mı? (çıkış kaydı silinecek)')) return;
   delete k.cikisTarihi;
   delete k.cikisNot;
+  Object.assign(k, sonIslemDamgasi()); // submitKutuCikis damgalıyor, geri alma da damgalamalı
   renderAll();
 }
 function renderDepo(){
@@ -8519,7 +8669,7 @@ function renderDepo(){
       </div>
       <div class="stat"><b>${fmt(k.kg,1)}</b><span>kg</span></div>
     </div>
-  `).join('') || '<div class="item">Henüz kutu kaydı yok</div>';
+  `).join('') || `<div class="item">${i18n('Henüz kutu kaydı yok')}</div>`;
   if(cikisEl){
     cikisEl.innerHTML = cikmis.map(k=>`
       <div class="mini-kirim dolu" title="${i18n('Son İşlem')}: ${sonIslemEtiket(k)}">
@@ -8623,7 +8773,7 @@ function submitSulamaEkle(){
 }
 function sulamaSil(id){
   if(!onayla('Bu sulama kaydı silinsin mi?')) return;
-  silmeYedekAl(['sulamaKayitlari'], 'Sulama kaydı');
+  silmeYedekAl(['sulamaKayitlari'], i18n('Sulama kaydı'));
   state.sulamaKayitlari = state.sulamaKayitlari.filter(s=>s.id!==id);
   renderAll();
 }
@@ -8708,7 +8858,7 @@ function submitIklimEkle(){
 }
 function iklimSil(id){
   if(!onayla('Bu sıcaklık/nem kaydı silinsin mi?')) return;
-  silmeYedekAl(['iklimKayitlari'], 'Sıcaklık/nem kaydı');
+  silmeYedekAl(['iklimKayitlari'], i18n('Sıcaklık/nem kaydı'));
   state.iklimKayitlari = state.iklimKayitlari.filter(k=>k.id!==id);
   renderAll();
 }
@@ -8755,7 +8905,7 @@ function openIklimTopluEkleModal(){
   if(!state.seralar.length){ uyar('Önce en az bir sera ekleyin.'); return; }
   openModal(`
     <h2>${i18n('Toplu Sıcaklık/Nem Girişi')}</h2>
-    <div class="hint-box">Birikmiş ölçümleri tek seferde girin — her satır ayrı bir gün ve saat olabilir. Yeni satır, bir üstteki satırın serasını ve tarihini devralır. Tamamen boş satırlar yok sayılır.</div>
+    <div class="hint-box">${i18n('Birikmiş ölçümleri tek seferde girin — her satır ayrı bir gün ve saat olabilir. Yeni satır, bir üstteki satırın serasını ve tarihini devralır. Tamamen boş satırlar yok sayılır.')}</div>
     <div class="toplu-baslik">
       <span>${i18n('Sera')}</span><span>${i18n('Tarih')}</span><span>${i18n('Saat')}</span><span>°C</span><span>${i18n('Nem')} %</span><span></span>
     </div>
@@ -8855,7 +9005,7 @@ function submitIklimAralikSil(){
   if(!kayitlar.length){ uyar('Bu aralıkta silinecek kayıt yok.'); return; }
   if(!onayla(`${iklimTarihMetni(bas)} – ${iklimTarihMetni(bit)} aralığındaki ${kayitlar.length} sıcaklık/nem kaydı silinsin mi?`)) return;
   const silinecekIdler = new Set(kayitlar.map(k=>k.id));
-  silmeYedekAl(['iklimKayitlari'], kayitlar.length + ' sıcaklık/nem kaydı');
+  silmeYedekAl(['iklimKayitlari'], kayitlar.length + ' ' + i18n('sıcaklık/nem kaydı'));
   state.iklimKayitlari = state.iklimKayitlari.filter(k=>!silinecekIdler.has(k.id));
   closeModal(); renderAll();
 }
@@ -10279,7 +10429,12 @@ function renderOdemeGecmisListesi(){
   }).join('') || `<div class="item">${i18n('Henüz ödeme kaydı yok')}</div>`;
 }
 
-/* ---- Yazdırılabilir Evrak ---- */
+/* ---- Yazdırılabilir Evrak ----
+   Başlıklar (DAYIBAŞI, DİZİM-ASIM, ÇAPA, İMZA, TARİH) BİLEREK i18n'siz: bu kâğıt
+   sahada dayıbaşılara imzalatılan resmî bir belge ve imzalayanlar Türkçe okuyor.
+   Arayüz dili İngilizceye alındığında evrakın da İngilizce basılması belgeyi
+   imzalayan kişi için okunamaz hâle getirirdi. Ekran Türkçe/İngilizce, evrak
+   her zaman Türkçe. */
 function odemeYazdir(){
   const tarih = odemeGunlukTarih;
   const bolge = odemeBolgeAktif;
@@ -10368,13 +10523,23 @@ function renderRapor(){
     <div>${i18n('Toplam Depo Kg')}<b>${fmt(toplamDepoKg,0)}</b></div>
   `;
 
-  const bolgeKg = { tekeliler:0, kalemli:0 };
-  state.tarlalar.forEach(t=>{ if(bolgeKg[t.bolge]!==undefined) bolgeKg[t.bolge] += tarlaStats(t.id).toplamKg; });
-  const bolgeEl = document.getElementById('raporBolgeChart');
-  if(bolgeEl) bolgeEl.innerHTML = barChartHtml([
+  /* Grafiğin toplamı yukarıdaki "Gerçekleşen Hasat" ile TUTMALI. Eskiden yalnız
+     iki bölge sayılıyordu: bölgesi girilmemiş tarlalar ve tarlası hiç belirtilmemiş
+     kayıtlar grafikten sessizce düşüyor, iki sayı birbirini tutmuyordu. Üçüncü
+     çubuk yalnızca gerçekten böyle bir kg varsa çıkar. */
+  const bolgeKg = { tekeliler:0, kalemli:0, diger:0 };
+  state.tarlalar.forEach(t=>{
+    const anahtar = (t.bolge==='tekeliler' || t.bolge==='kalemli') ? t.bolge : 'diger';
+    bolgeKg[anahtar] += tarlaStats(t.id).toplamKg;
+  });
+  bolgeKg.diger += tarlasizKg;
+  const bolgeVerileri = [
     { label:'Tekeliler', value:bolgeKg.tekeliler, color:'var(--green-700)' },
     { label:'Kalemli', value:bolgeKg.kalemli, color:'var(--amber)' }
-  ]);
+  ];
+  if(bolgeKg.diger>0) bolgeVerileri.push({ label:i18n('Diğer / Belirtilmemiş'), value:bolgeKg.diger, color:'var(--muted)' });
+  const bolgeEl = document.getElementById('raporBolgeChart');
+  if(bolgeEl) bolgeEl.innerHTML = barChartHtml(bolgeVerileri);
 
   const kirimKg = {};
   sezonKirimlari().forEach(k=>{
@@ -10546,11 +10711,17 @@ function bildirimAcKapa(){
 }
 function bildirimGoster(id, baslik, govde){
   if(!bildirimAcikMi()) return;
-  const gunluk = JSON.parse(localStorage.getItem('scvBildirimGunlugu')||'{}');
+  /* Cihaz deposu dolduğunda ya da günlük bozulduğunda burası patlıyordu:
+     uygulamanın her yerinde özenle ele alınan durum, yarım saatte bir çalışan
+     bu zamanlayıcıda yakalanmamış hataya dönüşüyordu. Günlük tutulamıyorsa
+     bildirim yine gösterilir — tek kayıp, aynı uyarının gün içinde
+     tekrarlanabilmesi. */
   const bugun = todayStr();
+  let gunluk = {};
+  try{ gunluk = JSON.parse(localStorage.getItem('scvBildirimGunlugu')||'{}') || {}; }catch(e){ gunluk = {}; }
   if(gunluk[id]===bugun) return; // bu uyarı bugün zaten bildirildi
   gunluk[id] = bugun;
-  localStorage.setItem('scvBildirimGunlugu', JSON.stringify(gunluk));
+  try{ localStorage.setItem('scvBildirimGunlugu', JSON.stringify(gunluk)); }catch(e){ /* depo dolu: tekrar bastırılamaz */ }
   const goster = reg => reg.showNotification(baslik, { body: govde, tag: id, icon:'icon-192.png' });
   if(navigator.serviceWorker && navigator.serviceWorker.ready){
     navigator.serviceWorker.ready.then(goster).catch(()=>{ new Notification(baslik, { body: govde, tag: id }); });
@@ -10573,8 +10744,9 @@ function bildirimKontrolEt(){
   bekleyenKirimlar().forEach(({k,tr})=>{
     const bekleGun = Math.round((new Date(todayStr()) - new Date(k.tarih))/86400000);
     if(bekleGun>3){
-      const t = tarlaBul(k.tarlaId);
-      bildirimGoster('bekleyen:'+k.id, '📦 '+i18n('Bekleyen kırım'), (t?t.ad:'')+' — '+bekleGun+' '+i18n('gündür seraya dizilmedi')+' ('+fmt(tr.kalanDizi,0)+' dizi)');
+      // kirimTarlaEtiket ortak kırımlarda da doğru okur; tarlaBul(k.tarlaId)
+      // o kayıtlarda null döndüğü için bildirim adsız çıkıyordu.
+      bildirimGoster('bekleyen:'+k.id, '📦 '+i18n('Bekleyen kırım'), kirimTarlaEtiket(k)+' — '+bekleGun+' '+i18n('gündür seraya dizilmedi')+' ('+fmt(tr.kalanDizi,0)+' dizi)');
     }
   });
   state.seralar.forEach(s=>{

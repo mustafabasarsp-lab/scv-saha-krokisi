@@ -1654,6 +1654,188 @@ const tik = () => new Promise(r => setImmediate(r));
     app._temizle();
   }
 
+  /* ---------------------------------------------------------------
+     Ortak kırım (aynı gün aynı kodlu tarlalar → TEK kayıt).
+     Bu kayıtlarda tarlaId bilerek null, tarlalar tarlaIds'te durur; sadece
+     tarlaId'ye bakan her yol bu kayıtları sessizce görmez oluyordu.
+     --------------------------------------------------------------- */
+  bolum('Ortak kırım — tarlaIds üzerinden okuma');
+  {
+    const app = kur();
+    app.state.tarlalar.push(
+      { id: 'T1', ad: 'K1', bolge: 'kalemli', dekar: 10, cesit: 'Basma', viyolDekar: 10, yerOcagiDekar: 0 },
+      { id: 'T2', ad: 'K2', bolge: 'kalemli', dekar: 10, cesit: 'Basma', viyolDekar: 8, yerOcagiDekar: 0 },
+      { id: 'T3', ad: 'K3', bolge: 'kalemli', dekar: 10, cesit: 'Basma', viyolDekar: 0, yerOcagiDekar: 9 }
+    );
+    app.state.kirimlar.push({
+      id: 'KR1', tarih: app.todayStr(), tarlaId: null, tarlaIds: ['T1', 'T2'],
+      cesit: 'Basma', kirimNo: 1, diziSayisi: 800, ortDiziKg: 3.5,
+      seraDagilimi: [], olusturma: Date.now()
+    });
+    const b = app._belge;
+    b.getElementById('statBaslangic').value = '';
+    b.getElementById('statBitis').value = '';
+    b.getElementById('statCesit').value = '';
+    b.getElementById('statTarlaAra').value = 'K1';
+    app.renderToplamIstatistik();
+    dogru(b.getElementById('toplamIstatistikListe').innerHTML.includes('K1'),
+      'tarla araması ortak kırımı bulur (tek tarlaya bakıp elemez)');
+
+    b.getElementById('statTarlaAra').value = 'K9';
+    app.renderToplamIstatistik();
+    yanlis(b.getElementById('toplamIstatistikListe').innerHTML.includes('K1'),
+      'ilgisiz tarla araması ortak kırımı getirmez');
+
+    // Fide tipi: iki tarla da viyol → viyol; farklı yöntemler → karma (seçim istenir)
+    esit(app.kaynakFideTipi({ tarlaId: null, tarlaIds: ['T1', 'T2'] }).tip, 'viyol',
+      'ortak kırımda ikisi de viyolse fide tipi viyol');
+    esit(app.kaynakFideTipi({ tarlaId: 'T1', tarlaIds: ['T1'] }).tip, 'viyol',
+      'tek tarlada türetme bozulmadı');
+    const karisik = app.kaynakFideTipi({ tarlaId: null, tarlaIds: ['T1', 'T3'] });
+    esit(karisik.tip, 'karma', 'tarlalar farklı yöntem kullanıyorsa karma');
+    dogru(karisik.secimGerekli, 'karma çıkınca kullanıcıdan seçim istenir');
+    esit(app.kaynakFideTipi({ tarlaId: null, tarlaIds: [] }).tip, null,
+      'tarlası bilinmeyen partide tip null kalır');
+    app._temizle();
+  }
+
+  /* ---------------------------------------------------------------
+     Plandan üretilen kırım silinince plandaki bağ da kopmalı. Kopmazsa bölme
+     "zaten dönüştürülmüş" sayılıp bir daha kayıt açtırmaz ve çalışma işareti
+     ortada kayıt yokken kapalı kalır.
+     --------------------------------------------------------------- */
+  bolum('Plan ↔ kırım bağı');
+  {
+    const app = kur();
+    app.dizimAlanlariTohumla();
+    app.state.tarlalar.push({ id: 'T1', ad: 'K1', dekar: 10, cesit: 'Basma' });
+    const alanId = app.state.dizimAlanlari[0].id;
+    const bugun = app.todayStr();
+    app.planBolmeEkle(bugun, alanId);
+    const bolmeId = app.planBul(bugun).alanlar.find(a => a.alanId === alanId).bolmeler[0].id;
+    app.planGirisEkle(bugun, alanId, bolmeId, 'T1', 'traktor1', 'Ali');
+    app.state.kirimlar.push({
+      id: 'KR1', tarih: bugun, tarlaId: 'T1', tarlaIds: ['T1'], cesit: 'Basma',
+      kirimNo: 1, diziSayisi: 400, ortDiziKg: 3.5, seraDagilimi: [], olusturma: Date.now()
+    });
+    app.planKirimBaglami = { tarih: bugun, alanId, bolmeId };
+    app.planKirimSonrasiIsaretle('KR1');
+    esit(app.planBolmeBul(app.planBul(bugun), alanId, bolmeId).kirimId, 'KR1',
+      'bölme kırım kaydına bağlanır');
+    yanlis(app.bugunPlanTarlaIdleri().includes('T1'),
+      'kayda dönüşmüş bölme çalışma işareti üretmez');
+
+    app.kirimSil('KR1');
+    esit(app.planBolmeBul(app.planBul(bugun), alanId, bolmeId).kirimId, null,
+      'kayıt silinince bölmenin bağı kopar');
+    dogru(app.bugunPlanTarlaIdleri().includes('T1'),
+      'bağ kopunca çalışma işareti yeniden doğar');
+    app._temizle();
+  }
+
+  /* ---------------------------------------------------------------
+     Rapor: bölge grafiğinin toplamı, üstteki "Gerçekleşen Hasat" ile TUTMALI.
+     Bölgesiz tarla ve tarlası belirtilmemiş kayıt grafikten düşerse iki sayı
+     birbirini tutmuyor ve kullanıcı hangisine güveneceğini bilemiyor.
+     --------------------------------------------------------------- */
+  bolum('Rapor — bölge grafiği toplamı');
+  {
+    const app = kur();
+    app.state.tarlalar.push(
+      { id: 'T1', ad: 'T1', bolge: 'tekeliler', dekar: 10 },
+      { id: 'K1', ad: 'K1', bolge: 'kalemli', dekar: 10 },
+      { id: 'B1', ad: 'B1', bolge: '', dekar: 10 }            // bölgesi girilmemiş
+    );
+    const g = app.todayStr();
+    const kirim = (id, tarlaIds, dizi) => ({
+      id, tarih: g, tarlaId: tarlaIds.length === 1 ? tarlaIds[0] : null, tarlaIds,
+      cesit: 'Basma', kirimNo: 1, diziSayisi: dizi, ortDiziKg: 1, seraDagilimi: [], olusturma: Date.now()
+    });
+    app.state.kirimlar.push(
+      kirim('a', ['T1'], 100),
+      kirim('b', ['K1'], 200),
+      kirim('c', ['B1'], 40),   // bölgesiz tarla
+      kirim('d', [], 7)         // tarlası hiç belirtilmemiş
+    );
+    app.renderRapor();
+    const ozet = app._belge.getElementById('raporOzet').innerHTML;
+    const cikti = app._belge.getElementById('raporBolgeChart').innerHTML;
+    const sayilar = (cikti.match(/bar-value">([\d.,]+)</g) || [])
+      .map(s => Number(s.replace(/\D/g, '')));
+    const grafikToplam = sayilar.reduce((a, b) => a + b, 0);
+    esit(grafikToplam, 347, 'grafik çubukları toplamı gerçekleşen hasadın tamamını kapsar');
+    dogru(ozet.includes('347'), '"Gerçekleşen Hasat" da aynı toplamı gösterir');
+    dogru(cikti.includes('Diğer'), 'bölgesiz kg için üçüncü çubuk açılır');
+    app._temizle();
+  }
+  {
+    // Bölgesiz kg yoksa üçüncü çubuk hiç çıkmamalı: boş bir "Diğer: 0" satırı gürültü.
+    const app = kur();
+    app.state.tarlalar.push({ id: 'T1', ad: 'T1', bolge: 'tekeliler', dekar: 10 });
+    app.state.kirimlar.push({
+      id: 'a', tarih: app.todayStr(), tarlaId: 'T1', tarlaIds: ['T1'], cesit: 'Basma',
+      kirimNo: 1, diziSayisi: 100, ortDiziKg: 1, seraDagilimi: [], olusturma: Date.now()
+    });
+    app.renderRapor();
+    yanlis(app._belge.getElementById('raporBolgeChart').innerHTML.includes('Diğer'),
+      'bölgesiz kg yokken üçüncü çubuk basılmaz');
+    app._temizle();
+  }
+
+  /* ---------------------------------------------------------------
+     Plan çöp toplama ve yetim referanslar. Plan belgesi yalnızca gerçekten
+     bir şey bağlandığında yaşamalı; silinen tarla/sera de plandan düşmeli.
+     --------------------------------------------------------------- */
+  bolum('Plan — çöp belge ve yetim referans');
+  {
+    const app = kur();
+    app.dizimAlanlariTohumla();
+    const [a, b] = app.state.dizimAlanlari.map(x => x.id);
+    yanlis(app.planAlanTakas(app.todayStr(), a, b), 'iki boş alanın takası değişiklik saymaz');
+    esit(app.state.sahaPlanlari.length, 0, 'boş alan takası plan belgesi yaratmaz');
+
+    // İçi dolu bir alanla takas hâlâ çalışmalı
+    app.state.tarlalar.push({ id: 'T1', ad: 'K1', dekar: 10, cesit: 'Basma' });
+    const bugun = app.todayStr();
+    app.planGirisEkle(bugun, a, app.planIlkBolmeId(a), 'T1', 'traktor1', 'Ali');
+    dogru(app.planAlanTakas(bugun, a, b), 'dolu alanın takası uygulanır');
+    const alanB = app.planBul(bugun).alanlar.find(x => x.alanId === b);
+    esit(alanB.bolmeler[0].girisler[0].tarlaId, 'T1', 'giriş hedef alana taşınır');
+    app._temizle();
+  }
+  {
+    // "Böl" işlemi o gün üzerinde çalışılırken yaşar, günden ayrılınca toplanır.
+    const app = kur();
+    app.dizimAlanlariTohumla();
+    const alanId = app.state.dizimAlanlari[0].id;
+    app.planBolmeEkleTikla(alanId);
+    esit(app.planBul(app.todayStr()).alanlar[0].bolmeler.length, 2,
+      'bölme eklenince düzen o gün için yaşar');
+    app.planTarihSecildi('2026-01-15');
+    esit(app.state.sahaPlanlari.length, 0, 'günden ayrılınca boş plan belgesi toplanır');
+    app._temizle();
+  }
+  {
+    const app = kur();
+    app.dizimAlanlariTohumla();
+    app.state.tarlalar.push({ id: 'T1', ad: 'K1', dekar: 10, cesit: 'Basma' });
+    app.state.seralar.push({ id: 'S1', ad: 'B1', kapasite: 400, bolge: 'kalemli', donemler: [] });
+    const alanId = app.state.dizimAlanlari[0].id;
+    const bugun = app.todayStr();
+    const bolmeId = app.planIlkBolmeId(alanId);
+    app.planGirisEkle(bugun, alanId, bolmeId, 'T1', 'traktor1', 'Ali');
+    app.planSeraEkle(bugun, alanId, bolmeId, 'S1');
+
+    app.tarlaSil('T1');
+    esit(app.planBolmeBul(app.planBul(bugun), alanId, bolmeId).girisler.length, 0,
+      'silinen tarla plandan da düşer');
+    app.seraSil('S1');
+    const kalan = app.planBul(bugun);
+    esit(kalan ? app.planBolmeBul(kalan, alanId, bolmeId).seraIds.length : 0, 0,
+      'silinen sera plandan da düşer');
+    app._temizle();
+  }
+
   /* --------------------------------------------------------------- */
   console.log(`\n${'─'.repeat(52)}`);
   if (kalan.length) {
