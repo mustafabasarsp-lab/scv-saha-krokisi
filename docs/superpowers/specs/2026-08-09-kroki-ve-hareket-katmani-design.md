@@ -1,7 +1,43 @@
 # Kroki Kutuları ve Hareket Katmanı — Tasarım Şartnamesi
 
 Tarih: 2026-08-09
-Durum: onaylandı (kullanıcı bölüm bölüm onayladı, uygulama planı henüz yazılmadı)
+Durum: **uygulandı** — `tasarim/kroki-hareket` dalı, v116–v123.
+Plan: `docs/superpowers/plans/2026-08-09-kroki-ve-hareket-katmani.md`
+
+## Uygulama sırasında değişenler
+
+Üç şey şartnameden farklı sonuçlandı; hepsi ölçüme dayanıyor.
+
+**1. Üst şerit düzeltmesi YAPILMADI — ortada hata yoktu.** Şartname
+"'Sera Doluluk' dar ekranda kesiliyor" diyordu. Ölçüldüğünde `#badgesRow`'un
+zaten `display:flex` + `overflow-x:auto` olduğu ve kaydırıldığı görüldü
+(`scrollLeft` 0→195, son rozet tam görünür oluyor). Kısmi görünen rozet
+kırpılma değil, kaydırma ipucunun kendisi. Denetimde ekran görüntüsü yanlış
+okunmuş.
+
+**2. `.plan-alan-kirim` (9px) ölçeğe çekilmedi, istisna olarak belgelendi.**
+Bu bir metin değil, 15px'lik daire içindeki ✓ glifi; `:root`'taki "ikon/glif
+ölçüleri" istisnasına giriyor. 12px'e çıkarılsa daireyi taşırırdı.
+
+**3. Kapsama iki iş eklendi** (ikisi de render edilip görülünce ortaya çıktı,
+kullanıcı onayıyla):
+
+- *Tarla kutusunda esnek sıkışma.* Ad iki satıra inince dekar satırı 14.4px'ten
+  1.7px'e eziliyor ve "23 da" sessizce kayboluyordu — v75'teki uyarı kutusu
+  hatasının aynısı. `.name` ve `.sub` için `flex-shrink:0`, kutu `height` yerine
+  `min-height`. Uzun adın olduğu satır 64→82px büyüyor, diğerleri 64px kalıyor.
+- *Plan çipinde tarla adı.* Toplanmış kartta "K1" yerine "K." görünüyordu: 65px'lik
+  çipin 21px'ini çoğalt düğmesi alıyor, ada 11px kalıyordu. Çoğalt düğmesi açık
+  karta taşındı (kaldır zaten öyleydi). Bu kırpılma bu turdan ÖNCE de vardı,
+  `git stash` ile doğrulandı.
+
+## Doğrulama sonucu
+
+- `node tests/run.js` → **434 geçiyor** (tur başında 393)
+- `python tests/gorsel.py` → 360/390/430px × açık/koyu: yatay taşma 0px,
+  kırpılan etiket yok, sera kutusu 44px
+- Hareket: sade kutuda animasyon `none`, `.yeni-degisti` taşıyanda 0.42s,
+  `prefers-reduced-motion` tercihinde hepsi kapanıyor (ölçüldü)
 
 ## Amaç
 

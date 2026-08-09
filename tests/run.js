@@ -1836,6 +1836,187 @@ const tik = () => new Promise(r => setImmediate(r));
     app._temizle();
   }
 
+  /* ---------------------------------------------------------------
+     Kroki: sera kutusu genişliği artık kapasiteden türemiyor.
+     Eski formül (kapasite/480)x40px, 200 dizilik serayı 17px'e indiriyor ve
+     etiketi ekranda "8." olarak bırakıyordu.
+     --------------------------------------------------------------- */
+  bolum('Kroki — sera kutusu eşit genişlik');
+  {
+    const app = kur();
+    app.state.seralar.push(
+      { id: 's1', ad: '80 cm', bolge: 'kalemli', kapasite: 200, donemler: [] },
+      { id: 's2', ad: 'B1', bolge: 'kalemli', kapasite: 400, donemler: [] }
+    );
+    app.renderSeralar();
+    const html = app._belge.getElementById('seraPlot').innerHTML;
+    yanlis(/style="width:/.test(html), 'kutu genişliği artık satır içi stille yazılmaz');
+    dogru(html.includes('80 cm'), 'düşük kapasiteli sera yine çizilir');
+    dogru(html.includes('B1'), 'normal sera yine çizilir');
+    app._temizle();
+  }
+  {
+    /* Boşluksuz uzun ad iki satıra inemez (bölünecek yer yok) — tek kademe
+       küçülerek tek satırda kalır. Boşluklu adlar sarıldığı için küçülmez. */
+    const app = kur();
+    app.state.seralar.push(
+      { id: 's1', ad: '100cm', bolge: 'kalemli', kapasite: 400, donemler: [] },
+      { id: 's2', ad: '80 cm', bolge: 'kalemli', kapasite: 200, donemler: [] },
+      { id: 's3', ad: 'B1', bolge: 'kalemli', kapasite: 400, donemler: [] }
+    );
+    app.renderSeralar();
+    const html = app._belge.getElementById('seraPlot').innerHTML;
+    const sinif = ad => {
+      const m = html.match(new RegExp('<div class="label([^"]*)">' + ad + '<'));
+      return m ? m[1].trim() : '(bulunamadı)';
+    };
+    esit(sinif('100cm'), 'uzun-ad', 'boşluksuz uzun ad küçük puntoya düşer');
+    esit(sinif('80 cm'), '', 'boşluklu ad küçülmez, sarılır');
+    esit(sinif('B1'), '', 'kısa ad küçülmez');
+    app._temizle();
+  }
+
+  /* ---------------------------------------------------------------
+     Uzun basma ile silme. Izgaradaki × düğmeleri kaldırıldı; silme artık
+     basılı tutmayı istiyor. Onay + geri alma zinciri değişmedi.
+     --------------------------------------------------------------- */
+  bolum('Kroki — uzun basma ile silme');
+  function sahteKutu() {
+    return { classList: { _k: new Set(),
+      add(c) { this._k.add(c); }, remove(c) { this._k.delete(c); },
+      contains(c) { return this._k.has(c); } } };
+  }
+  {
+    const app = kur();
+    const el = sahteKutu();
+    let calisti = 0;
+    app.uzunBasmaBaslat(el, () => calisti++);
+    dogru(el.classList.contains('uzun-basiliyor'), 'basarken ilerleme sınıfı eklenir');
+    app.uzunBasmaIptal();
+    yanlis(el.classList.contains('uzun-basiliyor'), 'bırakınca ilerleme sınıfı kalkar');
+    esit(calisti, 0, 'süre dolmadan silme çalışmaz');
+    yanlis(app.uzunBasmaTiklamaYutuldu(), 'iptal edilen basma tıklamayı yutmaz');
+    app._temizle();
+  }
+  {
+    // tests/run.js async IIFE; harness gerçek zamanlayıcı kullandığı için
+    // gerçekten bekliyoruz. Tek seferlik ~530ms, harness'a dokunmaktan ucuz.
+    const app = kur();
+    const el = sahteKutu();
+    let calisti = 0;
+    app.uzunBasmaBaslat(el, () => calisti++);
+    await new Promise(r => setTimeout(r, app.UZUN_BASMA_MS + 40));
+    esit(calisti, 1, 'süre dolunca silme çalışır');
+    yanlis(el.classList.contains('uzun-basiliyor'), 'tetiklenince ilerleme sınıfı kalkar');
+    dogru(app.uzunBasmaTiklamaYutuldu(), 'tetiklenen basma takip eden tıklamayı yutar');
+    yanlis(app.uzunBasmaTiklamaYutuldu(), 'yutma tek seferliktir');
+    app._temizle();
+  }
+  {
+    // İkinci basma birincisini iptal etmeli; yoksa iki sayaç birden dolar.
+    const app = kur();
+    const a = sahteKutu(), b = sahteKutu();
+    let ilk = 0, ikinci = 0;
+    app.uzunBasmaBaslat(a, () => ilk++);
+    app.uzunBasmaBaslat(b, () => ikinci++);
+    yanlis(a.classList.contains('uzun-basiliyor'), 'yeni basma öncekinin işaretini siler');
+    await new Promise(r => setTimeout(r, app.UZUN_BASMA_MS + 40));
+    esit(ilk, 0, 'iptal edilen ilk basma çalışmaz');
+    esit(ikinci, 1, 'yalnızca son basma çalışır');
+    app._temizle();
+  }
+  {
+    // Izgarada × düğmesi kalmamalı — silme yolu artık uzun basma.
+    const app = kur();
+    app.state.seralar.push({ id: 's1', ad: 'B1', bolge: 'kalemli', kapasite: 400, donemler: [] });
+    app.state.tarlalar.push({ id: 't1', ad: 'K1', bolge: 'kalemli', dekar: 10, cesit: 'Basma' });
+    app.renderSeralar();
+    app.renderTarlalar();
+    const seraHtml = app._belge.getElementById('seraPlot').innerHTML;
+    const tarlaHtml = app._belge.getElementById('tarlaPlot').innerHTML;
+    yanlis(seraHtml.includes('sera-close'), 'sera kutusunda × düğmesi kalmadı');
+    yanlis(tarlaHtml.includes('tarla-close'), 'tarla kutusunda × düğmesi kalmadı');
+    dogru(seraHtml.includes('uzunBasmaBaslat'), 'sera kutusu uzun basmaya bağlı');
+    dogru(tarlaHtml.includes('uzunBasmaBaslat'), 'tarla kutusu uzun basmaya bağlı');
+    app._temizle();
+  }
+
+  /* ---------------------------------------------------------------
+     Senkron vurgusu: başka bir cihazdan gelen değişim kısa süre işaretlenir.
+     Eşik, içe aktarma gibi toplu olaylarda 148 kutunun birden yanmasını önler.
+     --------------------------------------------------------------- */
+  bolum('Senkron vurgusu');
+  {
+    const app = kur();
+    dogru(app.degisimIsaretle(['a', 'b']), 'az sayıda değişim işaretlenir');
+    esit(app.degisimSinifi('a'), ' yeni-degisti', 'işaretli kayıt sınıf alır');
+    esit(app.degisimSinifi('c'), '', 'işaretsiz kayıt sınıf almaz');
+    yanlis(app.degisimIsaretle([]), 'boş liste işaretlenmez');
+    app._temizle();
+  }
+  {
+    // Toplu değişim (içe aktarma / yedek geri yükleme) tek tek vurgulanmaz.
+    const app = kur();
+    const cok = Array.from({ length: app.VURGU_EN_COK + 1 }, (_, i) => 'x' + i);
+    yanlis(app.degisimIsaretle(cok), 'eşiği aşan toplu değişim işaretlenmez');
+    esit(app.degisimSinifi('x0'), '', 'toplu değişimde tek tek vurgu yok');
+    // Eşiğin tam üstünde hâlâ çalışmalı
+    const tam = Array.from({ length: app.VURGU_EN_COK }, (_, i) => 'y' + i);
+    dogru(app.degisimIsaretle(tam), 'eşiğe eşit sayıda değişim işaretlenir');
+    app._temizle();
+  }
+  {
+    // Süre aşımı beklemeden sınanır: degisimTaze zamanı parametre alıyor.
+    const app = kur();
+    app.degisimIsaretle(['a']);
+    dogru(app.degisimTaze('a', Date.now()), 'taze vurgu ayakta');
+    yanlis(app.degisimTaze('a', Date.now() + app.VURGU_SURE_MS + 100), 'süresi dolan vurgu düşer');
+    esit(app.degisimSinifi('a'), '', 'süresi dolan kayıt artık sınıf almaz');
+    app._temizle();
+  }
+  {
+    // Uzaktan değişen sera kutusu işaretlenir; diğerleri sade kalır.
+    const app = kur();
+    app.state.seralar.push(
+      { id: 's1', ad: 'B1', bolge: 'kalemli', kapasite: 400, donemler: [] },
+      { id: 's2', ad: 'B2', bolge: 'kalemli', kapasite: 400, donemler: [] }
+    );
+    app.degisimIsaretle(['s1']);
+    app.renderSeralar();
+    const html = app._belge.getElementById('seraPlot').innerHTML;
+    /* Kutu kutu bakılır. Öznitelik içindeki ()=> okları > karakteri taşıdığı
+       için "aç-kapa arası" regex'leri burada yanıltıyor. */
+    const kutular = html.split('<div class="sera-box').slice(1);
+    const kutu = ad => kutular.find(k => k.includes('>' + ad + '<')) || '';
+    esit(kutular.length, 2, 'iki kutu çizildi');
+    dogru(kutu('B1').startsWith(' yeni-degisti'), 'uzaktan değişen kutu işaretlenir');
+    yanlis(kutu('B2').startsWith(' yeni-degisti'), 'değişmeyen kutu işaretlenmez');
+    esit((html.match(/yeni-degisti/g) || []).length, 1, 'yalnızca bir kutu işaretli');
+    app._temizle();
+  }
+
+  /* ---------------------------------------------------------------
+     Plan çipi: düzenleme düğmeleri yalnızca AÇIK kartta. Toplanmış kartta
+     çoğalt düğmesi 65px'lik çipin 21px'ini alıyor, tarla adına 11px kalıyordu.
+     --------------------------------------------------------------- */
+  bolum('Plan çipi — düzenleme düğmeleri açık kartta');
+  {
+    const app = kur();
+    app.state.tarlalar.push({ id: 't1', ad: 'K1', bolge: 'kalemli', dekar: 10, cesit: 'Basma' });
+    const giris = { tarlaId: 't1', aracId: 'traktor1', sofor: 'Ahmet' };
+
+    const toplanmis = app.planGirisCipHtml('a1', 'b1', giris, false);
+    yanlis(toplanmis.includes('class="cogalt"'), 'toplanmış kartta çoğalt düğmesi yok');
+    yanlis(toplanmis.includes('class="kaldir"'), 'toplanmış kartta kaldır düğmesi yok');
+    dogru(toplanmis.includes('K1'), 'toplanmış kartta ad yazılır');
+
+    const acik = app.planGirisCipHtml('a1', 'b1', giris, true);
+    dogru(acik.includes('class="cogalt"'), 'açık kartta çoğalt düğmesi var');
+    dogru(acik.includes('class="kaldir"'), 'açık kartta kaldır düğmesi var');
+    dogru(acik.includes('Ahmet'), 'açık kartta şoför adı görünür');
+    app._temizle();
+  }
+
   /* --------------------------------------------------------------- */
   console.log(`\n${'─'.repeat(52)}`);
   if (kalan.length) {
