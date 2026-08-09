@@ -896,6 +896,22 @@ input[type=number],.num,td,th,.badge b,.quickstats b{font-variant-numeric:tabula
   width:100%;
   transition:width var(--uzun-basma-sure) linear;
 }
+
+/* Uzaktan gelen değişim: başka bir cihazdan bu kayıt değiştiyse kutu kısa süre
+   çerçevelenip söner. Çok kullanıcılı sahada "başkası neyi değiştirdi"
+   sorusunun cevabı yoktu.
+
+   DİKKAT — animasyon YALNIZCA bu sınıfta tanımlıdır. renderAll innerHTML'i
+   baştan kurduğu için, sınıfsız öğeye yazılmış bir animasyon her senkron
+   turunda yeniden ateşlenir ve kutular sürekli yanıp sönerdi. Sınıf da
+   degisimSinifi() tarafından yalnızca taze değişimlerde basılır. */
+@keyframes yeniDegistiSonum{
+  from{box-shadow:0 0 0 2px var(--green-500),var(--shadow);}
+  to{box-shadow:0 0 0 0 rgba(0,0,0,0),var(--shadow);}
+}
+.sera-box.yeni-degisti,.tarla-box.yeni-degisti{
+  animation:yeniDegistiSonum var(--gecis-yavas) var(--egri-cikis) forwards;
+}
 .empty-hint{color:var(--muted);font-size:var(--fs-xs);text-align:center;padding:20px 6px;}
 
 /* ---------- ARAMA ÇUBUĞU ---------- */
@@ -1914,6 +1930,11 @@ input.dayibasi-ad-alani{flex:1;min-width:110px;border:1px solid var(--border);bo
   /* Uzun basma: şerit KAYBOLMAZ, anında dolar. Jestin geri bildirimi kalmalı;
      yoksa kullanıcı bastığının işe yarayıp yaramadığını bilemez. */
   .sera-box.uzun-basiliyor::before,.tarla-box.uzun-basiliyor::before{transition:none;}
+  /* Uzaktan değişim: animasyon kapanır ama işaret KALIR — bilgi kaybı olmasın. */
+  .sera-box.yeni-degisti,.tarla-box.yeni-degisti{
+    animation:none;
+    box-shadow:0 0 0 2px var(--green-500),var(--shadow);
+  }
 }
 </style>
 </head>
@@ -2432,7 +2453,7 @@ const AYARLAR = {
    sera bu formülle 17px kalıyor, etiketi 39px yer istiyordu — ekranda "8." diye
    görünüyordu. Kutu artık eşit genişlikte (bkz. .sera-box). */
 const STORAGE_KEY = 'scvSahaKrokiV1';
-const APP_SURUM = 'v119'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
+const APP_SURUM = 'v120'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
 
 /* =========================================================
    HATA / DONMA GÜNLÜĞÜ — "bazen donuyor" şikayetini araştırmak için.
@@ -3261,11 +3282,47 @@ function scheduleRenderAll(){
   renderAllTimer = setTimeout(()=>{ renderAllTimer = null; renderAll(); }, 50);
 }
 
+/* =========================================================
+   UZAKTAN GELEN DEĞİŞİMİN İZİ
+   Çok kullanıcılı sahada "başkası neyi değiştirdi" sorusunun cevabı yoktu:
+   ekran sessizce güncelleniyordu ve fark ancak sayıya dikkatle bakınca
+   anlaşılıyordu. baglamFirestoreDinleyici zaten uzak değişim listesini
+   hesaplıyor (docChanges + hasPendingWrites ile kendi yazdıklarımız eleniyor);
+   o id'ler burada kısa süre tutulur, render sırasında işaretlenir.
+
+   EŞİK neden var: içe aktarma ya da yedek geri yükleme yüzlerce kaydı aynı
+   anda değiştirir. 148 kutunun birden yanması bilgi değil gürültüdür — o bir
+   VERİ olayıdır, saha olayı değil. Eşik aşılırsa hiç vurgulanmaz.
+   ========================================================= */
+const VURGU_SURE_MS = 3000;
+const VURGU_EN_COK = 12;
+const degisenKayitlar = new Map(); // id -> işaretlenme anı
+
+function degisimIsaretle(idler){
+  if(!idler || !idler.length || idler.length > VURGU_EN_COK) return false;
+  const simdi = Date.now();
+  idler.forEach(id=>degisenKayitlar.set(id, simdi));
+  return true;
+}
+/* `simdi` parametre: süre aşımı testte beklemeden sınanabilsin diye. */
+function degisimTaze(id, simdi){
+  const t = degisenKayitlar.get(id);
+  if(t===undefined) return false;
+  if((simdi===undefined ? Date.now() : simdi) - t > VURGU_SURE_MS){
+    degisenKayitlar.delete(id);
+    return false;
+  }
+  return true;
+}
+function degisimSinifi(id){ return degisimTaze(id) ? ' yeni-degisti' : ''; }
+
 function baglamFirestoreDinleyici(){
   if(firestoreUnsubscribes.length) return;
   SYNC_KOLEKSIYONLARI.forEach(collName=>{
     const unsub = fbDb.collection(collName).onSnapshot(snap=>{
       let degisti = false;
+      // Bu turda UZAKTAN değişen kayıtlar; silinenler alınmaz (ortada kutu kalmıyor).
+      const uzakDegisenler = [];
       snap.docChanges().forEach(change=>{
         if(change.doc.metadata.hasPendingWrites) return; // kendi yazdığımız, tekrar uygulamaya gerek yok
         const id = change.doc.id;
@@ -3282,6 +3339,7 @@ function baglamFirestoreDinleyici(){
           lastSyncedSnapshot[collName][id] = json;
           const idx = state[collName].findIndex(x=>x.id===id);
           if(idx>=0) state[collName][idx] = data; else state[collName].push(data);
+          uzakDegisenler.push(id);
           degisti = true;
         }
       });
@@ -3289,6 +3347,7 @@ function baglamFirestoreDinleyici(){
       firestoreIlkVeriGeldi = true;
       if(degisti){
         stateNormalizeEt();
+        degisimIsaretle(uzakDegisenler);
         scheduleRenderAll();
       }
     }, ()=>{ setSyncStatus(false); });
@@ -4725,7 +4784,7 @@ function renderSeralar(){
     /* Boşluksuz ve uzun ad iki satıra inemez (bölünecek yer yok); tek kademe
        küçülerek tek satırda kalır. Boşluklu adlar bu sınıfı almaz, sarılırlar. */
     const uzunAd = !/\s/.test(s.ad||'') && (s.ad||'').length > 4;
-    return `<div class="sera-box${seritMetni?' calisma-isaretli':''}"
+    return `<div class="sera-box${seritMetni?' calisma-isaretli':''}${degisimSinifi(s.id)}"
       onpointerdown="uzunBasmaBaslat(this, ()=>seraSil('${s.id}'))"
       onpointerup="uzunBasmaIptal()" onpointerleave="uzunBasmaIptal()"
       onpointercancel="uzunBasmaIptal()"
@@ -4780,7 +4839,7 @@ function renderTarlalar(){
       dots += `<span class="kdot kdot-${i} ${i<=stats.maxKirimNo?'':'empty'}" title="${i}. ${i18n('kırım')}"></span>`;
     }
     const kirimYapiliyor = tarlaKirimYapiliyorMu(t);
-    return `<div class="tarla-box${kirimYapiliyor?' calisma-isaretli':''}"
+    return `<div class="tarla-box${kirimYapiliyor?' calisma-isaretli':''}${degisimSinifi(t.id)}"
       onpointerdown="uzunBasmaBaslat(this, ()=>tarlaSil('${t.id}'))"
       onpointerup="uzunBasmaIptal()" onpointerleave="uzunBasmaIptal()"
       onpointercancel="uzunBasmaIptal()"

@@ -347,6 +347,8 @@ function kur(secenekler) {
   YEDEK_KOLEKSIYON:    { get: () => YEDEK_KOLEKSIYON, enumerable: true },
   SEZON_TUMU:          { get: () => SEZON_TUMU, enumerable: true },
   UZUN_BASMA_MS:       { get: () => UZUN_BASMA_MS, enumerable: true },
+  VURGU_SURE_MS:       { get: () => VURGU_SURE_MS, enumerable: true },
+  VURGU_EN_COK:        { get: () => VURGU_EN_COK, enumerable: true },
   seciliSezon:         { get: () => seciliSezon, set: v => { seciliSezon = v; }, enumerable: true },
   ARACLAR:             { get: () => ARACLAR, enumerable: true },
   DIZIM_ALANI_TOHUM:   { get: () => DIZIM_ALANI_TOHUM, enumerable: true },

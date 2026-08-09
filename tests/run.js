@@ -1941,6 +1941,60 @@ const tik = () => new Promise(r => setImmediate(r));
     app._temizle();
   }
 
+  /* ---------------------------------------------------------------
+     Senkron vurgusu: başka bir cihazdan gelen değişim kısa süre işaretlenir.
+     Eşik, içe aktarma gibi toplu olaylarda 148 kutunun birden yanmasını önler.
+     --------------------------------------------------------------- */
+  bolum('Senkron vurgusu');
+  {
+    const app = kur();
+    dogru(app.degisimIsaretle(['a', 'b']), 'az sayıda değişim işaretlenir');
+    esit(app.degisimSinifi('a'), ' yeni-degisti', 'işaretli kayıt sınıf alır');
+    esit(app.degisimSinifi('c'), '', 'işaretsiz kayıt sınıf almaz');
+    yanlis(app.degisimIsaretle([]), 'boş liste işaretlenmez');
+    app._temizle();
+  }
+  {
+    // Toplu değişim (içe aktarma / yedek geri yükleme) tek tek vurgulanmaz.
+    const app = kur();
+    const cok = Array.from({ length: app.VURGU_EN_COK + 1 }, (_, i) => 'x' + i);
+    yanlis(app.degisimIsaretle(cok), 'eşiği aşan toplu değişim işaretlenmez');
+    esit(app.degisimSinifi('x0'), '', 'toplu değişimde tek tek vurgu yok');
+    // Eşiğin tam üstünde hâlâ çalışmalı
+    const tam = Array.from({ length: app.VURGU_EN_COK }, (_, i) => 'y' + i);
+    dogru(app.degisimIsaretle(tam), 'eşiğe eşit sayıda değişim işaretlenir');
+    app._temizle();
+  }
+  {
+    // Süre aşımı beklemeden sınanır: degisimTaze zamanı parametre alıyor.
+    const app = kur();
+    app.degisimIsaretle(['a']);
+    dogru(app.degisimTaze('a', Date.now()), 'taze vurgu ayakta');
+    yanlis(app.degisimTaze('a', Date.now() + app.VURGU_SURE_MS + 100), 'süresi dolan vurgu düşer');
+    esit(app.degisimSinifi('a'), '', 'süresi dolan kayıt artık sınıf almaz');
+    app._temizle();
+  }
+  {
+    // Uzaktan değişen sera kutusu işaretlenir; diğerleri sade kalır.
+    const app = kur();
+    app.state.seralar.push(
+      { id: 's1', ad: 'B1', bolge: 'kalemli', kapasite: 400, donemler: [] },
+      { id: 's2', ad: 'B2', bolge: 'kalemli', kapasite: 400, donemler: [] }
+    );
+    app.degisimIsaretle(['s1']);
+    app.renderSeralar();
+    const html = app._belge.getElementById('seraPlot').innerHTML;
+    /* Kutu kutu bakılır. Öznitelik içindeki ()=> okları > karakteri taşıdığı
+       için "aç-kapa arası" regex'leri burada yanıltıyor. */
+    const kutular = html.split('<div class="sera-box').slice(1);
+    const kutu = ad => kutular.find(k => k.includes('>' + ad + '<')) || '';
+    esit(kutular.length, 2, 'iki kutu çizildi');
+    dogru(kutu('B1').startsWith(' yeni-degisti'), 'uzaktan değişen kutu işaretlenir');
+    yanlis(kutu('B2').startsWith(' yeni-degisti'), 'değişmeyen kutu işaretlenmez');
+    esit((html.match(/yeni-degisti/g) || []).length, 1, 'yalnızca bir kutu işaretli');
+    app._temizle();
+  }
+
   /* --------------------------------------------------------------- */
   console.log(`\n${'─'.repeat(52)}`);
   if (kalan.length) {
