@@ -624,7 +624,7 @@ input[type=number],.num,td,th,.badge b,.quickstats b{font-variant-numeric:tabula
   background:var(--green-100);color:var(--green-900);text-align:center;
 }
 .plan-alan-dugum b{font-size:var(--fs-md);font-weight:var(--fw-kalin);line-height:1;letter-spacing:-.01em;}
-.plan-alan-rozet{font-size:10px;font-weight:var(--fw-orta);letter-spacing:.05em;color:var(--muted);line-height:1.1;}
+.plan-alan-rozet{font-size:var(--fs-xs);font-weight:var(--fw-orta);letter-spacing:.05em;color:var(--muted);line-height:1.1;}
 .plan-alan-ikon{width:17px;height:17px;color:var(--green-700);flex-shrink:0;}
 /* YAPBOZ: sol kenarda yuva (kart zemini renginde, içeri oyulmuş),
    sağ kenarda çıkıntı (düğümün dolgusunda, dışarı taşmış). */
@@ -634,6 +634,9 @@ input[type=number],.num,td,th,.badge b,.quickstats b{font-variant-numeric:tabula
 }
 .plan-alan-dugum::before{left:-8px;background:var(--panel);}
 .plan-alan-dugum::after{right:-8px;background:var(--green-100);}
+/* 9px BİLEREK ölçek dışı: bu bir metin değil, 15px'lik daire içindeki ✓ glifi
+   (:root'taki "ikon/glif ölçüleri" istisnası). 12px tabana çıkarılırsa daireyi
+   taşırır; daireyi büyütmek de rozeti kartın köşesinden taşırır. */
 .plan-alan-kirim{
   position:absolute;top:-6px;right:-6px;
   width:15px;height:15px;border-radius:50%;
@@ -686,7 +689,7 @@ input[type=number],.num,td,th,.badge b,.quickstats b{font-variant-numeric:tabula
 @keyframes planKilit{from{transform:translateX(12px) scale(.84);opacity:0;}to{transform:none;opacity:1;}}
 .plan-cip .cogalt,.plan-cip .kaldir{
   border:none;background:transparent;color:var(--muted);
-  font-size:12px;line-height:1;padding:2px 3px;border-radius:3px;flex-shrink:0;cursor:pointer;
+  font-size:var(--fs-xs);line-height:1;padding:2px 3px;border-radius:var(--r-xs);flex-shrink:0;cursor:pointer;
 }
 .plan-cip .cogalt:hover,.plan-cip .kaldir:hover{background:var(--green-100);color:var(--green-900);}
 .plan-cip .kaldir:hover{background:var(--red-soft);color:var(--red);}
@@ -710,7 +713,7 @@ input[type=number],.num,td,th,.badge b,.quickstats b{font-variant-numeric:tabula
 .plan-detay-bolme.karisik{border-left:3px solid var(--red);background:var(--red-soft);}
 .plan-detay-bas{display:flex;align-items:center;justify-content:space-between;gap:var(--sp-1);margin-bottom:3px;}
 .plan-detay-bas b{font-size:var(--fs-sm);font-weight:var(--fw-kalin);}
-.plan-detay-etiket{font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:5px 0 2px;}
+.plan-detay-etiket{font-size:var(--fs-xs);letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:5px 0 2px;}
 .plan-kart-dugmeler{display:flex;gap:var(--sp-1);flex-wrap:wrap;}
 
 /* ---- Araç seçici (giriş kipi) ---- */
@@ -730,7 +733,7 @@ input[type=number],.num,td,th,.badge b,.quickstats b{font-variant-numeric:tabula
   background:var(--panel);color:var(--ink);font-size:var(--fs-xs);font-weight:var(--fw-kalin);
   cursor:pointer;text-align:center;
 }
-.plan-sera-tile .pct{display:block;font-size:10px;font-weight:var(--fw-normal);color:var(--muted);}
+.plan-sera-tile .pct{display:block;font-size:var(--fs-xs);font-weight:var(--fw-normal);color:var(--muted);}
 .plan-sera-tile .cubuk{position:absolute;left:0;bottom:0;height:4px;}
 .plan-sera-tile.sel{border-color:var(--green-700);background:var(--green-100);color:var(--green-900);}
 
@@ -757,7 +760,7 @@ input[type=number],.num,td,th,.badge b,.quickstats b{font-variant-numeric:tabula
 .dizim-plot:active{transform:translateY(2px);box-shadow:0 1px 0 rgba(0,0,0,.18);}
 .dizim-plot-ic{
   width:34px;height:34px;border-radius:var(--r-sm);background:rgba(255,255,255,.42);flex-shrink:0;
-  display:flex;align-items:center;justify-content:center;font-size:18px;
+  display:flex;align-items:center;justify-content:center;font-size:var(--fs-lg);
 }
 .dizim-plot-txt{display:flex;flex-direction:column;min-width:0;}
 .dizim-plot b{font-size:var(--fs-md);font-weight:var(--fw-kalin);letter-spacing:-.01em;line-height:1.2;}
@@ -1413,7 +1416,7 @@ body.has-fullscreen-panel{overflow:hidden;}
 .dizim-stat{text-align:right;flex-shrink:0;padding-left:4px;font-variant-numeric:tabular-nums;}
 .dizim-stat b{display:block;font-size:var(--fs-xl);color:var(--green-900);line-height:1.1;}
 .dizim-stat span{font-size:var(--fs-xs);color:var(--muted);}
-.dizim-del{border:none;background:transparent;color:var(--muted);font-size:15px;line-height:1;cursor:pointer;padding:2px 4px;border-radius:var(--r-xs);flex-shrink:0;}
+.dizim-del{border:none;background:transparent;color:var(--muted);font-size:var(--fs-md);line-height:1;cursor:pointer;padding:2px 4px;border-radius:var(--r-xs);flex-shrink:0;}
 .dizim-del:hover{background:var(--red-soft);color:var(--red);}
 .iklim-chart-title{font-size:var(--fs-xs);color:var(--muted);text-transform:uppercase;letter-spacing:.03em;margin:10px 0 2px;}
 .iklim-chart-svg{width:100%;display:block;}
@@ -2509,7 +2512,7 @@ const AYARLAR = {
    sera bu formülle 17px kalıyor, etiketi 39px yer istiyordu — ekranda "8." diye
    görünüyordu. Kutu artık eşit genişlikte (bkz. .sera-box). */
 const STORAGE_KEY = 'scvSahaKrokiV1';
-const APP_SURUM = 'v121'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
+const APP_SURUM = 'v122'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
 
 /* =========================================================
    HATA / DONMA GÜNLÜĞÜ — "bazen donuyor" şikayetini araştırmak için.
