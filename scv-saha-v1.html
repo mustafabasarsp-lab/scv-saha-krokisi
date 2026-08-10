@@ -2548,7 +2548,7 @@ const AYARLAR = {
    sera bu formülle 17px kalıyor, etiketi 39px yer istiyordu — ekranda "8." diye
    görünüyordu. Kutu artık eşit genişlikte (bkz. .sera-box). */
 const STORAGE_KEY = 'scvSahaKrokiV1';
-const APP_SURUM = 'v134'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
+const APP_SURUM = 'v135'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
 
 /* =========================================================
    HATA / DONMA GÜNLÜĞÜ — "bazen donuyor" şikayetini araştırmak için.
@@ -2833,7 +2833,13 @@ const I18N_EN = {
   'uygulanamaz':'not applicable',
   'satırı uygula':'rows: apply',
   'Bu satırı uygula':'Apply this row',
-  'Defterden okunan satır: ':'Rows read from notebook: ',
+  'defter satırı':'notebook rows',
+  'kontrol edilmeli':'need checking',
+  'Şu olabilir:':'Might be:',
+  'Tarla':'Field',
+  'Dekar':'Decares',
+  'Tarih':'Date',
+  'Kırım no':'Harvest no',
   'Defter atlandı — kayıtlar tarlasız açılacak.':'Notebook skipped — records will have no field attached.',
   '+ İlaç Ekle':'+ Add Pesticide', '+ Zararlı Ekle':'+ Add Pest', '+ Gübre Ekle':'+ Add Fertilizer', '+ Yeni Kırım Ekle':'+ Add New Harvest',
   'İlaç Geçmişi & PHI Durumu':'Pesticide History & PHI Status', 'Zararlı Geçmişi':'Pest History', 'Gübre Geçmişi':'Fertilizer History',
@@ -7656,6 +7662,15 @@ function fotoTabloDenetle(satirlar, st){
   });
 }
 
+/* İç değerleri (viyol/yerOcagi/karma) ekranda okunur hâle getirir — bayrak
+   metninde ham 'yerOcagi' görünüyordu. */
+function fotoYontemEtiket(deger){
+  if(deger === 'viyol') return i18n('Viyol');
+  if(deger === 'yerOcagi') return i18n('Yer Ocağı');
+  if(deger === 'karma') return i18n('Karma');
+  return String(deger || '—');
+}
+
 /* Tarlanın fide yöntemi dekar alanlarından türer — fideTipi() ile aynı mantık,
    ama burada state'ten bağımsız saf karşılaştırma gerekiyor. */
 function fotoTarlaYontemi(tarla){
@@ -7707,7 +7722,7 @@ function fotoDefterDenetle(satirlar, st){
     const yontem = fotoTarlaYontemi(tarla);
     if(satir.yetistirme && yontem && yontem !== satir.yetistirme){
       bayraklar.push({ tip:'yontemCelisik',
-        mesaj:'Kâğıtta ' + satir.yetistirme + ', kayıtta ' + yontem });
+        mesaj:'Kâğıtta ' + fotoYontemEtiket(satir.yetistirme) + ', kayıtta ' + fotoYontemEtiket(yontem) });
     }
 
     /* Üç sağlama birden patladıysa okuma büyük ihtimalle yanlış tarlayı
@@ -8117,6 +8132,45 @@ function fotoSatirKartHtml(r, i){
     </div>`;
 }
 
+/* Defter satırı kartı. Tarla kodu düzeltilebilir olmalı: okuma yanlışsa
+   kullanıcının tek müdahale noktası burası, sonrasında bağ sessizce kuruluyor. */
+function fotoDefterKartHtml(r, i){
+  const s = r.satir;
+  return `
+    <div class="foto-satir ${r.durum}">
+      <div class="foto-satir-bas">
+        <span>${i18n('Satır')} ${escapeHtml(String(s.no ?? (i+1)))}</span>
+        ${r.oneri ? `<button class="btn btn-sm" onclick="fotoDefterKodDuzelt(${i}, '${escapeHtml(r.oneri)}')">${i18n('Şu olabilir:')} ${escapeHtml(r.oneri)}</button>` : ''}
+      </div>
+      <div class="foto-alanlar">
+        <label>${i18n('Tarla')}
+          <input type="text" style="width:90px" value="${escapeHtml(s.tarlaKodu||'')}"
+                 onchange="fotoDefterKodDuzelt(${i}, this.value)">
+        </label>
+        <label>${i18n('Dekar')}<input type="number" style="width:80px" value="${s.dekar ?? ''}" disabled></label>
+        <label>${i18n('Tarih')}<input type="date" value="${escapeHtml(s.tarih||'')}"
+               onchange="fotoDefterTarihDuzelt(${i}, this.value)"></label>
+        <label>${i18n('Kırım no')}<input type="number" style="width:70px" value="${s.kirimNo ?? ''}" disabled></label>
+      </div>
+      ${r.bayraklar.length ? `<div class="foto-bayrak">${r.bayraklar.map(b=>`<div>⚠️ ${escapeHtml(b.mesaj)}</div>`).join('')}</div>` : ''}
+    </div>`;
+}
+
+function fotoDefterYenidenDenetle(){
+  fotoDurum.defter = fotoDefterDenetle(fotoDurum.defter.map(r=>r.satir), state);
+  fotoOnayRender();
+}
+function fotoDefterKodDuzelt(i, kod){
+  if(!fotoDurum.defter[i]) return;
+  fotoDurum.defter[i].satir.tarlaKodu = String(kod||'').trim();
+  fotoDefterYenidenDenetle();
+}
+function fotoDefterTarihDuzelt(i, tarih){
+  if(!fotoDurum.defter[i]) return;
+  fotoDurum.defter[i].satir.tarih = tarih;
+  fotoDefterYenidenDenetle();
+}
+
 function fotoOnayRender(){
   const d = fotoDurum;
   const hataHtml = d.hata ? `<div class="hint-box" style="border-color:var(--red)">⚠️ ${escapeHtml(d.hata)}</div>` : '';
@@ -8136,11 +8190,18 @@ function fotoOnayRender(){
         </div>
       </div>`;
   } else if(d.asama === 'tablo'){
+    /* Defter satırlarını bayraklarıyla göster. Bunlar görünmezse yanlış okunan
+       bir tarla kodu sessizce yanlış tarlayı kırım kaydına bağlar — üç
+       sağlamanın (dekar/çeşit/yöntem) tek işe yaradığı yer burası. */
     govde = `
       <div class="foto-asama">
-        <div class="hint-box">${d.defter.length
-          ? i18n('Defterden okunan satır: ') + d.defter.length
-          : i18n('Defter atlandı — kayıtlar tarlasız açılacak.')}</div>
+        ${d.defter.length ? `
+          <div class="foto-ozet">
+            <span>📗 ${d.defter.length} ${i18n('defter satırı')}</span>
+            <span>⚠️ ${d.defter.filter(r=>r.durum!=='yesil').length} ${i18n('kontrol edilmeli')}</span>
+          </div>
+          ${d.defter.map(fotoDefterKartHtml).join('')}
+        ` : `<div class="hint-box">${i18n('Defter atlandı — kayıtlar tarlasız açılacak.')}</div>`}
         <div class="hint-box">${i18n('Şimdi KIRIM/DİZİM TABLOSU sayfasını çekin (tohum çeşidi — yetiştirme — kırım — dizim — sera numaraları — soldurma).')}</div>
         <div class="modal-actions eylem-sola-sarmali">
           <button class="btn btn-primary" onclick="fotoFotoIste()">${i18n('📷 Tablo Fotoğrafı')}</button>
