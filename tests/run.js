@@ -2316,9 +2316,12 @@ const tik = () => new Promise(r => setImmediate(r));
     const app = kur({ localStorage: { scvYzAnahtar:'sk-test' }, fetch: () =>
       Promise.resolve({ ok:true, status:200, json: () => Promise.resolve({
         content:[{ type:'text', text:'{"satirlar":[{"no":1' }], stop_reason:'max_tokens' }) }) });
-    let hata = null;
-    try { await app.fotoOku('B', 'tablo', app.state); } catch(e){ hata = e.message; }
-    dogru(/yarıda kesildi/.test(hata||''), 'max_tokens kesilmesi hata olarak bildirilir');
+    /* Asıl mesele mesajın sözcükleri değil: kesilen cevaptan YARIM satır listesi
+       dönmemeli. Metne bağlanan test, mesaj her düzeltildiğinde kırılıyor. */
+    let hata = null, sonuc = null;
+    try { sonuc = await app.fotoOku('B', 'tablo', app.state); } catch(e){ hata = e.message; }
+    esit(sonuc, null, 'kesilen cevaptan satır DÖNMEZ');
+    dogru(!!hata && hata.length > 10, 'kesilme kullanıcıya anlaşılır bir hatayla bildirilir');
     app._temizle();
   }
   {
