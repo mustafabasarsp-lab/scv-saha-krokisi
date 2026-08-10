@@ -8,6 +8,13 @@
  *
  * Anahtar Secret Manager'da durur, kodda değil:
  *   firebase functions:secrets:set ANTHROPIC_API_KEY
+ *
+ * ANAHTAR DEĞİŞTİRİRKEN (tuzak): fonksiyon, gizli anahtarın BELİRLİ BİR
+ * SÜRÜMÜNE yayın anında bağlanır. Yeni sürüm eklemek yetmez ve
+ * `firebase deploy` kaynak değişmediyse "no changes detected" deyip atlar —
+ * fonksiyon eski sürümde kalır. Doğru sıra:
+ *   1) yeni sürümü yaz  2) kaynakta bir şey değiştirip yeniden yayınla
+ *   3) eski sürümü imha et  4) uygulamadan gerçek bir çağrıyla doğrula
  */
 'use strict';
 
