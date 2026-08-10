@@ -2335,6 +2335,27 @@ const tik = () => new Promise(r => setImmediate(r));
     app._temizle();
   }
 
+  bolum('Fotoğraftan aktar — aracı yönlendirmesi');
+  {
+    /* Aracı fonksiyon (anahtar sunucuda) varsa her zaman o tercih edilir;
+       yerel anahtarlı doğrudan çağrı yalnızca yedek yol. Harness'ta
+       firebase.functions yok, yani burada yedek yola düşmeli — ve bunu
+       PATLAMADAN yapmalı. */
+    const app = kur();
+    yanlis(app.fotoAraciVarMi(), 'functions yokken aracı yok sayılır');
+    app._temizle();
+  }
+  {
+    // Aracı da anahtar da yoksa: ağa çıkmadan anlaşılır hata
+    let gidilen = [];
+    const app = kur({ fetch: (u)=>{ gidilen.push(String(u)); return Promise.resolve({ ok:true, json:()=>Promise.resolve({}) }); } });
+    let hata = null;
+    try { await app.fotoOku('B', 'tablo', app.state); } catch(e){ hata = e.message; }
+    dogru(/giriş|anahtar/i.test(hata||''), 'aracı ve anahtar yokken yol gösteren hata verilir');
+    yanlis(gidilen.some(u=>u.includes('api.anthropic.com')), 'boşuna ağa çıkılmaz');
+    app._temizle();
+  }
+
   bolum('Fotoğraftan aktar — şema ve nöbetçi değerler');
   {
     const app = kur();

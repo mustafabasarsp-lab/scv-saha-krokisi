@@ -1,0 +1,10 @@
+{
+  "name": "scv-saha-functions",
+  "description": "SCV Saha — fotoğraf okuma aracısı (API anahtarı sunucuda kalsın diye)",
+  "main": "index.js",
+  "private": true,
+  "engines": { "node": "22" },
+  "dependencies": {
+    "firebase-functions": "^6.1.0"
+  }
+}

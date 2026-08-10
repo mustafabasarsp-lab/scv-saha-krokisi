@@ -1,4 +1,4 @@
-const CACHE_NAME = 'scv-saha-v1-cache-135';
+const CACHE_NAME = 'scv-saha-v1-cache-136';
 const CORE_ASSETS = [
   './scv-saha-v1.html',
   './manifest.json',
@@ -14,7 +14,8 @@ const CORE_ASSETS = [
   'https://unpkg.com/xlsx@0.18.5/dist/xlsx.full.min.js',
   'https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js',
   'https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js',
-  'https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js'
+  'https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js',
+  'https://www.gstatic.com/firebasejs/10.14.1/firebase-functions-compat.js'
 ];
 
 self.addEventListener('install', (event) => {
@@ -44,8 +45,8 @@ self.addEventListener('fetch', (event) => {
   if (url.includes('api.open-meteo.com')) {
     return; // hava durumu: her zaman ağdan (network-only), asla önbelleğe alma - bayat hava gösterilmesin
   }
-  if (url.includes('api.anthropic.com')) {
-    return; // fotoğraftan aktar model çağrısı: her zaman ağdan, önbelleğe alınmaz
+  if (url.includes('api.anthropic.com') || url.includes('cloudfunctions.net')) {
+    return; // fotoğraftan aktar: model çağrısı ve aracı fonksiyon her zaman ağdan
   }
 
   // HTML sayfası (uygulamanın kendisi): önce internetten en güncelini çek,

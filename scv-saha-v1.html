@@ -54,6 +54,7 @@ if(window.matchMedia){
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-functions-compat.js"></script>
 <style>
 /* =========================================================
    YAZI TİPİ — Archivo (değişken ağırlık 400–800)
@@ -2548,7 +2549,7 @@ const AYARLAR = {
    sera bu formülle 17px kalıyor, etiketi 39px yer istiyordu — ekranda "8." diye
    görünüyordu. Kutu artık eşit genişlikte (bkz. .sera-box). */
 const STORAGE_KEY = 'scvSahaKrokiV1';
-const APP_SURUM = 'v135'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
+const APP_SURUM = 'v136'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
 
 /* =========================================================
    HATA / DONMA GÜNLÜĞÜ — "bazen donuyor" şikayetini araştırmak için.
@@ -7899,11 +7900,34 @@ function fotoIstekGovdesi(base64, tur, st){
   };
 }
 
-/* Tek ağ çağrısı. Tarayıcıdan doğrudan API'ye gidiliyor; sunucu yok.
-   anthropic-dangerous-direct-browser-access başlığı CORS için gerekli. */
-function fotoOku(base64, tur, st){
+/* Aracı fonksiyon kullanılabilir mi? Kullanılabiliyorsa anahtar hiçbir cihaza
+   inmiyor demektir; tercih her zaman odur. Yerel anahtar yalnızca fonksiyon
+   yayınlanmadan önceki (ya da giriş yapılmamış) durum için duruyor. */
+function fotoAraciVarMi(){
+  try{
+    return !!(window.firebase && firebase.functions && firebase.auth &&
+              firebase.auth().currentUser);
+  }catch(e){ return false; }
+}
+
+/* Anahtar sunucuda: fotoğraf Cloud Functions aracısına gider, o Anthropic'e
+   gidip cevabı olduğu gibi döner. */
+function fotoAraciylaCagir(govde){
+  return firebase.app().functions('europe-west1')
+    .httpsCallable('fotoOku', { timeout: 300000 })({ govde })
+    .then(r=>r.data)
+    .catch(e=>{
+      /* Callable hataları message alanında anlamlı metin taşıyor; olduğu gibi
+         geçir ki 400 şema / 401 anahtar / 429 kota ayrımı kullanıcıya ulaşsın. */
+      throw new Error((e && e.message) || 'Aracıya ulaşılamadı.');
+    });
+}
+
+/* Yedek yol: tarayıcıdan doğrudan API'ye. Anahtar cihazda duruyor, bu yüzden
+   yalnızca aracı yokken kullanılır. */
+function fotoDogrudanCagir(govde){
   const anahtar = fotoAnahtarOku();
-  if(!anahtar) return Promise.reject(new Error('Ayarlar\'dan API anahtarı girin.'));
+  if(!anahtar) return Promise.reject(new Error('Giriş yapın ya da Ayarlar\'dan API anahtarı girin.'));
   return fetch('https://api.anthropic.com/v1/messages', {
     method:'POST',
     headers:{
@@ -7912,11 +7936,17 @@ function fotoOku(base64, tur, st){
       'anthropic-version':'2023-06-01',
       'anthropic-dangerous-direct-browser-access':'true'
     },
-    body: JSON.stringify(fotoIstekGovdesi(base64, tur, st))
+    body: JSON.stringify(govde)
   }).then(r=>{
     if(!r.ok) return r.text().then(t=>{ throw new Error('API hatası ' + r.status + ': ' + String(t).slice(0,200)); });
     return r.json();
-  }).then(cevap=>{
+  });
+}
+
+function fotoOku(base64, tur, st){
+  const govde = fotoIstekGovdesi(base64, tur, st);
+  const cagri = fotoAraciVarMi() ? fotoAraciylaCagir(govde) : fotoDogrudanCagir(govde);
+  return cagri.then(cevap=>{
     /* max_tokens düşünme + metni birlikte sınırlıyor; kesilirse elde yarım
        JSON kalır ve sessizce eksik satır aktarılırdı. */
     if(cevap.stop_reason === 'max_tokens'){
