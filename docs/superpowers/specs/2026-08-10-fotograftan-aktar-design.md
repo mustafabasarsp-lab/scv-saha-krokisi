@@ -1,8 +1,52 @@
 # Fotoğraftan Aktar — Tasarım Şartnamesi
 
 Tarih: 2026-08-10
-Durum: **tasarlandı** — uygulanmadı.
-Plan: (henüz yazılmadı)
+Durum: **uygulandı** — v124–v131.
+Plan: `docs/superpowers/plans/2026-08-10-fotograftan-aktar.md`
+
+## Uygulama sırasında değişenler
+
+**1. CORS varsayımı doğrulandı — proxy'ye gerek kalmadı.** Planın en büyük
+riskiydi. Uygulamanın gerçek kaynağından (`mustafabasarsp-lab.github.io`)
+geçersiz anahtarla istek atıldı: cevap JavaScript'e **401 olarak ulaştı**
+(okunabilir gövdeyle). Tarayıcı engelleseydi `fetch` reddedilir, hiçbir durum
+kodu görünmezdi. Cloud Functions proxy'si gerekmiyor.
+
+**2. Planın "mevcut testler regresyon koruması" varsayımı yanlıştı.** Geçmiş
+import'a değen tek bir test yoktu; `kirimSatiriUygula` ayrıştırması korumasız
+yapılacaktı. Uçtan uca test yazıldı ve ayrıştırma öncesi sürümle karşılaştırıldı:
+30 kayıt, 50.600 dizi, 129 dizim, 129 dönem, A5'in iki dönemi/biri kapalı — **12
+ölçütün hepsi birebir aynı**.
+
+**3. Çekirdeğe `oturumAnahtar` eklendi.** Geçmiş import 2. tur dolumu satır
+NUMARASIYLA ayırt ediyor (`GECMIS_KIRIM_SATIRLARI`'nda aynı gün birden fazla
+satır var), fotoğraf yolu kırım TARİHİYLE. Tek değere zorlamak geçmiş import'un
+davranışını değiştirirdi.
+
+**4. Koyu tema hatası tarayıcıda yakalandı.** Onay kartları `.field` içinde
+olmadığı için girdiler uygulamanın belirteçli girdi kuralına girmiyor, tarayıcı
+varsayılanına düşüp koyu temada beyaz kalıyorlardı. Belirteçler `.foto-satir`
+altında tekrar bağlandı.
+
+**5. `silmeYedekAl`'a isteğe bağlı mesaj eklendi.** Bildirim metni sabit
+"`<etiket>` silindi." idi; aktarımda hiçbir şey silinmediği için yanıltıcıydı.
+
+**6. Yerleşim.** Düğme kırım sayfasında (`dizim-plot` kalıbıyla, 44px dokunma
+hedefi), anahtar alanı Ayarlar → Veri Yönetimi'nde.
+
+## Doğrulama sonucu
+
+- `node tests/run.js` → **519 geçiyor** (tur başında 434)
+- `python tests/gorsel.py` → 360/390/430px × açık/koyu: taşma 0px, kırpılma yok
+- Uçtan uca tarayıcı sürüşü: gerçek 2,8 MB fotoğraf → 2576px → 1,6 MB gövde;
+  üç satır beklenen durumlarda (yeşil/kırmızı/sarı); kırmızı satır uygulanmadı;
+  2 kırım kaydı, 1000 dizi; dizim tarihleri kırımdan ayrı; **anahtar state'e
+  sızmadı**; 390px ve 360px koyu temada taşma 0px
+- Geri alma: uygula → geri al → bellek, `localStorage` ve sayfa yenilemesi
+  sonrası hepsi eski hâlinde
+
+**Doğrulanmamış kalan:** gerçek model çağrısı (anahtar gerektirir) ve cihazlar
+arası `cesitKodEslemesi` senkronu (`firestore.rules` yayını gerektirir).
 
 ## Amaç
 

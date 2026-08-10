@@ -2548,7 +2548,7 @@ const AYARLAR = {
    sera bu formülle 17px kalıyor, etiketi 39px yer istiyordu — ekranda "8." diye
    görünüyordu. Kutu artık eşit genişlikte (bkz. .sera-box). */
 const STORAGE_KEY = 'scvSahaKrokiV1';
-const APP_SURUM = 'v131'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
+const APP_SURUM = 'v132'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
 
 /* =========================================================
    HATA / DONMA GÜNLÜĞÜ — "bazen donuyor" şikayetini araştırmak için.
@@ -2805,6 +2805,7 @@ const I18N_EN = {
   /* Fotoğraftan aktar */
   'Önce Ayarlar → Veri Yönetimi ekranından yapay zekâ API anahtarını girin.':'First enter the AI API key under Settings → Data Management.',
   'Uygulanacak satır yok.':'No rows to apply.',
+  'Fotoğraftan aktarıldı.':'Imported from photo.',
   'Anahtar bu cihaza kaydedildi.':'Key saved on this device.',
   'Anahtar silindi.':'Key removed.',
   'Fotoğraftan Aktar':'Import from Photo',
@@ -3564,7 +3565,10 @@ function adCakismaVarMi(liste, ad, haricId){
    doluluğu da değiştirdiği için birden fazla koleksiyon aynı anda yedeklenir. ---- */
 let sonSilinenYedek = null;
 let sonSilinenSuresi = null;
-function silmeYedekAl(koleksiyonAdlari, etiket){
+/* `tamMesaj` verilirse bildirimde "<etiket> silindi." yerine o metin gösterilir.
+   Geri alma yalnızca silme için değil, toplu DEĞİŞİKLİK için de kullanılıyor
+   (fotoğraftan aktarım); orada "silindi" demek yanıltıcı olurdu. */
+function silmeYedekAl(koleksiyonAdlari, etiket, tamMesaj){
   const koleksiyonlar = {};
   koleksiyonAdlari.forEach(c=>{ koleksiyonlar[c] = JSON.parse(JSON.stringify(state[c]||[])); });
   sonSilinenYedek = { koleksiyonlar };
@@ -3572,7 +3576,7 @@ function silmeYedekAl(koleksiyonAdlari, etiket){
   const el = document.getElementById('geriAlToast');
   const metinEl = document.getElementById('geriAlToastMetin');
   if(el && metinEl){
-    metinEl.textContent = etiket + ' ' + i18n('silindi.');
+    metinEl.textContent = tamMesaj || (etiket + ' ' + i18n('silindi.'));
     el.classList.remove('hidden');
   }
   sonSilinenSuresi = setTimeout(geriAlToastGizle, 8000);
@@ -8144,7 +8148,8 @@ function fotoUygula(){
   }
   if(!onayla(uygulanacak.length + ' satır uygulanacak. Devam edilsin mi?')) return;
 
-  silmeYedekAl(['kirimlar','seralar'], 'Fotoğraftan aktarım');
+  silmeYedekAl(['kirimlar','seralar'], 'Fotoğraftan aktarım',
+    i18n('Fotoğraftan aktarıldı.'));
   const oturum = { seraSonDolduran: {} };
   let acilanKirim = 0, kapanan = 0, toplamDizi = 0;
   /* Kronolojik sıra: 2. tur dolumda önceki dönemin doğru kapanması için şart. */
