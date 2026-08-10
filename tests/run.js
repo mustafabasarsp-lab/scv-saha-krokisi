@@ -2332,6 +2332,43 @@ const tik = () => new Promise(r => setImmediate(r));
     app._temizle();
   }
 
+  bolum('Fotoğraftan aktar — şema ve nöbetçi değerler');
+  {
+    const app = kur();
+    /* API'nin şema doğrulayıcısı enum ile birlik tipini bir arada kabul etmiyor
+       ("Enum value 'viyol' does not match declared type '['string','null']'"
+       → 400). Canlıda anahtarla yakalandı; kimlik doğrulama şema denetiminden
+       önce çalıştığı için geçersiz anahtarla sınanamıyordu. Bu test şemaya bir
+       daha birlik tipi sızmasını engelliyor. */
+    const birlikVar = (d) => {
+      if(!d || typeof d !== 'object') return false;
+      if(Array.isArray(d.type)) return true;
+      return Object.keys(d).some(k=>birlikVar(d[k]));
+    };
+    const govde = app.fotoIstekGovdesi('X', 'tablo', app.state);
+    yanlis(birlikVar(govde.output_config.format.schema), 'tablo şemasında birlik tipi yok');
+    yanlis(birlikVar(app.fotoIstekGovdesi('X','defter',app.state).output_config.format.schema),
+      'defter şemasında birlik tipi yok');
+
+    // Nöbetçi değerler denetime sızmamalı: -1 dekar sahte çelişki üretirdi
+    const n = app.fotoSatirNormalize({ no:1, tohumKodu:'', kirim:'', dizim:'2026-07-20',
+      seralar:['D24'], soldurmaGun:-1, yetistirme:'bilinmiyor' });
+    esit(n.tohumKodu, null, 'boş dize null olur');
+    esit(n.kirim, null, 'okunamayan tarih null olur');
+    esit(n.dizim, '2026-07-20', 'okunan tarih korunur');
+    esit(n.soldurmaGun, null, '-1 soldurma null olur');
+    esit(n.yetistirme, null, 'bilinmiyor null olur');
+
+    const d = app.fotoSatirNormalize({ no:1, tarlaKodu:'K21', dekar:-1, kirimNo:-1, yetistirme:'viyol' });
+    esit(d.dekar, null, '-1 dekar null olur');
+    esit(d.kirimNo, null, '-1 kırım no null olur');
+    esit(d.yetistirme, 'viyol', 'geçerli yöntem korunur');
+
+    // 0 soldurma GEÇERLİ bir değer (aynı gün dizim) — nöbetçiyle karışmamalı
+    esit(app.fotoSatirNormalize({ soldurmaGun:0 }).soldurmaGun, 0, 'sıfır soldurma null yapılmaz');
+    app._temizle();
+  }
+
   bolum('Fotoğraftan aktar — görüntü ölçeği');
   {
     const app = kur();

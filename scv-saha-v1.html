@@ -2548,7 +2548,7 @@ const AYARLAR = {
    sera bu formülle 17px kalıyor, etiketi 39px yer istiyordu — ekranda "8." diye
    görünüyordu. Kutu artık eşit genişlikte (bkz. .sera-box). */
 const STORAGE_KEY = 'scvSahaKrokiV1';
-const APP_SURUM = 'v132'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
+const APP_SURUM = 'v133'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
 
 /* =========================================================
    HATA / DONMA GÜNLÜĞÜ — "bazen donuyor" şikayetini araştırmak için.
@@ -7783,7 +7783,17 @@ function fotoGoruntuHazirla(dosya, derece){
 }
 
 /* Çıktı şemaları. additionalProperties:false ile kapalı — model uydurma alan
-   ekleyemez, eksik alan bırakamaz. Okunamayan hücre null olarak gelir. */
+   ekleyemez, eksik alan bırakamaz.
+
+   BİRLİK TİPİ (['string','null']) KULLANILMIYOR. API'nin şema doğrulayıcısı
+   enum ile birlik tipini bir arada kabul etmiyor ("Enum value 'viyol' does not
+   match declared type '['string','null']'" — 400). Kalan alanlarda da birlik
+   tipi denenmedi; hepsi tek tipe indirildi ve "okunamadı" durumu NÖBETÇİ
+   DEĞERLE taşınıyor: metinde boş dize, sayıda -1, yetiştirmede 'bilinmiyor'.
+   fotoSatirNormalize() bunları null'a çevirir, denetim yalnızca null görür. */
+const FOTO_OKUNMADI_SAYI = -1;
+const FOTO_YETISTIRME = ['viyol','yerOcagi','karma','bilinmiyor'];
+
 const FOTO_TABLO_SEMA = {
   type:'object', additionalProperties:false, required:['satirlar'],
   properties:{ satirlar:{ type:'array', items:{
@@ -7791,12 +7801,12 @@ const FOTO_TABLO_SEMA = {
     required:['no','tohumKodu','yetistirme','kirim','dizim','seralar','soldurmaGun'],
     properties:{
       no:{ type:'integer' },
-      tohumKodu:{ type:['string','null'] },
-      yetistirme:{ type:['string','null'], enum:['viyol','yerOcagi','karma',null] },
-      kirim:{ type:['string','null'], description:'YYYY-MM-DD' },
-      dizim:{ type:['string','null'], description:'YYYY-MM-DD' },
+      tohumKodu:{ type:'string' },
+      yetistirme:{ type:'string', enum: FOTO_YETISTIRME },
+      kirim:{ type:'string', description:'YYYY-MM-DD, okunamadıysa boş dize' },
+      dizim:{ type:'string', description:'YYYY-MM-DD, okunamadıysa boş dize' },
       seralar:{ type:'array', items:{ type:'string' } },
-      soldurmaGun:{ type:['integer','null'] }
+      soldurmaGun:{ type:'integer', description:'okunamadıysa -1' }
     } } } }
 };
 
@@ -7807,21 +7817,36 @@ const FOTO_DEFTER_SEMA = {
     required:['no','tarlaKodu','dekar','tarih','cesit','yetistirme','kirimNo'],
     properties:{
       no:{ type:'integer' },
-      tarlaKodu:{ type:['string','null'] },
-      dekar:{ type:['number','null'] },
-      tarih:{ type:['string','null'], description:'YYYY-MM-DD' },
-      cesit:{ type:['string','null'] },
-      yetistirme:{ type:['string','null'], enum:['viyol','yerOcagi','karma',null] },
-      kirimNo:{ type:['integer','null'] }
+      tarlaKodu:{ type:'string' },
+      dekar:{ type:'number', description:'okunamadıysa -1' },
+      tarih:{ type:'string', description:'YYYY-MM-DD, okunamadıysa boş dize' },
+      cesit:{ type:'string' },
+      yetistirme:{ type:'string', enum: FOTO_YETISTIRME },
+      kirimNo:{ type:'integer', description:'okunamadıysa -1' }
     } } } }
 };
+
+/* Nöbetçi değerleri null'a çevirir. Denetim fonksiyonları yalnızca null bilir;
+   -1 dekar ya da 'bilinmiyor' yöntem oraya sızarsa sahte çelişki üretirdi. */
+function fotoSatirNormalize(satir){
+  const s = Object.assign({}, satir);
+  ['tohumKodu','kirim','dizim','tarlaKodu','cesit'].forEach(a=>{
+    if(s[a] === '' || s[a] === undefined) s[a] = null;
+  });
+  ['soldurmaGun','dekar','kirimNo'].forEach(a=>{
+    if(s[a] === FOTO_OKUNMADI_SAYI || s[a] === undefined) s[a] = null;
+  });
+  if(s.yetistirme === 'bilinmiyor' || s.yetistirme === undefined) s.yetistirme = null;
+  return s;
+}
 
 /* Modele ne okuyacağını anlatır. Bilinen sera/tarla adları prompt'a gömülür:
    model serbest tahmin etmesin, bilinen kümeden seçsin. */
 function fotoTalimat(tur, st){
   const ortak =
     'Bu bir el yazısı tarım kaydı. Yalnızca gördüğünü yaz, ASLA tahmin etme.\n' +
-    'Okunamayan hücreyi null bırak — uydurma.\n' +
+    'Okunamayan hücreyi UYDURMA: metin alanında boş dize (""), sayı alanında -1,\n' +
+    'yetiştirme biçiminde "bilinmiyor" ver.\n' +
     'ÜSTÜ ÇİZİLİ satırları hiç okuma, çıktıya koyma.\n' +
     'Arka sayfadan vuran soluk mürekkebi yok say.\n' +
     'Tarihleri YYYY-MM-DD biçimine çevir (kâğıtta gg.aa.yyyy yazıyor).\n';
@@ -7884,7 +7909,7 @@ function fotoOku(base64, tur, st){
     let ayristirilmis;
     try{ ayristirilmis = JSON.parse(metin); }
     catch(e){ throw new Error('Cevap okunamadı (beklenen JSON gelmedi).'); }
-    return ayristirilmis.satirlar || [];
+    return (ayristirilmis.satirlar || []).map(fotoSatirNormalize);
   });
 }
 
