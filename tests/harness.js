@@ -297,7 +297,9 @@ function kur(secenekler) {
     performance: { now: () => Date.now() },
     requestAnimationFrame: () => 0,
     cancelAnimationFrame: () => {},
-    fetch: () => Promise.reject(new Error('ağ testte kapalı')),
+    /* Varsayılan "ağ yok"; testler sec.fetch vererek sahte cevap döndürebilir
+       (fotoğraftan aktar model çağrısı bu yolla test ediliyor). */
+    fetch: sec.fetch || (() => Promise.reject(new Error('ağ testte kapalı'))),
     firebase: firebaseYap(gunluk),
     /* Uygulama bunları çağırıyor; testte ekrana bir şey çıkmasın ama ÇAĞRILDIĞI
        kaydedilsin — "bu durumda kullanıcı uyarıldı mı" testleri buna bakıyor. */

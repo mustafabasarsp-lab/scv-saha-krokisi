@@ -1,4 +1,4 @@
-const CACHE_NAME = 'scv-saha-v1-cache-128';
+const CACHE_NAME = 'scv-saha-v1-cache-129';
 const CORE_ASSETS = [
   './scv-saha-v1.html',
   './manifest.json',
@@ -43,6 +43,9 @@ self.addEventListener('fetch', (event) => {
   }
   if (url.includes('api.open-meteo.com')) {
     return; // hava durumu: her zaman ağdan (network-only), asla önbelleğe alma - bayat hava gösterilmesin
+  }
+  if (url.includes('api.anthropic.com')) {
+    return; // fotoğraftan aktar model çağrısı: her zaman ağdan, önbelleğe alınmaz
   }
 
   // HTML sayfası (uygulamanın kendisi): önce internetten en güncelini çek,

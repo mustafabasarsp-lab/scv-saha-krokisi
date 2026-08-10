@@ -2512,7 +2512,7 @@ const AYARLAR = {
    sera bu formülle 17px kalıyor, etiketi 39px yer istiyordu — ekranda "8." diye
    görünüyordu. Kutu artık eşit genişlikte (bkz. .sera-box). */
 const STORAGE_KEY = 'scvSahaKrokiV1';
-const APP_SURUM = 'v128'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
+const APP_SURUM = 'v129'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
 
 /* =========================================================
    HATA / DONMA GÜNLÜĞÜ — "bazen donuyor" şikayetini araştırmak için.
@@ -7641,6 +7641,131 @@ function fotoDefterDenetle(satirlar, st){
 
     return { satir, durum: bayraklar.length ? 'sari' : 'yesil',
       tarlaId: tarla.id, oneri, bayraklar };
+  });
+}
+
+const FOTO_ANAHTAR_DEPO = 'scvYzAnahtar';
+const FOTO_MODEL = 'claude-opus-5';
+const FOTO_UZUN_KENAR = 2576;   // modelin okuyabildiği en yüksek çözünürlük
+const FOTO_MAX_TOKEN = 8000;    // düşünme + metin BİRLİKTE sınırlanıyor
+
+/* API anahtarı state'e DEĞİL cihaza yazılır. state Firestore'a senkronlanıyor
+   ve yedek dosyasına giriyor; anahtar oraya girerse buluta ve indirilen yedeğe
+   sızar. scvTema/scvLang ile aynı kalıp: depolama kapalıysa sessizce boş. */
+function fotoAnahtarOku(){
+  try{ return localStorage.getItem(FOTO_ANAHTAR_DEPO) || ''; }catch(e){ return ''; }
+}
+function fotoAnahtarYaz(deger){
+  try{
+    const temiz = String(deger||'').trim();
+    if(temiz) localStorage.setItem(FOTO_ANAHTAR_DEPO, temiz);
+    else localStorage.removeItem(FOTO_ANAHTAR_DEPO);
+  }catch(e){ /* depolama kapalı: bu oturumluk kalır */ }
+}
+
+/* Çıktı şemaları. additionalProperties:false ile kapalı — model uydurma alan
+   ekleyemez, eksik alan bırakamaz. Okunamayan hücre null olarak gelir. */
+const FOTO_TABLO_SEMA = {
+  type:'object', additionalProperties:false, required:['satirlar'],
+  properties:{ satirlar:{ type:'array', items:{
+    type:'object', additionalProperties:false,
+    required:['no','tohumKodu','yetistirme','kirim','dizim','seralar','soldurmaGun'],
+    properties:{
+      no:{ type:'integer' },
+      tohumKodu:{ type:['string','null'] },
+      yetistirme:{ type:['string','null'], enum:['viyol','yerOcagi','karma',null] },
+      kirim:{ type:['string','null'], description:'YYYY-MM-DD' },
+      dizim:{ type:['string','null'], description:'YYYY-MM-DD' },
+      seralar:{ type:'array', items:{ type:'string' } },
+      soldurmaGun:{ type:['integer','null'] }
+    } } } }
+};
+
+const FOTO_DEFTER_SEMA = {
+  type:'object', additionalProperties:false, required:['satirlar'],
+  properties:{ satirlar:{ type:'array', items:{
+    type:'object', additionalProperties:false,
+    required:['no','tarlaKodu','dekar','tarih','cesit','yetistirme','kirimNo'],
+    properties:{
+      no:{ type:'integer' },
+      tarlaKodu:{ type:['string','null'] },
+      dekar:{ type:['number','null'] },
+      tarih:{ type:['string','null'], description:'YYYY-MM-DD' },
+      cesit:{ type:['string','null'] },
+      yetistirme:{ type:['string','null'], enum:['viyol','yerOcagi','karma',null] },
+      kirimNo:{ type:['integer','null'] }
+    } } } }
+};
+
+/* Modele ne okuyacağını anlatır. Bilinen sera/tarla adları prompt'a gömülür:
+   model serbest tahmin etmesin, bilinen kümeden seçsin. */
+function fotoTalimat(tur, st){
+  const ortak =
+    'Bu bir el yazısı tarım kaydı. Yalnızca gördüğünü yaz, ASLA tahmin etme.\n' +
+    'Okunamayan hücreyi null bırak — uydurma.\n' +
+    'ÜSTÜ ÇİZİLİ satırları hiç okuma, çıktıya koyma.\n' +
+    'Arka sayfadan vuran soluk mürekkebi yok say.\n' +
+    'Tarihleri YYYY-MM-DD biçimine çevir (kâğıtta gg.aa.yyyy yazıyor).\n';
+  if(tur==='tablo'){
+    return ortak +
+      'Sütunlar soldan sağa: TOHUM ÇEŞİDİ, YETİŞTİRME B., KIRIM TARİHİ, DİZİM TARİHİ, SERA NUMARALARI, SOLDURMA B.\n' +
+      'YETİŞTİRME B. değerleri: "Viyol"→viyol, "Yerocağı"→yerOcagi, "Viyol-Yer o."→karma.\n' +
+      'SERA NUMARALARI hücresindeki her serayı ayrı bir dize olarak yaz.\n' +
+      'Bir sera "(YARIM)" ile işaretliyse adının sonuna * koy (örnek: D19*).\n' +
+      'SOLDURMA B. "3gün" gibi yazılı — yalnızca sayıyı ver.\n' +
+      'Uygulamada kayıtlı sera adları (yalnızca bunlardan seç): ' + st.seralar.map(s=>s.ad).join(', ') + '\n';
+  }
+  return ortak +
+    'Her satır şu kalıpta: TARLA KODU - DEKAR da → TARİH (ÇEŞİT YETİŞTİRME kırım no)\n' +
+    'Örnek: "K21 - 52 da → 15.07.2026 (PVH 2310 Yer Ocağı 1.kırım)"\n' +
+    '"Yer Ocağı"→yerOcagi, "Viyol"→viyol, "Yer O.-Viyol"→karma.\n' +
+    'Uygulamada kayıtlı tarla kodları (yalnızca bunlardan seç): ' + st.tarlalar.map(t=>t.ad).join(', ') + '\n';
+}
+
+function fotoIstekGovdesi(base64, tur, st){
+  return {
+    model: FOTO_MODEL,
+    max_tokens: FOTO_MAX_TOKEN,
+    output_config: { format: { type:'json_schema',
+      schema: tur==='tablo' ? FOTO_TABLO_SEMA : FOTO_DEFTER_SEMA } },
+    messages: [{ role:'user', content:[
+      { type:'image', source:{ type:'base64', media_type:'image/jpeg', data: base64 } },
+      { type:'text', text: fotoTalimat(tur, st) }
+    ] }]
+  };
+}
+
+/* Tek ağ çağrısı. Tarayıcıdan doğrudan API'ye gidiliyor; sunucu yok.
+   anthropic-dangerous-direct-browser-access başlığı CORS için gerekli. */
+function fotoOku(base64, tur, st){
+  const anahtar = fotoAnahtarOku();
+  if(!anahtar) return Promise.reject(new Error('Ayarlar\'dan API anahtarı girin.'));
+  return fetch('https://api.anthropic.com/v1/messages', {
+    method:'POST',
+    headers:{
+      'content-type':'application/json',
+      'x-api-key': anahtar,
+      'anthropic-version':'2023-06-01',
+      'anthropic-dangerous-direct-browser-access':'true'
+    },
+    body: JSON.stringify(fotoIstekGovdesi(base64, tur, st))
+  }).then(r=>{
+    if(!r.ok) return r.text().then(t=>{ throw new Error('API hatası ' + r.status + ': ' + String(t).slice(0,200)); });
+    return r.json();
+  }).then(cevap=>{
+    /* max_tokens düşünme + metni birlikte sınırlıyor; kesilirse elde yarım
+       JSON kalır ve sessizce eksik satır aktarılırdı. */
+    if(cevap.stop_reason === 'max_tokens'){
+      throw new Error('Cevap yarıda kesildi — fotoğrafı ikiye bölüp tekrar deneyin.');
+    }
+    if(cevap.stop_reason === 'refusal'){
+      throw new Error('Model bu görüntüyü işlemeyi reddetti.');
+    }
+    const metin = (cevap.content||[]).filter(b=>b.type==='text').map(b=>b.text).join('');
+    let ayristirilmis;
+    try{ ayristirilmis = JSON.parse(metin); }
+    catch(e){ throw new Error('Cevap okunamadı (beklenen JSON gelmedi).'); }
+    return ayristirilmis.satirlar || [];
   });
 }
 

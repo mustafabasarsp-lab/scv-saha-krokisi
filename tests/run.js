@@ -2254,6 +2254,84 @@ const tik = () => new Promise(r => setImmediate(r));
     eski._temizle();
   }
 
+  bolum('Fotoğraftan aktar — anahtar ve çağrı');
+  {
+    const app = kur();
+    esit(app.fotoAnahtarOku(), '', 'anahtar girilmemişken boş');
+    app.fotoAnahtarYaz('sk-ant-test123');
+    esit(app._depo.getItem('scvYzAnahtar'), 'sk-ant-test123', 'anahtar cihaza yazılır');
+    esit(app.fotoAnahtarOku(), 'sk-ant-test123', 'anahtar geri okunur');
+
+    /* EN ÖNEMLİ TEST: state Firestore'a senkronlanıyor ve yedeğe giriyor.
+       Anahtar oraya sızarsa buluta ve indirilen yedek dosyasına çıkar. */
+    yanlis(JSON.stringify(app.state).includes('sk-ant-test123'), 'anahtar state içine SIZMAZ');
+    yanlis(app.SYNC_KOLEKSIYONLARI.some(k=>k.toLowerCase().includes('anahtar')), 'anahtar senkron listesinde yok');
+
+    app.fotoAnahtarYaz('');
+    esit(app.fotoAnahtarOku(), '', 'boş yazınca anahtar silinir');
+    app._temizle();
+  }
+  {
+    const app = kur();
+    app.state.seralar.push({ id:'s1', ad:'D24', kapasite:400, bolge:'kalemli', donemler:[] });
+    app.state.tarlalar.push({ id:'t1', ad:'K21', dekar:51, cesit:'PVH 2310', viyolDekar:21, yerOcagiDekar:30, bolge:'kalemli' });
+
+    const govde = app.fotoIstekGovdesi('BASE64VERI', 'tablo', app.state);
+    esit(govde.model, 'claude-opus-5', 'model kimliği tam');
+    dogru(govde.max_tokens >= 8000, 'max_tokens düşünme + metni birlikte karşılayacak kadar bol');
+    esit(govde.output_config.format.type, 'json_schema', 'yapılandırılmış çıktı istenir');
+    yanlis(govde.output_config.format.schema.additionalProperties, 'şema kapalı (uydurma alan eklenemez)');
+    const metin = JSON.stringify(govde.messages);
+    dogru(metin.includes('D24'), 'bilinen sera adları prompt\'a gömülür');
+    dogru(metin.includes('BASE64VERI'), 'görüntü gövdeye eklenir');
+    dogru(metin.includes('ÜSTÜ ÇİZİLİ'), 'üstü çizili satır talimatı var');
+    dogru(/YARIM/.test(metin), 'yarım sera talimatı var');
+
+    const defterGovde = app.fotoIstekGovdesi('X', 'defter', app.state);
+    dogru(JSON.stringify(defterGovde.messages).includes('K21'), 'defter prompt\'unda tarla kodları var');
+    app._temizle();
+  }
+  {
+    const cagrilar = [];
+    const app = kur({ localStorage: { scvYzAnahtar:'sk-test' }, fetch: (url, ayar) => {
+      cagrilar.push({ url, ayar });
+      return Promise.resolve({ ok:true, status:200, json: () => Promise.resolve({
+        content: [{ type:'text', text: JSON.stringify({ satirlar:[{ no:1, kirim:'2026-07-24', dizim:'2026-07-26', seralar:['D24'] }] }) }],
+        stop_reason: 'end_turn'
+      }) });
+    }});
+    const satirlar = await app.fotoOku('BASE64', 'tablo', app.state);
+    esit(satirlar.length, 1, 'cevaptaki satırlar ayrıştırılır');
+    esit(satirlar[0].seralar, ['D24'], 'sera listesi taşınır');
+    // Açılışta başka fetch'ler de olabiliyor (hava durumu vb.) — adrese göre ara
+    const cagri = cagrilar.find(c=>String(c.url).includes('api.anthropic.com'));
+    dogru(!!cagri, 'doğru adrese gidilir');
+    esit(cagri.ayar.headers['x-api-key'], 'sk-test', 'anahtar başlığa konur');
+    esit(cagri.ayar.headers['anthropic-version'], '2023-06-01', 'sürüm başlığı gönderilir');
+    esit(cagri.ayar.headers['anthropic-dangerous-direct-browser-access'], 'true', 'tarayıcı erişim başlığı var');
+    app._temizle();
+  }
+  {
+    // Kesilen cevap sessizce eksik satır aktarmamalı
+    const app = kur({ localStorage: { scvYzAnahtar:'sk-test' }, fetch: () =>
+      Promise.resolve({ ok:true, status:200, json: () => Promise.resolve({
+        content:[{ type:'text', text:'{"satirlar":[{"no":1' }], stop_reason:'max_tokens' }) }) });
+    let hata = null;
+    try { await app.fotoOku('B', 'tablo', app.state); } catch(e){ hata = e.message; }
+    dogru(/yarıda kesildi/.test(hata||''), 'max_tokens kesilmesi hata olarak bildirilir');
+    app._temizle();
+  }
+  {
+    // Anahtarsız çağrı ağa hiç çıkmamalı
+    const gidilen = [];
+    const app = kur({ fetch: (u) => { gidilen.push(String(u)); return Promise.resolve({ ok:true, json:()=>Promise.resolve({}) }); } });
+    let hata = null;
+    try { await app.fotoOku('B', 'tablo', app.state); } catch(e){ hata = e.message; }
+    dogru(/anahtar/i.test(hata||''), 'anahtarsızken anlaşılır hata verilir');
+    yanlis(gidilen.some(u=>u.includes('api.anthropic.com')), 'anahtarsızken modele hiç gidilmez');
+    app._temizle();
+  }
+
   /* --------------------------------------------------------------- */
   console.log(`\n${'─'.repeat(52)}`);
   if (kalan.length) {
