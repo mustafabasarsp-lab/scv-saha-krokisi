@@ -2332,6 +2332,17 @@ const tik = () => new Promise(r => setImmediate(r));
     app._temizle();
   }
 
+  bolum('Fotoğraftan aktar — görüntü ölçeği');
+  {
+    const app = kur();
+    esit(app.fotoOlcekHesapla(4000, 3000), { en:2576, boy:1932 }, 'büyük yatay foto uzun kenardan 2576ya iner');
+    esit(app.fotoOlcekHesapla(3000, 4000), { en:1932, boy:2576 }, 'dikey fotoda uzun kenar boy');
+    // Küçültme hedefi değil isabet hedefi: olmayan ayrıntı üretilmez
+    esit(app.fotoOlcekHesapla(1200, 900), { en:1200, boy:900 }, 'küçük foto BÜYÜTÜLMEZ');
+    esit(app.fotoOlcekHesapla(2576, 1000), { en:2576, boy:1000 }, 'tam sınırdaki foto dokunulmadan geçer');
+    app._temizle();
+  }
+
   /* --------------------------------------------------------------- */
   console.log(`\n${'─'.repeat(52)}`);
   if (kalan.length) {

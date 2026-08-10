@@ -2512,7 +2512,7 @@ const AYARLAR = {
    sera bu formülle 17px kalıyor, etiketi 39px yer istiyordu — ekranda "8." diye
    görünüyordu. Kutu artık eşit genişlikte (bkz. .sera-box). */
 const STORAGE_KEY = 'scvSahaKrokiV1';
-const APP_SURUM = 'v129'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
+const APP_SURUM = 'v130'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
 
 /* =========================================================
    HATA / DONMA GÜNLÜĞÜ — "bazen donuyor" şikayetini araştırmak için.
@@ -7661,6 +7661,45 @@ function fotoAnahtarYaz(deger){
     if(temiz) localStorage.setItem(FOTO_ANAHTAR_DEPO, temiz);
     else localStorage.removeItem(FOTO_ANAHTAR_DEPO);
   }catch(e){ /* depolama kapalı: bu oturumluk kalır */ }
+}
+
+/* Uzun kenarı 2576'ya ayarlar. Bu bir KÜÇÜLTME hedefi değil isabet hedefi:
+   modelin okuyabildiği en yüksek çözünürlük bu ve C21 ile C24'ü ayıran şey
+   tam olarak o pikseller. Küçük fotoğraf BÜYÜTÜLMEZ — olmayan ayrıntı üretmek
+   okumayı iyileştirmez, yalnızca jeton harcar. */
+function fotoOlcekHesapla(en, boy){
+  const uzun = Math.max(en, boy);
+  if(uzun <= FOTO_UZUN_KENAR) return { en, boy };
+  const oran = FOTO_UZUN_KENAR / uzun;
+  return { en: Math.round(en*oran), boy: Math.round(boy*oran) };
+}
+
+/* Dosyayı canvas'ta ölçekleyip base64 JPEG'e çevirir. `derece` 0/90/180/270 —
+   kâğıt sahada kolayca ters çekiliyor (eldeki iki örnek de ters). */
+function fotoGoruntuHazirla(dosya, derece){
+  return new Promise((coz, red)=>{
+    const okuyucu = new FileReader();
+    okuyucu.onerror = ()=>red(new Error('Fotoğraf okunamadı.'));
+    okuyucu.onload = ()=>{
+      const img = new Image();
+      img.onerror = ()=>red(new Error('Fotoğraf çözülemedi.'));
+      img.onload = ()=>{
+        const d = ((Number(derece)||0) % 360 + 360) % 360;
+        const dik = d===90 || d===270;
+        const olcek = fotoOlcekHesapla(dik ? img.height : img.width, dik ? img.width : img.height);
+        const c = document.createElement('canvas');
+        c.width = olcek.en; c.height = olcek.boy;
+        const ctx = c.getContext('2d');
+        ctx.translate(olcek.en/2, olcek.boy/2);
+        ctx.rotate(d * Math.PI / 180);
+        const ciz = dik ? [olcek.boy, olcek.en] : [olcek.en, olcek.boy];
+        ctx.drawImage(img, -ciz[0]/2, -ciz[1]/2, ciz[0], ciz[1]);
+        coz(c.toDataURL('image/jpeg', 0.9).split(',')[1]);
+      };
+      img.src = okuyucu.result;
+    };
+    okuyucu.readAsDataURL(dosya);
+  });
 }
 
 /* Çıktı şemaları. additionalProperties:false ile kapalı — model uydurma alan
