@@ -2549,7 +2549,7 @@ const AYARLAR = {
    sera bu formülle 17px kalıyor, etiketi 39px yer istiyordu — ekranda "8." diye
    görünüyordu. Kutu artık eşit genişlikte (bkz. .sera-box). */
 const STORAGE_KEY = 'scvSahaKrokiV1';
-const APP_SURUM = 'v136'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
+const APP_SURUM = 'v137'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
 
 /* =========================================================
    HATA / DONMA GÜNLÜĞÜ — "bazen donuyor" şikayetini araştırmak için.
@@ -2804,7 +2804,7 @@ const I18N_EN = {
   'Kapasite':'Capacity', 'Son İşlem':'Last Action', 'Geçmiş Dönemler':'Past Cycles', 'Boşalt':'Empty Out',
   'İlaç Ekle':'Add Pesticide', 'Zararlı Ekle':'Add Pest', 'Gübre Ekle':'Add Fertilizer',
   /* Fotoğraftan aktar */
-  'Önce Ayarlar → Veri Yönetimi ekranından yapay zekâ API anahtarını girin.':'First enter the AI API key under Settings → Data Management.',
+  'Fotoğraftan aktarmak için uygulamaya giriş yapın. (Giriş yapamıyorsanız Ayarlar → Veri Yönetimi ekranından kendi API anahtarınızı girebilirsiniz.)':'Sign in to import from a photo. (If you cannot sign in, you may enter your own API key under Settings → Data Management.)',
   'Uygulanacak satır yok.':'No rows to apply.',
   'Fotoğraftan aktarıldı.':'Imported from photo.',
   'Anahtar bu cihaza kaydedildi.':'Key saved on this device.',
@@ -7236,7 +7236,7 @@ function openVeriYonetimiModal(){
       <div class="modal-actions eylem-sola-sarmali">
         <button class="btn" onclick="fotoAnahtarKaydet()">${i18n('🔑 Anahtarı Kaydet')}</button>
       </div>
-      <div class="hint-box">${i18n('Kırım sayfasındaki "Fotoğraftan Aktar" için gerekli. Anahtar YALNIZCA bu cihazda saklanır; yedeğe, buluta ve diğer cihazlara gitmez — her cihaza ayrı girilir. Boş kaydederseniz silinir.')}</div>
+      <div class="hint-box">${i18n('GEREKMİYOR — giriş yaptıysanız fotoğraf okuma sunucu üzerinden çalışır ve anahtar istemez. Bu alan yalnızca yedek yol: doldurursanız istek sunucu yerine bu cihazdan gider ve anahtar cihazda saklanır. Boş kaydederseniz silinir.')}</div>
     </div>
     <div class="field">
       <label>${i18n('Rapor (dışa aktarım — geri yüklenemez)')}</label>
@@ -8043,9 +8043,18 @@ function fotoTarlaEsle(tabloSatiri, defterSonuclari){
    satırları state'e AYRI KAYIT olarak yazılmaz — veri modeli değişmiyor. */
 let fotoDurum = { asama:'defter', defter:[], satirlar:[], derece:0, mesgul:false, hata:'' };
 
+/* Özellik kullanılabilir mi? İKİ yoldan biri yeterli:
+   aracı fonksiyon (anahtar sunucuda, kullanıcının hiçbir şey girmesi gerekmez)
+   ya da cihazdaki yerel anahtar (yedek yol).
+   Bu ayrım fotoOku'da vardı ama giriş kapısında yoktu: aracı çalışırken bile
+   ekran "önce anahtar girin" diyip duruyordu. */
+function fotoKullanilabilirMi(){
+  return fotoAraciVarMi() || !!fotoAnahtarOku();
+}
+
 function fotoAktarAc(){
-  if(!fotoAnahtarOku()){
-    uyar('Önce Ayarlar → Veri Yönetimi ekranından yapay zekâ API anahtarını girin.');
+  if(!fotoKullanilabilirMi()){
+    uyar('Fotoğraftan aktarmak için uygulamaya giriş yapın. (Giriş yapamıyorsanız Ayarlar → Veri Yönetimi ekranından kendi API anahtarınızı girebilirsiniz.)');
     return;
   }
   fotoDurum = { asama:'defter', defter:[], satirlar:[], derece:0, mesgul:false, hata:'' };

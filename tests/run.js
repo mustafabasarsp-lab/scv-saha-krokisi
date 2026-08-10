@@ -2343,6 +2343,20 @@ const tik = () => new Promise(r => setImmediate(r));
        PATLAMADAN yapmalı. */
     const app = kur();
     yanlis(app.fotoAraciVarMi(), 'functions yokken aracı yok sayılır');
+
+    /* Giriş kapısı: aracı VARSA kullanıcıdan anahtar istenmemeli. Bu ayrım
+       fotoOku'da vardı ama fotoAktarAc'ta yoktu — aracı çalışırken bile ekran
+       "önce anahtar girin" diyip duruyordu, özellik hiç açılmıyordu. */
+    yanlis(app.fotoKullanilabilirMi(), 'aracı da anahtar da yoksa kapalı');
+    app.fotoAnahtarYaz('sk-yerel');
+    dogru(app.fotoKullanilabilirMi(), 'yerel anahtar tek başına yeter');
+    app.fotoAnahtarYaz('');
+
+    // Aracı varmış gibi yap: anahtar olmadan da açılmalı
+    const gercekAraci = app.fotoAraciVarMi;
+    app.fotoAraciVarMi = () => true;
+    dogru(app.fotoKullanilabilirMi(), 'aracı varken anahtar istenmez');
+    app.fotoAraciVarMi = gercekAraci;
     app._temizle();
   }
   {
