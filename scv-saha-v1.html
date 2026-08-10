@@ -1995,6 +1995,37 @@ input.dayibasi-ad-alani{flex:1;min-width:110px;border:1px solid var(--border);bo
   .overlay,.modal,.plan-kart{transition:none;}
   .page:not(.hidden){animation:none;}
 }
+/* --- Fotoğraftan aktar onay ekranı ---
+   Satır kartı: durumu SOL ŞERİT taşır (renk tek başına bilgi taşımasın diye
+   her kartta ayrıca yazılı bayrak var). Renkler mevcut belirteçlerden;
+   çıplak renk tanımlanmıyor. */
+.foto-asama{ display:flex; flex-direction:column; gap:10px; align-items:flex-start; }
+.foto-satir{
+  border:1px solid var(--border); border-left-width:4px; border-radius:var(--r-md, 10px);
+  padding:10px; margin-bottom:8px; background:var(--panel);
+  transition:border-color var(--gecis-orta, .2s) var(--egri-yumusak, ease);
+}
+.foto-satir.yesil{ border-left-color:var(--green-500); }
+.foto-satir.sari{ border-left-color:var(--amber); background:var(--amber-soft); }
+.foto-satir.kirmizi{ border-left-color:var(--red); background:var(--red-soft); }
+.foto-satir.gri{ border-left-color:var(--border-strong); background:var(--panel-2); opacity:.72; }
+.foto-satir-bas{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; font-weight:600; }
+.foto-satir-bas input[type=checkbox]{ width:20px; height:20px; }
+.foto-alanlar{ display:flex; flex-wrap:wrap; gap:8px; margin-top:8px; }
+.foto-alanlar label{ display:flex; flex-direction:column; font-size:var(--fs-xs, 12px); color:var(--muted); gap:2px; }
+/* Girdi görünümü .field kuralından gelmiyor (bu kartlar .field içinde değil);
+   belirteçler burada tekrar bağlanmazsa koyu temada tarayıcı varsayılanına
+   düşüp beyaz kutu olarak kalıyorlar. */
+.foto-satir input[type=text], .foto-satir input[type=number],
+.foto-satir input[type=date], .foto-satir select{
+  padding:8px 9px; border:1px solid var(--border); border-radius:var(--r-xs, 6px);
+  background:var(--panel); color:var(--ink); min-height:36px; font-size:var(--fs-sm, 14px);
+}
+.foto-seralar{ margin-top:6px; font-size:var(--fs-sm, 14px); word-break:break-word; }
+.foto-bayrak{ margin-top:6px; font-size:var(--fs-xs, 12px); line-height:1.45; }
+.foto-bayrak div{ margin-top:2px; }
+.foto-ozet{ display:flex; gap:10px; flex-wrap:wrap; margin-bottom:10px; font-size:var(--fs-sm, 14px); font-weight:600; }
+.foto-mesgul{ color:var(--muted); font-size:var(--fs-sm, 14px); }
 </style>
 </head>
 <!-- fab-acik: açılış sayfası Saha, yani "Kırım Gir" butonu görünür durumda.
@@ -2124,6 +2155,11 @@ input.dayibasi-ad-alani{flex:1;min-width:110px;border:1px solid var(--border);bo
         <button class="dizim-plot" onclick="openKirimModal()">
           <span class="dizim-plot-ic">🌿</span>
           <span class="dizim-plot-txt"><b data-i18n="+ Kırım Kaydı Gir">+ Kırım Kaydı Gir</b><span data-i18n="Tarla · Kırım No · Dizi Sayısı">Tarla · Kırım No · Dizi Sayısı</span></span>
+        </button>
+        <input type="file" id="fotoAktarInput" accept="image/*" capture="environment" style="display:none" onchange="fotoDosyaSecildi(this)">
+        <button class="dizim-plot" onclick="fotoAktarAc()">
+          <span class="dizim-plot-ic">📷</span>
+          <span class="dizim-plot-txt"><b data-i18n="Fotoğraftan Aktar">Fotoğraftan Aktar</b><span data-i18n="Kâğıt tabloyu çek · kontrol et · uygula">Kâğıt tabloyu çek · kontrol et · uygula</span></span>
         </button>
         <div class="son-kirimlar">
           <h3 data-i18n="Son Kırımlar">Son Kırımlar</h3>
@@ -2512,7 +2548,7 @@ const AYARLAR = {
    sera bu formülle 17px kalıyor, etiketi 39px yer istiyordu — ekranda "8." diye
    görünüyordu. Kutu artık eşit genişlikte (bkz. .sera-box). */
 const STORAGE_KEY = 'scvSahaKrokiV1';
-const APP_SURUM = 'v130'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
+const APP_SURUM = 'v131'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
 
 /* =========================================================
    HATA / DONMA GÜNLÜĞÜ — "bazen donuyor" şikayetini araştırmak için.
@@ -2766,6 +2802,38 @@ const I18N_EN = {
   'Yeni Dönem Başlat':'Start New Cycle', 'Dönem Başlat':'Start Cycle',
   'Kapasite':'Capacity', 'Son İşlem':'Last Action', 'Geçmiş Dönemler':'Past Cycles', 'Boşalt':'Empty Out',
   'İlaç Ekle':'Add Pesticide', 'Zararlı Ekle':'Add Pest', 'Gübre Ekle':'Add Fertilizer',
+  /* Fotoğraftan aktar */
+  'Önce Ayarlar → Veri Yönetimi ekranından yapay zekâ API anahtarını girin.':'First enter the AI API key under Settings → Data Management.',
+  'Uygulanacak satır yok.':'No rows to apply.',
+  'Anahtar bu cihaza kaydedildi.':'Key saved on this device.',
+  'Anahtar silindi.':'Key removed.',
+  'Fotoğraftan Aktar':'Import from Photo',
+  'Fotoğraftan Aktar — API Anahtarı':'Import from Photo — API Key',
+  '🔑 Anahtarı Kaydet':'🔑 Save Key',
+  '📷 Defter Fotoğrafı':'📷 Notebook Photo',
+  '📷 Tablo Fotoğrafı':'📷 Table Photo',
+  'Defterim yok, devam et':'No notebook, continue',
+  '↻ Çevir':'↻ Rotate',
+  'Fotoğraf okunuyor, birkaç saniye sürebilir…':'Reading photo, this may take a few seconds…',
+  'Satır':'Row',
+  'tarla':'fields',
+  'tarlasız':'no field',
+  'Kırım':'Harvest',
+  'Dizim':'Stringing',
+  'Soldurma':'Wilting',
+  'Çeşit':'Variety',
+  'seçilmedi':'not set',
+  'Seralar':'Greenhouses',
+  'sera uygulanacak':'greenhouses to apply',
+  'dizi':'strings',
+  'temiz':'clean',
+  'uyarılı':'flagged',
+  'atlanacak':'skipped',
+  'uygulanamaz':'not applicable',
+  'satırı uygula':'rows: apply',
+  'Bu satırı uygula':'Apply this row',
+  'Defterden okunan satır: ':'Rows read from notebook: ',
+  'Defter atlandı — kayıtlar tarlasız açılacak.':'Notebook skipped — records will have no field attached.',
   '+ İlaç Ekle':'+ Add Pesticide', '+ Zararlı Ekle':'+ Add Pest', '+ Gübre Ekle':'+ Add Fertilizer', '+ Yeni Kırım Ekle':'+ Add New Harvest',
   'İlaç Geçmişi & PHI Durumu':'Pesticide History & PHI Status', 'Zararlı Geçmişi':'Pest History', 'Gübre Geçmişi':'Fertilizer History',
   'Kırımlar (Hasat Kayıtları)':'Harvests (Harvest Records)',
@@ -7152,6 +7220,14 @@ function openVeriYonetimiModal(){
       <div class="hint-box">${i18n('Sezon sonunda çalıştırın: her tarlanın çeşit, dikim/çapa tarihi, ilaç/gübre/zararlı geçmişi ve tahmini hasat bilgisi o sezonun arşivine taşınır, tarlalar yeni sezona temiz girer. Dekar ve bölge korunur.')} <b>${i18n('Kırım, sulama, depo ve iklim kayıtlarına dokunulmaz')}</b> — ${i18n('onların sezonu zaten tarihlerinden geliyor, üstteki sezon seçicisiyle her zaman görüntülenebilirler.')}</div>
     </div>
     <div class="field">
+      <label>${i18n('Fotoğraftan Aktar — API Anahtarı')}</label>
+      <input id="ayarYzAnahtar" type="password" autocomplete="off" placeholder="sk-ant-..." value="${escapeHtml(fotoAnahtarOku())}">
+      <div class="modal-actions eylem-sola-sarmali">
+        <button class="btn" onclick="fotoAnahtarKaydet()">${i18n('🔑 Anahtarı Kaydet')}</button>
+      </div>
+      <div class="hint-box">${i18n('Kırım sayfasındaki "Fotoğraftan Aktar" için gerekli. Anahtar YALNIZCA bu cihazda saklanır; yedeğe, buluta ve diğer cihazlara gitmez — her cihaza ayrı girilir. Boş kaydederseniz silinir.')}</div>
+    </div>
+    <div class="field">
       <label>${i18n('Rapor (dışa aktarım — geri yüklenemez)')}</label>
       <div class="modal-actions eylem-sola-sarmali">
         <button class="btn" onclick="excelDisaAktar()">${i18n('📊 Excel Raporu (.xlsx)')}</button>
@@ -7880,6 +7956,214 @@ function fotoTarlaEsle(tabloSatiri, defterSonuclari){
   const tarlaIds = esler.map(d=>d.tarlaId);
   const nolar = [...new Set(esler.map(d=>d.satir.kirimNo).filter(n=>n!=null))];
   return { tarlaIds, kirimNo: (tarlaIds.length && nolar.length===1) ? nolar[0] : null };
+}
+
+/* ---- Onay ekranı ----
+   Modal açıkken yaşayan, kapanınca sıfırlanan tek nesne. Defter ÖNCE okunur ve
+   burada tutulur; tablo satırlarının tarla bağı bu listeden kurulur. Defter
+   satırları state'e AYRI KAYIT olarak yazılmaz — veri modeli değişmiyor. */
+let fotoDurum = { asama:'defter', defter:[], satirlar:[], derece:0, mesgul:false, hata:'' };
+
+function fotoAktarAc(){
+  if(!fotoAnahtarOku()){
+    uyar('Önce Ayarlar → Veri Yönetimi ekranından yapay zekâ API anahtarını girin.');
+    return;
+  }
+  fotoDurum = { asama:'defter', defter:[], satirlar:[], derece:0, mesgul:false, hata:'' };
+  fotoOnayRender();
+}
+
+function fotoAnahtarKaydet(){
+  const el = document.getElementById('ayarYzAnahtar');
+  if(!el) return;
+  fotoAnahtarYaz(el.value);
+  uyar(fotoAnahtarOku() ? 'Anahtar bu cihaza kaydedildi.' : 'Anahtar silindi.');
+}
+
+function fotoCevir(){ fotoDurum.derece = (fotoDurum.derece + 90) % 360; fotoOnayRender(); }
+function fotoDefterAtla(){ fotoDurum.asama = 'tablo'; fotoOnayRender(); }
+function fotoFotoIste(){ document.getElementById('fotoAktarInput').click(); }
+
+/* Dosya seçildi: hazırla → oku → denetle → ekranı tazele.
+   `mesgul` bayrağı çift gönderimi engelliyor — okuma saniyeler sürüyor ve
+   sahada kullanıcı düğmeye ikinci kez basıyor. */
+function fotoDosyaSecildi(girdi){
+  const dosya = girdi.files && girdi.files[0];
+  girdi.value = '';                       // aynı dosya tekrar seçilebilsin
+  if(!dosya || fotoDurum.mesgul) return;
+  const asama = fotoDurum.asama;
+  fotoDurum.mesgul = true; fotoDurum.hata = ''; fotoOnayRender();
+  fotoGoruntuHazirla(dosya, fotoDurum.derece)
+    .then(b64 => fotoOku(b64, asama === 'defter' ? 'defter' : 'tablo', state))
+    .then(hamSatirlar => {
+      if(asama === 'defter'){
+        fotoDurum.defter = fotoDefterDenetle(hamSatirlar, state);
+        fotoDurum.asama = 'tablo';
+      } else {
+        fotoDurum.satirlar = fotoTabloYenidenDenetle(hamSatirlar);
+        fotoDurum.asama = 'onay';
+      }
+    })
+    .catch(e => { fotoDurum.hata = e.message || 'Fotoğraf okunamadı.'; })
+    .then(() => { fotoDurum.mesgul = false; fotoOnayRender(); });
+}
+
+/* Ham satırları denetleyip tarla bağını ekler. Hücre düzeltmesinden sonra da
+   çağrılır: 30 satır için yeniden denetim ucuz, kısmi güncelleme ise
+   bayrakların birbirine bağlı olduğu yerde hataya açık. */
+function fotoTabloYenidenDenetle(hamSatirlar, oncekiSecim){
+  return fotoTabloDenetle(hamSatirlar, state).map((r,i)=>{
+    const esleme = fotoTarlaEsle(r.satir, fotoDurum.defter);
+    const varsayilan = r.durum !== 'gri' && r.durum !== 'kirmizi';
+    const secili = oncekiSecim && oncekiSecim[i] != null ? (oncekiSecim[i] && varsayilan) : varsayilan;
+    return Object.assign(r, esleme, { secili });
+  });
+}
+
+function fotoSatirDuzelt(i, alan, deger){
+  const satirlar = fotoDurum.satirlar;
+  if(!satirlar[i]) return;
+  satirlar[i].satir[alan] = (alan === 'soldurmaGun')
+    ? (deger === '' ? null : Number(deger))
+    : (alan === 'seralar' ? String(deger).split(',').map(s=>s.trim()).filter(Boolean) : deger);
+  const secim = satirlar.map(r=>r.secili);
+  fotoDurum.satirlar = fotoTabloYenidenDenetle(satirlar.map(r=>r.satir), secim);
+  fotoOnayRender();
+}
+
+function fotoSatirSec(i, deger){ if(fotoDurum.satirlar[i]) fotoDurum.satirlar[i].secili = !!deger; fotoOnayRender(); }
+
+/* Çeşit seçimi öğrenilir: aynı kod bir daha sorulmaz. */
+function fotoCesitSec(i, cesit){
+  const r = fotoDurum.satirlar[i];
+  if(!r) return;
+  r.satir.cesitSecimi = cesit;
+  const kod = r.satir.tohumKodu;
+  if(kod && cesit){
+    const mevcut = state.cesitKodEslemesi.find(e=>String(e.kod||'').trim().toUpperCase()===String(kod).trim().toUpperCase());
+    if(mevcut) mevcut.cesit = cesit;
+    else state.cesitKodEslemesi.push({ id: uid(), kod, cesit, ...sonIslemDamgasi() });
+    saveState();
+  }
+  fotoOnayRender();
+}
+
+function fotoSatirKartHtml(r, i){
+  const s = r.satir;
+  const cesitler = [...new Set(state.tarlalar.map(t=>t.cesit).filter(Boolean))].sort();
+  const secili = fotoCesitCoz(s.tohumKodu, state) || s.cesitSecimi || '';
+  const kapali = r.durum === 'gri' || r.durum === 'kirmizi';
+  return `
+    <div class="foto-satir ${r.durum}">
+      <div class="foto-satir-bas">
+        <input type="checkbox" ${r.secili?'checked':''} ${kapali?'disabled':''}
+               onchange="fotoSatirSec(${i}, this.checked)" aria-label="${i18n('Bu satırı uygula')}">
+        <span>${i18n('Satır')} ${escapeHtml(String(s.no ?? (i+1)))}</span>
+        ${r.tarlaIds && r.tarlaIds.length ? `<span class="rozet">${r.tarlaIds.length} ${i18n('tarla')}</span>` : `<span class="rozet">${i18n('tarlasız')}</span>`}
+      </div>
+      <div class="foto-alanlar">
+        <label>${i18n('Kırım')}<input type="date" value="${escapeHtml(s.kirim||'')}" onchange="fotoSatirDuzelt(${i},'kirim',this.value)"></label>
+        <label>${i18n('Dizim')}<input type="date" value="${escapeHtml(s.dizim||'')}" onchange="fotoSatirDuzelt(${i},'dizim',this.value)"></label>
+        <label>${i18n('Soldurma')}<input type="number" style="width:70px" value="${s.soldurmaGun ?? ''}" onchange="fotoSatirDuzelt(${i},'soldurmaGun',this.value)"></label>
+        <label>${i18n('Çeşit')}
+          <select onchange="fotoCesitSec(${i}, this.value)">
+            <option value="">${escapeHtml(s.tohumKodu||i18n('seçilmedi'))}</option>
+            ${cesitler.map(c=>`<option value="${escapeHtml(c)}" ${c===secili?'selected':''}>${escapeHtml(c)}</option>`).join('')}
+          </select>
+        </label>
+      </div>
+      <div class="foto-seralar">
+        <label>${i18n('Seralar')}
+          <input type="text" style="width:100%" value="${escapeHtml((s.seralar||[]).join(', '))}"
+                 onchange="fotoSatirDuzelt(${i},'seralar',this.value)">
+        </label>
+        <small>${r.paylar.length} ${i18n('sera uygulanacak')} · ${r.paylar.reduce((a,p)=>a+p.dizi,0)} ${i18n('dizi')}</small>
+      </div>
+      ${r.bayraklar.length ? `<div class="foto-bayrak">${r.bayraklar.map(b=>`<div>⚠️ ${escapeHtml(b.mesaj)}</div>`).join('')}</div>` : ''}
+    </div>`;
+}
+
+function fotoOnayRender(){
+  const d = fotoDurum;
+  const hataHtml = d.hata ? `<div class="hint-box" style="border-color:var(--red)">⚠️ ${escapeHtml(d.hata)}</div>` : '';
+  const cevir = `<button class="btn" onclick="fotoCevir()">${i18n('↻ Çevir')} (${d.derece}°)</button>`;
+  let govde;
+
+  if(d.mesgul){
+    govde = `<div class="foto-mesgul">${i18n('Fotoğraf okunuyor, birkaç saniye sürebilir…')}</div>`;
+  } else if(d.asama === 'defter'){
+    govde = `
+      <div class="foto-asama">
+        <div class="hint-box">${i18n('Önce KIRIM DEFTERİ sayfasını çekin (tarla kodu — dekar — tarih). Bu sayfa, tablodaki kırımların hangi tarlaya ait olduğunu belirler. Defteriniz yoksa atlayabilirsiniz; kayıtlar tarlasız açılır.')}</div>
+        <div class="modal-actions eylem-sola-sarmali">
+          <button class="btn btn-primary" onclick="fotoFotoIste()">${i18n('📷 Defter Fotoğrafı')}</button>
+          <button class="btn" onclick="fotoDefterAtla()">${i18n('Defterim yok, devam et')}</button>
+          ${cevir}
+        </div>
+      </div>`;
+  } else if(d.asama === 'tablo'){
+    govde = `
+      <div class="foto-asama">
+        <div class="hint-box">${d.defter.length
+          ? i18n('Defterden okunan satır: ') + d.defter.length
+          : i18n('Defter atlandı — kayıtlar tarlasız açılacak.')}</div>
+        <div class="hint-box">${i18n('Şimdi KIRIM/DİZİM TABLOSU sayfasını çekin (tohum çeşidi — yetiştirme — kırım — dizim — sera numaraları — soldurma).')}</div>
+        <div class="modal-actions eylem-sola-sarmali">
+          <button class="btn btn-primary" onclick="fotoFotoIste()">${i18n('📷 Tablo Fotoğrafı')}</button>
+          ${cevir}
+        </div>
+      </div>`;
+  } else {
+    const say = t => d.satirlar.filter(r=>r.durum===t).length;
+    const uygulanacak = d.satirlar.filter(r=>r.secili && r.durum!=='gri' && r.durum!=='kirmizi');
+    govde = `
+      <div class="foto-ozet">
+        <span>✅ ${say('yesil')} ${i18n('temiz')}</span>
+        <span>⚠️ ${say('sari')} ${i18n('uyarılı')}</span>
+        <span>⏭️ ${say('gri')} ${i18n('atlanacak')}</span>
+        <span>⛔ ${say('kirmizi')} ${i18n('uygulanamaz')}</span>
+      </div>
+      <div class="hint-box">${i18n('Uygulamadan önce hücreleri kontrol edin. Uyarılı satırlar uygulanabilir; kırmızı satırlar sera adı düzeltilmeden uygulanamaz.')}</div>
+      ${d.satirlar.map(fotoSatirKartHtml).join('')}
+      <div class="modal-actions">
+        <button class="btn" onclick="closeModal()">${i18n('Vazgeç')}</button>
+        <button class="btn btn-primary" onclick="fotoUygula()">${uygulanacak.length} ${i18n('satırı uygula')}</button>
+      </div>`;
+  }
+
+  openModal(`<h2>${i18n('Fotoğraftan Aktar')}</h2>${hataHtml}${govde}`, true);
+}
+
+function fotoUygula(){
+  const uygulanacak = fotoDurum.satirlar.filter(r=>r.secili && r.durum!=='gri' && r.durum!=='kirmizi');
+  if(!uygulanacak.length){ uyar('Uygulanacak satır yok.'); return; }
+  const sariSayi = uygulanacak.filter(r=>r.durum==='sari').length;
+  /* Hepsi sarıysa kullanıcı bayrakları körlemesine geçiyor olabilir — ikinci onay. */
+  if(sariSayi === uygulanacak.length && sariSayi > 1){
+    if(!onayla('Uygulanacak ' + sariSayi + ' satırın TAMAMINDA uyarı var. Yine de devam edilsin mi?')) return;
+  }
+  if(!onayla(uygulanacak.length + ' satır uygulanacak. Devam edilsin mi?')) return;
+
+  silmeYedekAl(['kirimlar','seralar'], 'Fotoğraftan aktarım');
+  const oturum = { seraSonDolduran: {} };
+  let acilanKirim = 0, kapanan = 0, toplamDizi = 0;
+  /* Kronolojik sıra: 2. tur dolumda önceki dönemin doğru kapanması için şart. */
+  uygulanacak.slice().sort((a,b)=>String(a.satir.kirim).localeCompare(String(b.satir.kirim))).forEach(r=>{
+    const sonuc = kirimSatiriUygula({
+      kirim: r.satir.kirim, dizim: r.satir.dizim,
+      cesit: fotoCesitCoz(r.satir.tohumKodu, state) || r.satir.cesitSecimi || '',
+      ortDiziKg: 0,
+      soldurmaGun: r.satir.soldurmaGun,
+      kirimNo: r.kirimNo != null ? r.kirimNo : null,
+      tarlaIds: r.tarlaIds || [],
+      paylar: r.paylar
+    }, oturum);
+    acilanKirim++; kapanan += sonuc.kapatilanDonem; toplamDizi += sonuc.kirim.diziSayisi;
+  });
+  saveState(); renderAll(); closeModal();
+  uyar('Aktarım tamamlandı.\nKırım kaydı: ' + acilanKirim
+     + '\nToplam dizi: ' + toplamDizi
+     + '\nKapatılan sera dönemi: ' + kapanan);
 }
 
 /* =========================================================
