@@ -345,6 +345,10 @@ function kur(secenekler) {
   YEDEK_SAKLAMA_GUN:   { get: () => YEDEK_SAKLAMA_GUN, enumerable: true },
   YEDEK_PARCA_BOYUT:   { get: () => YEDEK_PARCA_BOYUT, enumerable: true },
   YEDEK_KOLEKSIYON:    { get: () => YEDEK_KOLEKSIYON, enumerable: true },
+  /* Geçmiş import regresyon testi fikstürünü bu iki listeden kuruyor —
+     elle kopyalansaydı liste değiştiğinde test sessizce yanlış şeyi ölçerdi. */
+  GECMIS_KIRIM_SATIRLARI:  { get: () => GECMIS_KIRIM_SATIRLARI, enumerable: true },
+  GECMIS_TARLA_KIRIMLARI:  { get: () => GECMIS_TARLA_KIRIMLARI, enumerable: true },
   SEZON_TUMU:          { get: () => SEZON_TUMU, enumerable: true },
   UZUN_BASMA_MS:       { get: () => UZUN_BASMA_MS, enumerable: true },
   VURGU_SURE_MS:       { get: () => VURGU_SURE_MS, enumerable: true },

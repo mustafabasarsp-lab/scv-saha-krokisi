@@ -2149,6 +2149,90 @@ const tik = () => new Promise(r => setImmediate(r));
     app._temizle();
   }
 
+  bolum('Fotoğraftan aktar — satır uygulama çekirdeği');
+  {
+    const app = kur();
+    app.state.seralar.push({ id:'s1', ad:'A1', kapasite:400, bolge:'kalemli', donemler:[] });
+    const oturum = { seraSonDolduran: {} };
+
+    const ilk = app.kirimSatiriUygula({
+      kirim:'2026-06-29', dizim:'2026-07-01', cesit:'PVH 2310', ortDiziKg:3.5,
+      soldurmaGun:2, kirimNo:1, tarlaIds:[],
+      paylar:[{ ad:'A1', seraId:'s1', dizi:400, yarim:false }]
+    }, oturum);
+
+    esit(app.state.kirimlar.length, 1, 'kırım kaydı açılır');
+    esit(ilk.kirim.tarih, '2026-06-29', 'kırım tarihi yazılır');
+    esit(ilk.kirim.diziSayisi, 400, 'dizi toplamı paylardan hesaplanır');
+    esit(ilk.kirim.seraDagilimi[0].dizimTarihi, '2026-07-01', 'dizim tarihi AYRI alan olarak korunur');
+    esit(ilk.kapatilanDonem, 0, 'ilk dolumda kapatılan dönem yok');
+    dogru(app.state.seralar[0].donemler.some(d=>d.aktif), 'sera aktif dönemle dolar');
+
+    const ikinci = app.kirimSatiriUygula({
+      kirim:'2026-07-16', dizim:'2026-07-19', cesit:'PVH 2310', ortDiziKg:3.6,
+      soldurmaGun:3, kirimNo:2, tarlaIds:[],
+      paylar:[{ ad:'A1', seraId:'s1', dizi:400, yarim:false }]
+    }, oturum);
+
+    esit(ikinci.kapatilanDonem, 1, '2. turda önceki dönem kapatılır');
+    esit(app.state.seralar[0].donemler.filter(d=>d.aktif).length, 1, 'tek aktif dönem kalır');
+
+    // oturumAnahtar: aynı gün iki ayrı satır 2. tur SAYILMAZ (geçmiş import böyle çalışıyor)
+    const app2 = kur();
+    app2.state.seralar.push({ id:'s9', ad:'B1', kapasite:400, bolge:'kalemli', donemler:[] });
+    const ot2 = { seraSonDolduran: {} };
+    app2.kirimSatiriUygula({ kirim:'2026-07-03', dizim:'2026-07-04', tarlaIds:[], oturumAnahtar:6,
+      paylar:[{ ad:'B1', seraId:'s9', dizi:400 }] }, ot2);
+    const ayniGun = app2.kirimSatiriUygula({ kirim:'2026-07-03', dizim:'2026-07-04', tarlaIds:[], oturumAnahtar:6,
+      paylar:[{ ad:'B1', seraId:'s9', dizi:400 }] }, ot2);
+    esit(ayniGun.kapatilanDonem, 0, 'aynı oturumAnahtar 2. tur sayılmaz');
+
+    app._temizle(); app2._temizle();
+  }
+
+  /* Geçmiş import UÇTAN UCA — kirimSatiriUygula ayrıştırmasının regresyon
+     koruması. Bu test yazılana kadar geçmiş import'a değen HİÇBİR test yoktu;
+     ayrıştırma sırasında "mevcut testler korur" varsayımı yanlıştı. Sayılar
+     ayrıştırma ÖNCESİ sürümden ölçüldü (v126 vs HEAD~1 karşılaştırması). */
+  bolum('Geçmiş import — uçtan uca regresyon');
+  {
+    const app = kur();
+    // Fikstür kodun kendi listelerinden kurulur; elle kopyalanırsa liste
+    // değiştiğinde test sessizce yanlış şeyi ölçer.
+    const seraAdlari = new Set();
+    app.GECMIS_KIRIM_SATIRLARI.forEach(s=>s.seralar.forEach(a=>seraAdlari.add(a.replace(/\*$/,''))));
+    [...seraAdlari].forEach((ad,i)=>app.state.seralar.push(
+      { id:'sr'+i, ad, kapasite:400, bolge:'kalemli', donemler:[], olusturma:Date.now() }));
+    app.GECMIS_TARLA_KIRIMLARI.forEach((t,i)=>app.state.tarlalar.push(
+      { id:'tr'+i, ad:t.kod, dekar:10, bolge:'kalemli', olusturma:Date.now() }));
+
+    app.gecmisKirimDepoVerisiAktar();
+
+    const kirimlar = app.state.kirimlar;
+    esit(kirimlar.length, 30, '30 kırım satırı aktarılır');
+    dogru(kirimlar.every(k=>k.gecmisImport === true), 'hepsi geçmiş import işaretini taşır');
+    /* 50600, gerçek sezonun 69.050'si değil: fikstürdeki her sera 400 kapasiteli.
+       Önemli olan sayının kendisi değil, ayrıştırma öncesi sürümle AYNI olması. */
+    esit(kirimlar.reduce((s,k)=>s+k.diziSayisi,0), 50600, 'toplam dizi sayısı korunur');
+    esit(kirimlar.filter(k=>k.tarlaIds.length).length, 21, 'tarlaya bağlanan kayıt sayısı');
+    esit(kirimlar.filter(k=>k.kirimNo===null).length, 16, 'kırım numarası boş kalan kayıt sayısı');
+    esit(kirimlar.reduce((s,k)=>s+k.seraDagilimi.length,0), 129, 'toplam dizim adedi korunur');
+
+    // Kırım ve dizim tarihi AYRI alanlar — birleştirilirse bu düşer
+    const ilk = kirimlar.find(k=>k.tarih==='2026-06-29');
+    esit(ilk.seraDagilimi[0].dizimTarihi, '2026-07-01', 'dizim tarihi kırımdan ayrı korunur');
+    esit(ilk.soldurmaGunSayisi, 2, 'soldurma dizim − kırım farkından gelir');
+
+    // 2. tur dolum: A5 hem 2. hem 23. satırda dolduğu için önceki dönem kapanmış olmalı
+    const a5 = app.state.seralar.find(s=>s.ad==='A5');
+    esit(a5.donemler.length, 2, 'iki kez dolan sera iki dönem taşır');
+    esit(a5.donemler.filter(d=>d.aktif).length, 1, 'yalnızca son dönem aktif');
+    dogru(a5.donemler.some(d=>!d.aktif && d.bitis), 'kapanan dönemin bitiş damgası var');
+
+    esit(app.state.depoKutulari.length, 14, 'depo kayıtları da aktarılır');
+    app._temizle();
+  }
+
   /* --------------------------------------------------------------- */
   console.log(`\n${'─'.repeat(52)}`);
   if (kalan.length) {

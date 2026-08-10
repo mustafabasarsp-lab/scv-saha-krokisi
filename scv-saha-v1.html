@@ -2512,7 +2512,7 @@ const AYARLAR = {
    sera bu formülle 17px kalıyor, etiketi 39px yer istiyordu — ekranda "8." diye
    görünüyordu. Kutu artık eşit genişlikte (bkz. .sera-box). */
 const STORAGE_KEY = 'scvSahaKrokiV1';
-const APP_SURUM = 'v126'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
+const APP_SURUM = 'v127'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
 
 /* =========================================================
    HATA / DONMA GÜNLÜĞÜ — "bazen donuyor" şikayetini araştırmak için.
@@ -7403,7 +7403,7 @@ function gecmisKirimDepoVerisiAktar(){
   const eslesenTarlaKodlari = new Set();
   const bulunamayanTarlalar = new Set();
   const bulunamayanSeralar = [];
-  const seraSonDolduranSatir = {}; // seraId → bu import'ta en son dolduran satır no (2. tur tespiti)
+  const oturum = { seraSonDolduran: {} }; // seraId → en son dolduran satır no (2. tur tespiti)
 
   /* Satırlar kronolojik sırada uygulanır (dizi zaten tarih sıralı) —
      böylece 2. tur dolumda önceki dönem doğru kapanır. */
@@ -7435,37 +7435,25 @@ function gecmisKirimDepoVerisiAktar(){
     if(tarlaIds.length && nolar.length===1) kirimNo = nolar[0];
     else if(tarlaIds.length && nolar.length>1) karisikKirimNo++;
 
-    const k = {
-      id: uid(),
-      tarih: satir.kirim,                    // KIRIM (hasat) tarihi — dizim tarihinden bağımsız
-      tarlaId: tarlaIds.length===1 ? tarlaIds[0] : null,
-      tarlaIds,
-      cesit,
-      kirimNo,
-      diziSayisi: satirToplamDizi,
-      ortDiziKg: ortKg,
-      seraDagilimi: [],
-      isciSayisi: 0, yevmiye: 0, kayipDizi: 0, altYasYok: false, calismaSaati: 0,
-      soldurmaGunSayisi: soldurma,           // dizim − kırım gün farkı
-      gecmisImport: true,
-      olusturma: Date.now(),
-      ...sonIslemDamgasi()
-    };
-    state.kirimlar.push(k);
-    olusanKirim++; toplamDizi += satirToplamDizi;
-    if(tarlaIds.length) tarlaliKayit++; else tarlasizKayit++;
-
-    seraPaylari.forEach(sp=>{
+    /* Sera adlarını id'ye çevir; bulunamayanları rapora yaz. Uygulamanın
+       kendisi kirimSatiriUygula()'da — fotoğraf yolu da aynı çekirdeği
+       çağırıyor, mantık burada ikinci kez yazılmıyor. */
+    const paylar = seraPaylari.map(sp=>{
       const sera = state.seralar.find(s=>(s.ad||'').trim().toUpperCase()===sp.ad.toUpperCase());
-      if(!sera){ bulunamayanSeralar.push('Satır '+satir.no+': '+sp.ad); return; }
-      // 2. tur dolum: bu import'ta DAHA ÖNCEKİ bir satırda dolduysa önceki dönemi kapat
-      if(seraSonDolduranSatir[sera.id] != null && seraSonDolduranSatir[sera.id] !== satir.no){
-        const d = seraAktifDonem(sera);
-        if(d){ d.aktif = false; d.bitis = new Date(satir.dizim+'T12:00:00').getTime(); kapatilanDonem++; }
-      }
-      dizimUygula(k, sera.id, sp.dizi, satir.dizim); // DİZİM tarihi ayrı alan olarak geçilir
-      seraSonDolduranSatir[sera.id] = satir.no;
-    });
+      if(!sera){ bulunamayanSeralar.push('Satır '+satir.no+': '+sp.ad); return null; }
+      return { ad: sp.ad, seraId: sera.id, dizi: sp.dizi, yarim:false };
+    }).filter(Boolean);
+
+    const sonuc = kirimSatiriUygula({
+      kirim: satir.kirim, dizim: satir.dizim, cesit, ortDiziKg: ortKg,
+      soldurmaGun: soldurma, kirimNo, tarlaIds, paylar,
+      oturumAnahtar: satir.no        // aynı gün birden fazla satır olabiliyor
+    }, oturum);
+    sonuc.kirim.gecmisImport = true; // yalnızca geçmiş import bu işareti taşır
+
+    olusanKirim++; toplamDizi += satirToplamDizi;
+    kapatilanDonem += sonuc.kapatilanDonem;
+    if(tarlaIds.length) tarlaliKayit++; else tarlasizKayit++;
   });
 
   /* ---- Depo/kutulama kayıtları (her iki sayfa da Kalemli deposuna) ---- */
@@ -7650,6 +7638,54 @@ function fotoDefterDenetle(satirlar, st){
     return { satir, durum: bayraklar.length ? 'sari' : 'yesil',
       tarlaId: tarla.id, oneri, bayraklar };
   });
+}
+
+/* Bir satırı (kırım + dizim + sera payları) state'e uygular.
+   Hem geçmiş import hem fotoğraf yolu BURAYI çağırır — mantık iki yere
+   kopyalanırsa zamanla ayrışır ve biri sessizce yanlış davranmaya başlar.
+
+   `oturum.seraSonDolduran` aktarım boyunca taşınır: aynı sera bu aktarımda
+   daha önce dolduysa 2. tur demektir, önceki dönem kapatılır. Neyin "daha
+   önceki satır" sayılacağını çağıran belirler (`satir.oturumAnahtar`):
+   geçmiş import satır NUMARASI kullanıyor (aynı gün birden fazla satır var),
+   fotoğraf yolu kırım TARİHİ kullanıyor. İkisini tek değere zorlamak geçmiş
+   import'un davranışını değiştirirdi. */
+function kirimSatiriUygula(satir, oturum){
+  const paylar = (satir.paylar||[]).filter(p=>p.seraId);
+  const toplamDizi = paylar.reduce((s,p)=>s+p.dizi, 0);
+  const anahtar = satir.oturumAnahtar != null ? satir.oturumAnahtar : satir.kirim;
+
+  const k = {
+    id: uid(),
+    tarih: satir.kirim,                       // KIRIM (hasat) tarihi
+    tarlaId: (satir.tarlaIds||[]).length===1 ? satir.tarlaIds[0] : null,
+    tarlaIds: satir.tarlaIds||[],
+    cesit: satir.cesit || '',
+    kirimNo: satir.kirimNo != null ? satir.kirimNo : null,
+    diziSayisi: toplamDizi,
+    ortDiziKg: satir.ortDiziKg || 0,
+    seraDagilimi: [],
+    isciSayisi: 0, yevmiye: 0, kayipDizi: 0, altYasYok: false, calismaSaati: 0,
+    soldurmaGunSayisi: satir.soldurmaGun != null ? satir.soldurmaGun : null,
+    olusturma: Date.now(),
+    ...sonIslemDamgasi()
+  };
+  state.kirimlar.push(k);
+
+  let kapatilanDonem = 0, dolanSera = 0;
+  paylar.forEach(p=>{
+    const sera = state.seralar.find(s=>s.id===p.seraId);
+    if(!sera) return;
+    if(oturum.seraSonDolduran[sera.id] != null && oturum.seraSonDolduran[sera.id] !== anahtar){
+      const d = seraAktifDonem(sera);
+      if(d){ d.aktif = false; d.bitis = new Date(satir.dizim+'T12:00:00').getTime(); kapatilanDonem++; }
+    }
+    dizimUygula(k, sera.id, p.dizi, satir.dizim);  // DİZİM tarihi ayrı alan
+    oturum.seraSonDolduran[sera.id] = anahtar;
+    dolanSera++;
+  });
+
+  return { kirim:k, dolanSera, kapatilanDonem };
 }
 
 /* Tablo satırının tarla bağını defterden kurar. Tablo kâğıdı tarlayı hiç
