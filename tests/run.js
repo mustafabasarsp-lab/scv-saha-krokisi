@@ -2233,6 +2233,27 @@ const tik = () => new Promise(r => setImmediate(r));
     app._temizle();
   }
 
+  bolum('Fotoğraftan aktar — çeşit kodu eşlemesi');
+  {
+    // Yeni koleksiyon dört yere birden eklenmezse sessizce bozuluyor
+    const app = kur();
+    dogru(Array.isArray(app.state.cesitKodEslemesi), 'boş state alanı dizi olarak taşır');
+    dogru(app.SYNC_KOLEKSIYONLARI.includes('cesitKodEslemesi'), 'senkron listesine eklenmiş');
+
+    app.state.cesitKodEslemesi.push({ id:'e1', kod:'kod:3', cesit:'BSB 6195' });
+    esit(app.fotoCesitCoz('kod:3', app.state), 'BSB 6195', 'bilinen kod çözülür');
+    esit(app.fotoCesitCoz('KOD:3', app.state), 'BSB 6195', 'büyük/küçük harf ayrımı yok');
+    esit(app.fotoCesitCoz('kod:9', app.state), null, 'bilinmeyen kod null döner');
+    app._temizle();
+  }
+  {
+    // Alanı hiç bilmeyen ESKİ kayıttan açılış — v107'deki sessiz çökme tekrarlanmasın
+    const eski = kur({ localStorage: { scvSahaKrokiV1: JSON.stringify({ tarlalar: [], seralar: [], kirimlar: [] }) } });
+    dogru(Array.isArray(eski.state.cesitKodEslemesi), 'eski kayıttan açılışta alan diriltilir');
+    esit(eski.fotoCesitCoz('kod:1', eski.state), null, 'eski kayıtta çözüm null, çökme yok');
+    eski._temizle();
+  }
+
   /* --------------------------------------------------------------- */
   console.log(`\n${'─'.repeat(52)}`);
   if (kalan.length) {

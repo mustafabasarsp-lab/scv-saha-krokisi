@@ -2512,7 +2512,7 @@ const AYARLAR = {
    sera bu formülle 17px kalıyor, etiketi 39px yer istiyordu — ekranda "8." diye
    görünüyordu. Kutu artık eşit genişlikte (bkz. .sera-box). */
 const STORAGE_KEY = 'scvSahaKrokiV1';
-const APP_SURUM = 'v127'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
+const APP_SURUM = 'v128'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
 
 /* =========================================================
    HATA / DONMA GÜNLÜĞÜ — "bazen donuyor" şikayetini araştırmak için.
@@ -3068,7 +3068,7 @@ function uygulaStatikDil(){
 /* =========================================================
    STORE
    ========================================================= */
-function bosState(){ return { tarlalar: [], seralar: [], kirimlar: [], haritaPinleri: [], tesisPinleri: [], depoKutulari: [], sulamaKayitlari: [], iklimKayitlari: [], dayibasilar: [], yevmiyeKayitlari: [], odemeKayitlari: [], odemeAyarlari: [], dizimAlanlari: [], sahaPlanlari: [] }; }
+function bosState(){ return { tarlalar: [], seralar: [], kirimlar: [], haritaPinleri: [], tesisPinleri: [], depoKutulari: [], sulamaKayitlari: [], iklimKayitlari: [], dayibasilar: [], yevmiyeKayitlari: [], odemeKayitlari: [], odemeAyarlari: [], dizimAlanlari: [], sahaPlanlari: [], cesitKodEslemesi: [] }; }
 /* Geri yükleme yollarının ortak girişi. Eski bir sürümden alınmış yedekte
    sonradan eklenen koleksiyonlar bulunmayabilir; gelen nesne doğrudan atanırsa
    state.seralar gibi bir alan undefined kalır ve ilk .forEach'te uygulama
@@ -3096,6 +3096,10 @@ function stateNormalizeEt(){
      kesiliyordu — paneller boş görünüyor, veri yerinde olduğu hâlde. */
   state.dizimAlanlari = state.dizimAlanlari || [];
   state.sahaPlanlari = state.sahaPlanlari || [];
+  /* Fotoğraftan aktar kâğıttaki tohum kodunu (kod:3) çeşide bağlıyor;
+     bu alanı bilmeyen eski bir kayıttan açılışta undefined kalırsa
+     fotoCesitCoz ilk .find()'da patlar. */
+  state.cesitKodEslemesi = state.cesitKodEslemesi || [];
   state.tarlalar.forEach(t=>{
     if(!t.bolge){
       if(/^T\d/i.test(t.ad)) t.bolge = 'tekeliler';
@@ -3237,7 +3241,7 @@ const fbDb = firebase.firestore();
 fbAuth.setPersistence(firebase.auth.Auth.Persistence.LOCAL).catch(()=>{});
 fbDb.enablePersistence({ synchronizeTabs:true }).catch(()=>{ /* birden fazla sekme/deste desteklenmiyorsa sessizce yut */ });
 
-const SYNC_KOLEKSIYONLARI = ['tarlalar','seralar','kirimlar','haritaPinleri','tesisPinleri','depoKutulari','sulamaKayitlari','iklimKayitlari','dayibasilar','yevmiyeKayitlari','odemeKayitlari','odemeAyarlari','dizimAlanlari','sahaPlanlari'];
+const SYNC_KOLEKSIYONLARI = ['tarlalar','seralar','kirimlar','haritaPinleri','tesisPinleri','depoKutulari','sulamaKayitlari','iklimKayitlari','dayibasilar','yevmiyeKayitlari','odemeKayitlari','odemeAyarlari','dizimAlanlari','sahaPlanlari','cesitKodEslemesi'];
 let lastSyncedSnapshot = {};
 SYNC_KOLEKSIYONLARI.forEach(c=>{ lastSyncedSnapshot[c] = {}; });
 let firestoreUnsubscribes = [];
@@ -7638,6 +7642,18 @@ function fotoDefterDenetle(satirlar, st){
     return { satir, durum: bayraklar.length ? 'sari' : 'yesil',
       tarlaId: tarla.id, oneri, bayraklar };
   });
+}
+
+/* Kâğıttaki tohum kodunu (kod:3) uygulamadaki çeşit adına çevirir.
+   Eşleme kullanıcı onay ekranında bir kez seçtiğinde öğrenilir; kod sistemi
+   sezonluk değişebildiği için kodun kendisi hiçbir yere gömülmez.
+   Nesne değil KAYIT DİZİSİ olarak tutulur — senkron makinesi (SYNC_KOLEKSIYONLARI)
+   her girdinin id taşıyan kayıtlardan oluşan bir dizi olmasını varsayıyor. */
+function fotoCesitCoz(kod, st){
+  if(!kod) return null;
+  const aranan = String(kod).trim().toUpperCase();
+  const kayit = (st.cesitKodEslemesi||[]).find(e=>String(e.kod||'').trim().toUpperCase()===aranan);
+  return kayit ? kayit.cesit : null;
 }
 
 /* Bir satırı (kırım + dizim + sera payları) state'e uygular.
