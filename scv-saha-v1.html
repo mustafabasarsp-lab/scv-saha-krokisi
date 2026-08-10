@@ -2512,7 +2512,7 @@ const AYARLAR = {
    sera bu formülle 17px kalıyor, etiketi 39px yer istiyordu — ekranda "8." diye
    görünüyordu. Kutu artık eşit genişlikte (bkz. .sera-box). */
 const STORAGE_KEY = 'scvSahaKrokiV1';
-const APP_SURUM = 'v123'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
+const APP_SURUM = 'v124'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
 
 /* =========================================================
    HATA / DONMA GÜNLÜĞÜ — "bazen donuyor" şikayetini araştırmak için.
@@ -7494,6 +7494,30 @@ function gecmisKirimDepoVerisiAktar(){
     + '\nKırım no karışık kalan kayıt (1.+2. aynı gün, no boş bırakıldı): ' + karisikKirimNo
     + '\nKapatılan sera dönemi (2. tur): ' + kapatilanDonem
     + '\nDepo/kutulama kaydı: ' + olusanDepo);
+}
+
+/* =========================================================
+   FOTOĞRAFTAN AKTAR
+   Kâğıt tabloyu/defteri okuyup mevcut aktarım borusuna satır üretir.
+   Yeni bir kayıt yolu AÇILMIYOR: okunan satırlar kirimSatiriUygula()'ya
+   gidiyor, yani geçmiş import'la aynı çekirdeğe. Buradaki denetim
+   fonksiyonlarının tamamı SAF — DOM'a dokunmaz, ağa çıkmaz, state yazmaz.
+   ========================================================= */
+
+/* Sera adı listesini gerçek sera kayıtlarına bağlar.
+   '*' soneki = yarım sera (geçmiş import'taki kuralın aynısı). Dizi sayısı
+   sabit 400 DEĞİL, seranın kendi kapasitesi: kâğıtta "80 cm" gibi düşük
+   kapasiteli seralar var ve 400 varsaymak onları iki katı dolu gösterirdi. */
+function fotoSeraPaylariCoz(adlar, st){
+  return (adlar||[]).map(ham=>{
+    const metin = String(ham||'').trim();
+    const yarim = metin.endsWith('*');
+    const ad = (yarim ? metin.slice(0,-1) : metin).trim();
+    const sera = st.seralar.find(s=>(s.ad||'').trim().toUpperCase()===ad.toUpperCase());
+    if(!sera) return { ad, seraId:null, dizi:0, yarim:false };
+    const kapasite = Number(sera.kapasite)||0;
+    return { ad, seraId: sera.id, dizi: yarim ? Math.round(kapasite/2) : kapasite, yarim };
+  });
 }
 
 /* =========================================================

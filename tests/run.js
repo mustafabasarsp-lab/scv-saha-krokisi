@@ -2017,6 +2017,29 @@ const tik = () => new Promise(r => setImmediate(r));
     app._temizle();
   }
 
+  /* ---------------------------------------------------------------
+     Fotoğraftan aktar
+     Kâğıt tabloyu okuyup mevcut aktarım borusuna satır üretme yolu.
+     Testlerin ağırlığı SAF denetim fonksiyonlarında: okuma hatalarının
+     hangilerinin yakalandığı, hangi satırın uygulanacağı, hangisinin
+     atlanacağı. Ağ çağrısı ve ekran ince bir katman.
+     --------------------------------------------------------------- */
+  bolum('Fotoğraftan aktar — sera payları');
+  {
+    const app = kur();
+    app.state.seralar.push(
+      { id:'s1', ad:'D19', kapasite:400, bolge:'kalemli', donemler:[] },
+      { id:'s2', ad:'80 cm', kapasite:200, bolge:'kalemli', donemler:[] }
+    );
+
+    const paylar = app.fotoSeraPaylariCoz(['D19', 'D19*', '80 cm', 'YOKBOYLE'], app.state);
+    esit(paylar[0], { ad:'D19', seraId:'s1', dizi:400, yarim:false }, 'tam sera kendi kapasitesini alır');
+    esit(paylar[1], { ad:'D19', seraId:'s1', dizi:200, yarim:true }, 'yıldızlı sera yarım dolar');
+    esit(paylar[2], { ad:'80 cm', seraId:'s2', dizi:200, yarim:false }, 'kapasite 400 varsayılmaz, seradan okunur');
+    esit(paylar[3], { ad:'YOKBOYLE', seraId:null, dizi:0, yarim:false }, 'bilinmeyen sera seraId=null döner');
+    app._temizle();
+  }
+
   /* --------------------------------------------------------------- */
   console.log(`\n${'─'.repeat(52)}`);
   if (kalan.length) {
