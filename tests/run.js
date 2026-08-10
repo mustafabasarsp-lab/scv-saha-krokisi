@@ -2040,6 +2040,55 @@ const tik = () => new Promise(r => setImmediate(r));
     app._temizle();
   }
 
+  bolum('Fotoğraftan aktar — tablo denetimi');
+  {
+    const app = kur();
+    app.state.seralar.push(
+      { id:'s1', ad:'D24', kapasite:400, bolge:'kalemli', donemler:[] },
+      { id:'s2', ad:'D25', kapasite:400, bolge:'kalemli', donemler:[] }
+    );
+    const tabanSatir = { no:1, tohumKodu:'kod:3', yetistirme:'yerOcagi', kirim:'2026-07-24', dizim:'2026-07-26', seralar:['D24','D25'], soldurmaGun:2 };
+
+    let r = app.fotoTabloDenetle([tabanSatir], app.state)[0];
+    esit(r.durum, 'yesil', 'her şeyi tutan satır yeşil');
+    esit(r.bayraklar.length, 0, 'temiz satırda bayrak yok');
+
+    r = app.fotoTabloDenetle([{ ...tabanSatir, seralar:['D24','YOKBOYLE'] }], app.state)[0];
+    esit(r.durum, 'kirmizi', 'bilinmeyen sera satırı kırmızı yapar');
+    dogru(r.bayraklar.some(b=>b.tip==='seraYok'), 'seraYok bayrağı düşer');
+
+    // Soldurma sütunu bir sağlama toplamı: kâğıt hem tarihleri hem gün farkını
+    // yazdığı için biri yanlış okunursa tutmaz.
+    r = app.fotoTabloDenetle([{ ...tabanSatir, soldurmaGun:5 }], app.state)[0];
+    esit(r.durum, 'sari', 'soldurma ile tarih farkı çelişirse sarı');
+    dogru(r.bayraklar.some(b=>b.tip==='soldurmaCelisik'), 'soldurmaCelisik bayrağı düşer');
+
+    r = app.fotoTabloDenetle([{ ...tabanSatir, dizim:'2026-07-22', soldurmaGun:-2 }], app.state)[0];
+    dogru(r.bayraklar.some(b=>b.tip==='dizimGeride'), 'dizim kırımdan önceyse bayrak düşer');
+
+    r = app.fotoTabloDenetle([{ ...tabanSatir, seralar:['D24','D24'] }], app.state)[0];
+    dogru(r.bayraklar.some(b=>b.tip==='seraTekrar'), 'aynı satırda tekrar eden sera işaretlenir');
+
+    // Kâğıt birikimli: bir sonraki fotoğrafta eski satırlar da duracak
+    app.state.kirimlar.push({
+      id:'k1', tarih:'2026-07-24', seraDagilimi:[
+        { id:'d1', seraId:'s1', diziSayisi:400, dizimTarihi:'2026-07-26' },
+        { id:'d2', seraId:'s2', diziSayisi:400, dizimTarihi:'2026-07-26' }
+      ]
+    });
+    r = app.fotoTabloDenetle([tabanSatir], app.state)[0];
+    esit(r.durum, 'gri', 'kümenin tamamı kayıtlıysa satır atlanır');
+
+    // Satıra sonradan sera eklenmesi: tamamını atlamak yeniyi düşürürdü
+    app.state.seralar.push({ id:'s3', ad:'D26', kapasite:400, bolge:'kalemli', donemler:[] });
+    r = app.fotoTabloDenetle([{ ...tabanSatir, seralar:['D24','D25','D26'] }], app.state)[0];
+    esit(r.durum, 'sari', 'kısmi eşleşme gri değil sarı');
+    esit(r.paylar.map(p=>p.ad), ['D26'], 'yalnızca kayıtsız sera uygulanır');
+    dogru(r.bayraklar.some(b=>b.tip==='kismenKayitli'), 'kismenKayitli bayrağı düşer');
+
+    app._temizle();
+  }
+
   /* --------------------------------------------------------------- */
   console.log(`\n${'─'.repeat(52)}`);
   if (kalan.length) {

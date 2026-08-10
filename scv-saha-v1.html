@@ -2512,7 +2512,7 @@ const AYARLAR = {
    sera bu formülle 17px kalıyor, etiketi 39px yer istiyordu — ekranda "8." diye
    görünüyordu. Kutu artık eşit genişlikte (bkz. .sera-box). */
 const STORAGE_KEY = 'scvSahaKrokiV1';
-const APP_SURUM = 'v124'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
+const APP_SURUM = 'v125'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
 
 /* =========================================================
    HATA / DONMA GÜNLÜĞÜ — "bazen donuyor" şikayetini araştırmak için.
@@ -7517,6 +7517,70 @@ function fotoSeraPaylariCoz(adlar, st){
     if(!sera) return { ad, seraId:null, dizi:0, yarim:false };
     const kapasite = Number(sera.kapasite)||0;
     return { ad, seraId: sera.id, dizi: yarim ? Math.round(kapasite/2) : kapasite, yarim };
+  });
+}
+
+/* İki tarih arasındaki tam gün farkı. Saat 12:00 sabitlenir — yaz saati
+   geçişinde 23/25 saatlik günler tam sayıya yuvarlanırken 1 gün kayabiliyor. */
+function fotoGunFarki(a, b){
+  const t1 = new Date(a+'T12:00:00').getTime(), t2 = new Date(b+'T12:00:00').getTime();
+  if(!isFinite(t1) || !isFinite(t2)) return null;
+  return Math.round((t2-t1)/86400000);
+}
+
+/* Bu sera, bu kırım+dizim tarihiyle zaten kayıtlı mı?
+   Kâğıt birikimli: her fotoğrafta eski satırlar da duruyor. Bu kontrol
+   olmadan her aktarım aynı dizimleri ikinci kez yazardı. */
+function fotoDizimKayitliMi(st, seraId, kirimTarihi, dizimTarihi){
+  return st.kirimlar.some(k=> k.tarih===kirimTarihi &&
+    (k.seraDagilimi||[]).some(d=> d.seraId===seraId && (d.dizimTarihi||k.tarih)===dizimTarihi));
+}
+
+/* Tablo satırlarını denetler. Hiçbir şeyi uygulamaz, yalnızca bayrak üretir.
+   Durum: seraYok varsa kırmızı (uygulanamaz), başka bayrak varsa sarı
+   (uygulanabilir ama bakılmalı), hiç yoksa yeşil. */
+function fotoTabloDenetle(satirlar, st){
+  return (satirlar||[]).map(satir=>{
+    const bayraklar = [];
+    const paylar = fotoSeraPaylariCoz(satir.seralar, st);
+
+    paylar.filter(p=>!p.seraId).forEach(p=>{
+      bayraklar.push({ tip:'seraYok', mesaj:'Sera bulunamadı: ' + p.ad });
+    });
+
+    const gorulen = new Set();
+    paylar.forEach(p=>{
+      const anahtar = p.ad.toUpperCase();
+      if(gorulen.has(anahtar)) bayraklar.push({ tip:'seraTekrar', mesaj:'Sera iki kez yazılmış: ' + p.ad });
+      gorulen.add(anahtar);
+    });
+
+    const fark = fotoGunFarki(satir.kirim, satir.dizim);
+    if(fark != null && fark < 0){
+      bayraklar.push({ tip:'dizimGeride', mesaj:'Dizim tarihi kırımdan önce' });
+    }
+    if(fark != null && satir.soldurmaGun != null && Number(satir.soldurmaGun) !== fark){
+      bayraklar.push({ tip:'soldurmaCelisik',
+        mesaj:'Soldurma ' + satir.soldurmaGun + ' gün yazılmış ama tarihler ' + fark + ' gün gösteriyor' });
+    }
+
+    /* Kayıtlı/kayıtsız ayrımı: tamamı kayıtlıysa satır atlanır, bir kısmı
+       kayıtlıysa yalnızca yenisi uygulanır. Tamamını yeni saymak mevcut
+       dizimi ikinci kez yazar, tamamını atlamak yeni serayı sessizce düşürür. */
+    const bilinen = paylar.filter(p=>p.seraId);
+    const kayitli = bilinen.filter(p=>fotoDizimKayitliMi(st, p.seraId, satir.kirim, satir.dizim));
+    const uygulanacak = paylar.filter(p=>p.seraId && kayitli.indexOf(p) === -1);
+    if(bilinen.length && kayitli.length === bilinen.length){
+      return { satir, durum:'gri', bayraklar:[{ tip:'zatenKayitli', mesaj:'Bu satır zaten aktarılmış' }], paylar:[] };
+    }
+    if(kayitli.length){
+      bayraklar.push({ tip:'kismenKayitli',
+        mesaj:'Zaten kayıtlı, atlanacak: ' + kayitli.map(p=>p.ad).join(', ') });
+    }
+
+    const durum = bayraklar.some(b=>b.tip==='seraYok') ? 'kirmizi'
+                : bayraklar.length ? 'sari' : 'yesil';
+    return { satir, durum, bayraklar, paylar: uygulanacak };
   });
 }
 
