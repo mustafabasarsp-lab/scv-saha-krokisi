@@ -2512,7 +2512,7 @@ const AYARLAR = {
    sera bu formülle 17px kalıyor, etiketi 39px yer istiyordu — ekranda "8." diye
    görünüyordu. Kutu artık eşit genişlikte (bkz. .sera-box). */
 const STORAGE_KEY = 'scvSahaKrokiV1';
-const APP_SURUM = 'v125'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
+const APP_SURUM = 'v126'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
 
 /* =========================================================
    HATA / DONMA GÜNLÜĞÜ — "bazen donuyor" şikayetini araştırmak için.
@@ -7582,6 +7582,88 @@ function fotoTabloDenetle(satirlar, st){
                 : bayraklar.length ? 'sari' : 'yesil';
     return { satir, durum, bayraklar, paylar: uygulanacak };
   });
+}
+
+/* Tarlanın fide yöntemi dekar alanlarından türer — fideTipi() ile aynı mantık,
+   ama burada state'ten bağımsız saf karşılaştırma gerekiyor. */
+function fotoTarlaYontemi(tarla){
+  const v = Number(tarla.viyolDekar)||0, y = Number(tarla.yerOcagiDekar)||0;
+  if(v>0 && y>0) return 'karma';
+  if(v>0) return 'viyol';
+  if(y>0) return 'yerOcagi';
+  return null;
+}
+
+/* Çeşit alanı tarlada "PVH 2310, BSB 6202" gibi çoklu olabiliyor; kâğıt tek
+   çeşit yazıyor. Bu yüzden eşitlik değil "içeriyor mu" sorulur. */
+function fotoCesitUyuyorMu(tarlaCesidi, kagitCesidi){
+  if(!tarlaCesidi || !kagitCesidi) return true; // bilgi yoksa çelişki de yok
+  return String(tarlaCesidi).toUpperCase().includes(String(kagitCesidi).toUpperCase());
+}
+
+/* Bir defter satırının tarifi (dekar + çeşit + yöntem) bu tarlaya tam uyuyor mu? */
+function fotoTarlaTamUyuyorMu(tarla, satir){
+  return Number(tarla.dekar) === Number(satir.dekar)
+      && fotoCesitUyuyorMu(tarla.cesit, satir.cesit)
+      && fotoTarlaYontemi(tarla) === satir.yetistirme;
+}
+
+/* Defter satırlarını denetler. Bu kâğıtta her satırın ÜÇ bağımsız sağlaması
+   var (dekar, çeşit, viyol/yer ocağı) — üçünün aynı anda yanlış hizalanması
+   pratikte imkânsız. Üçü birden tutmuyorsa ve tarif başka bir tarlaya tam
+   uyuyorsa, sistem hatayı bulmakla kalmaz doğrusunu da söyleyebilir:
+   ölçümde K19 satırı K18 okunmuştu ve tarif tam olarak K19'a uyuyordu. */
+function fotoDefterDenetle(satirlar, st){
+  return (satirlar||[]).map(satir=>{
+    const bayraklar = [];
+    const kod = String(satir.tarlaKodu||'').toUpperCase();
+    const tarla = st.tarlalar.find(t=>(t.ad||'').toUpperCase().split(/[^A-Z0-9]+/).filter(Boolean).indexOf(kod) !== -1);
+
+    if(!tarla){
+      return { satir, durum:'kirmizi', tarlaId:null, oneri:null,
+        bayraklar:[{ tip:'tarlaYok', mesaj:'Tarla bulunamadı: ' + satir.tarlaKodu }] };
+    }
+
+    if(satir.dekar != null && Number(tarla.dekar) !== Number(satir.dekar)){
+      bayraklar.push({ tip:'dekarCelisik',
+        mesaj:'Kâğıtta ' + satir.dekar + ' da, kayıtta ' + tarla.dekar + ' da' });
+    }
+    if(!fotoCesitUyuyorMu(tarla.cesit, satir.cesit)){
+      bayraklar.push({ tip:'cesitCelisik',
+        mesaj:'Kâğıtta ' + satir.cesit + ', kayıtta ' + tarla.cesit });
+    }
+    const yontem = fotoTarlaYontemi(tarla);
+    if(satir.yetistirme && yontem && yontem !== satir.yetistirme){
+      bayraklar.push({ tip:'yontemCelisik',
+        mesaj:'Kâğıtta ' + satir.yetistirme + ', kayıtta ' + yontem });
+    }
+
+    /* Üç sağlama birden patladıysa okuma büyük ihtimalle yanlış tarlayı
+       gösteriyor. Tarif tek bir başka tarlaya tam uyuyorsa onu öner —
+       birden fazlasına uyuyorsa öneri yapma, tahmine dönüşür. */
+    let oneri = null;
+    if(bayraklar.length >= 3){
+      const uyanlar = st.tarlalar.filter(t=>fotoTarlaTamUyuyorMu(t, satir));
+      if(uyanlar.length === 1) oneri = uyanlar[0].ad;
+    }
+
+    return { satir, durum: bayraklar.length ? 'sari' : 'yesil',
+      tarlaId: tarla.id, oneri, bayraklar };
+  });
+}
+
+/* Tablo satırının tarla bağını defterden kurar. Tablo kâğıdı tarlayı hiç
+   içermiyor; bağ SADECE kırım tarihinin eşleşmesinden geliyor — geçmiş
+   import'taki mantığın aynısı.
+   Aynı gün kırılan tarlaların HEPSİ tek kayda bağlanır, kayıt bölünmez:
+   ortak kırımda pay dekara göre değil toplamda eşit paylaşılıyor.
+   Numaralar karışıksa (kimine 1. kimine 2. kırım) numara boş bırakılır —
+   yanıltıcı numara basmaktansa hiç basmamak doğru. */
+function fotoTarlaEsle(tabloSatiri, defterSonuclari){
+  const esler = (defterSonuclari||[]).filter(d=>d.tarlaId && d.satir.tarih === tabloSatiri.kirim);
+  const tarlaIds = esler.map(d=>d.tarlaId);
+  const nolar = [...new Set(esler.map(d=>d.satir.kirimNo).filter(n=>n!=null))];
+  return { tarlaIds, kirimNo: (tarlaIds.length && nolar.length===1) ? nolar[0] : null };
 }
 
 /* =========================================================

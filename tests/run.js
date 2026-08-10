@@ -2089,6 +2089,66 @@ const tik = () => new Promise(r => setImmediate(r));
     app._temizle();
   }
 
+  bolum('Fotoğraftan aktar — defter denetimi');
+  {
+    const app = kur();
+    app.state.tarlalar.push(
+      { id:'t18', ad:'K18', dekar:17, cesit:'PVH 2310', viyolDekar:0,  yerOcagiDekar:17, bolge:'kalemli' },
+      { id:'t19', ad:'K19', dekar:18, cesit:'ITB 6179', viyolDekar:18, yerOcagiDekar:0,  bolge:'kalemli' },
+      { id:'t21', ad:'K21', dekar:51, cesit:'PVH 2310', viyolDekar:21, yerOcagiDekar:30, bolge:'kalemli' }
+    );
+
+    let r = app.fotoDefterDenetle([{ no:1, tarlaKodu:'K18', dekar:17, tarih:'2026-07-20', cesit:'PVH 2310', yetistirme:'yerOcagi', kirimNo:1 }], app.state)[0];
+    esit(r.durum, 'yesil', 'dekar+çeşit+yöntem tutan satır yeşil');
+    esit(r.tarlaId, 't18', 'tarla koddan bulunur');
+
+    // 2026-08-10 ölçümünde yakalanan GERÇEK hata: K19 satırı K18 diye okunmuştu
+    r = app.fotoDefterDenetle([{ no:2, tarlaKodu:'K18', dekar:18, tarih:'2026-07-20', cesit:'ITB 6179', yetistirme:'viyol', kirimNo:1 }], app.state)[0];
+    esit(r.durum, 'sari', 'üç sağlama birden patlayınca sarı');
+    esit(r.oneri, 'K19', 'tarif başka tarlaya tam uyuyorsa düzeltme önerilir');
+
+    // K21 52/51: tek alan kayıyor, başka tarlaya uymuyor → öneri yok
+    r = app.fotoDefterDenetle([{ no:3, tarlaKodu:'K21', dekar:52, tarih:'2026-07-15', cesit:'PVH 2310', yetistirme:'karma', kirimNo:2 }], app.state)[0];
+    esit(r.durum, 'sari', 'dekar tutmayınca sarı');
+    esit(r.oneri, null, 'tek alan kayıyorsa başka tarla önerilmez');
+    dogru(r.bayraklar.some(b=>b.tip==='dekarCelisik'), 'dekarCelisik bayrağı düşer');
+
+    r = app.fotoDefterDenetle([{ no:4, tarlaKodu:'K99', dekar:10, tarih:'2026-07-20', cesit:'PVH 2310', yetistirme:'viyol', kirimNo:1 }], app.state)[0];
+    esit(r.durum, 'kirmizi', 'bilinmeyen tarla kodu kırmızı');
+    esit(r.tarlaId, null, 'bulunamayan tarlanın id\'si null');
+
+    app._temizle();
+  }
+
+  bolum('Fotoğraftan aktar — tarla eşlemesi');
+  {
+    // Defter satırları tablo satırına tarla bağını verir; ayrı kayıt olarak YAZILMAZ
+    const app = kur();
+    app.state.tarlalar.push(
+      { id:'t19', ad:'K19', dekar:18, cesit:'ITB 6179', viyolDekar:18, yerOcagiDekar:0, bolge:'kalemli' },
+      { id:'t25', ad:'K25', dekar:75, cesit:'PVH 2310', viyolDekar:0, yerOcagiDekar:75, bolge:'kalemli' }
+    );
+    const defter = app.fotoDefterDenetle([
+      { no:1, tarlaKodu:'K19', dekar:18, tarih:'2026-07-20', cesit:'ITB 6179', yetistirme:'viyol', kirimNo:2 },
+      { no:2, tarlaKodu:'K25', dekar:75, tarih:'2026-07-20', cesit:'PVH 2310', yetistirme:'yerOcagi', kirimNo:2 }
+    ], app.state);
+
+    // Ortak kırımda kayıt bölünmez: pay dekara göre değil toplamda eşit
+    let e = app.fotoTarlaEsle({ kirim:'2026-07-20' }, defter);
+    esit(e.tarlaIds, ['t19','t25'], 'aynı gün kırılan tarlaların hepsi tek kayda bağlanır');
+    esit(e.kirimNo, 2, 'hepsi aynı numaradaysa numara yazılır');
+
+    const karisik = app.fotoDefterDenetle([
+      { no:1, tarlaKodu:'K19', dekar:18, tarih:'2026-07-20', cesit:'ITB 6179', yetistirme:'viyol', kirimNo:1 },
+      { no:2, tarlaKodu:'K25', dekar:75, tarih:'2026-07-20', cesit:'PVH 2310', yetistirme:'yerOcagi', kirimNo:2 }
+    ], app.state);
+    esit(app.fotoTarlaEsle({ kirim:'2026-07-20' }, karisik).kirimNo, null, 'karışık numarada numara boş bırakılır');
+
+    e = app.fotoTarlaEsle({ kirim:'2026-08-01' }, defter);
+    esit(e.tarlaIds, [], 'eşleşmeyen tarihte tarlasız kayıt açılır');
+    app._temizle();
+  }
+
   /* --------------------------------------------------------------- */
   console.log(`\n${'─'.repeat(52)}`);
   if (kalan.length) {
