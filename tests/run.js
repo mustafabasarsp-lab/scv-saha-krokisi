@@ -2278,7 +2278,7 @@ const tik = () => new Promise(r => setImmediate(r));
 
     const govde = app.fotoIstekGovdesi('BASE64VERI', 'tablo', app.state);
     esit(govde.model, 'claude-opus-5', 'model kimliği tam');
-    dogru(govde.max_tokens >= 8000, 'max_tokens düşünme + metni birlikte karşılayacak kadar bol');
+    dogru(govde.max_tokens >= 32000, 'max_tokens düşünme + metni birlikte karşılayacak kadar bol');
     esit(govde.output_config.format.type, 'json_schema', 'yapılandırılmış çıktı istenir');
     yanlis(govde.output_config.format.schema.additionalProperties, 'şema kapalı (uydurma alan eklenemez)');
     const metin = JSON.stringify(govde.messages);
