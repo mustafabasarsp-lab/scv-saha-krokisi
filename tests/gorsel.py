@@ -87,25 +87,62 @@ OLCUM = """() => {
     });
     const ilkKutu = document.querySelector('.sera-box');
 
-    // Sera ızgarası: kutu genişliği sabit olduğu için artan pay eskiden hep
-    // sağda birikiyordu (ölçüldü: 390px'te 34px). Her SATIRIN iki yanındaki
-    // boşluk eşit mi diye bakılır; en büyük fark döner.
-    const plot = document.querySelector('.sera-plot');
-    let seraKacik = 0;
-    if (plot) {
+    // Sera/tarla ızgaraları: kutu genişliği sabit olduğu için artan pay eskiden
+    // hep sağda birikiyordu (ölçüldü: sera 390px'te 34px, tarla 73px). Her
+    // SATIRIN iki yanındaki boşluk eşit mi diye bakılır; en büyük fark döner.
+    const izgaraKacik = (kapSec, kutuSec) => {
+        const plot = document.querySelector(kapSec);
+        if (!plot) return 0;
         const pk = plot.getBoundingClientRect();
         const satirlar = new Map();
-        plot.querySelectorAll('.sera-box').forEach(b => {
+        plot.querySelectorAll(kutuSec).forEach(b => {
             const q = b.getBoundingClientRect();
             const s = satirlar.get(Math.round(q.top)) || { sol: Infinity, sag: -Infinity };
             s.sol = Math.min(s.sol, q.left);
             s.sag = Math.max(s.sag, q.right);
             satirlar.set(Math.round(q.top), s);
         });
+        let en = 0;
         satirlar.forEach(s => {
-            seraKacik = Math.max(seraKacik, Math.abs((s.sol - pk.left) - (pk.right - s.sag)));
+            en = Math.max(en, Math.abs((s.sol - pk.left) - (pk.right - s.sag)));
         });
-    }
+        return Math.round(en);
+    };
+    const seraKacik = izgaraKacik('.sera-plot', '.sera-box');
+    const tarlaKacik = izgaraKacik('.tarla-plot', '.tarla-box');
+
+    // Rozet ipuçları: .badges şeridi overflow-x:auto ile kaydırma kabı olduğu
+    // için ipucunun taşan kısmı kırpılıyordu (ölçüldü: 46-329px) ve sağdaki
+    // rozetlerde ipucu ekranın da dışına çıkıyordu. Hem ekran hem de kırpan
+    // ata denetleniyor — birini düzeltip diğerini kaçırmak mümkün.
+    let rozetTasma = 0, rozetSayisi = 0;
+    document.querySelectorAll('.badge').forEach(rozet => {
+        if (typeof rozetTikla !== 'function') return;
+        rozetTikla({ stopPropagation(){} }, rozet);
+        const ipucu = rozet.querySelector('.badge-tip');
+        if (ipucu) {
+            const q = ipucu.getBoundingClientRect();
+            rozetTasma = Math.max(rozetTasma, -q.left, q.right - document.documentElement.clientWidth,
+                                  -q.top, q.bottom - document.documentElement.clientHeight);
+            // Kırpan ata: fixed kutuyu overflow'lu ata kırpmaz, absolute'u kırpar.
+            if (getComputedStyle(ipucu).position !== 'fixed') {
+                let p = ipucu.parentElement;
+                while (p && p !== document.body) {
+                    const pcs = getComputedStyle(p);
+                    if (pcs.overflowX !== 'visible' || pcs.overflowY !== 'visible') {
+                        const kt = p.getBoundingClientRect();
+                        rozetTasma = Math.max(rozetTasma, kt.left - q.left, q.right - kt.right,
+                                              kt.top - q.top, q.bottom - kt.bottom);
+                        break;
+                    }
+                    p = p.parentElement;
+                }
+            }
+            rozetSayisi++;
+        }
+        rozetTikla({ stopPropagation(){} }, rozet);
+    });
+    rozetTasma = Math.round(Math.max(0, rozetTasma));
 
     // Ayarlar menüsü açıkken tamamı ekranda mı?
     const menu = document.getElementById('ayarMenu');
@@ -121,7 +158,8 @@ OLCUM = """() => {
         ayarMenusuAcKapa({ stopPropagation(){} });
     }
 
-    return { tasma, kirpilan, seraKacik: Math.round(seraKacik), menuTasma, menuOlculdu,
+    return { tasma, kirpilan, seraKacik, tarlaKacik, menuTasma, menuOlculdu,
+             rozetTasma, rozetSayisi,
              seraGen: ilkKutu ? Math.round(ilkKutu.getBoundingClientRect().width) : 0 };
 }"""
 
@@ -147,19 +185,27 @@ with sync_playwright() as p:
 
             olcum = sayfa.evaluate(OLCUM)
             etiket = f"{genislik}px/{tema}"
-            print("%-14s yatay taşma=%dpx  sera kutusu=%dpx  sera kaçıklık=%dpx  "
-                  "ayar menüsü taşma=%s  kırpılan=%s"
-                  % (etiket, olcum["tasma"], olcum["seraGen"], olcum["seraKacik"],
+            print("%-14s yatay taşma=%dpx  sera kutusu=%dpx  kaçıklık sera/tarla=%d/%dpx  "
+                  "ayar menüsü=%s  rozet ipucu taşma=%dpx (%d)  kırpılan=%s"
+                  % (etiket, olcum["tasma"], olcum["seraGen"],
+                     olcum["seraKacik"], olcum["tarlaKacik"],
                      "%dpx" % olcum["menuTasma"] if olcum["menuOlculdu"] else "ölçülmedi",
+                     olcum["rozetTasma"], olcum["rozetSayisi"],
                      olcum["kirpilan"] if olcum["kirpilan"] else "yok"))
             if olcum["tasma"] > 0:
                 hata.append("%s: yatay taşma %dpx" % (etiket, olcum["tasma"]))
             if olcum["kirpilan"]:
                 hata.append("%s: kırpılan etiket %s" % (etiket, olcum["kirpilan"]))
             # 2px pay: tek sayıda artan pikselin bir yana düşmesi normal.
-            if olcum["seraKacik"] > 2:
-                hata.append("%s: sera ızgarası ortalı değil, yanlar %dpx farklı"
-                            % (etiket, olcum["seraKacik"]))
+            for ad, deger in (("sera", olcum["seraKacik"]), ("tarla", olcum["tarlaKacik"])):
+                if deger > 2:
+                    hata.append("%s: %s ızgarası ortalı değil, yanlar %dpx farklı"
+                                % (etiket, ad, deger))
+            if olcum["rozetSayisi"] == 0:
+                hata.append("%s: rozet ipucu ölçülemedi (rozet yok?)" % etiket)
+            elif olcum["rozetTasma"] > 0:
+                hata.append("%s: rozet ipucu %dpx kırpılıyor/ekran dışına taşıyor"
+                            % (etiket, olcum["rozetTasma"]))
             if not olcum["menuOlculdu"]:
                 hata.append("%s: ayarlar menüsü ölçülemedi (açılır menü değil?)" % etiket)
             elif olcum["menuTasma"] > 0:

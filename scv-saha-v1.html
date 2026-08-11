@@ -387,12 +387,19 @@ input[type=number],.num,td,th,.badge b,.quickstats b{font-variant-numeric:tabula
   cursor:pointer;
 }
 .badge b{font-size:var(--fs-sm);font-weight:750;color:var(--ink);}
+/* İpucu .badges şeridinin İÇİNDE duruyor, şerit ise overflow-x:auto ile bir
+   KAYDIRMA KABI — yani absolute konumlu ipucunun şeridin dışına taşan kısmı
+   kırpılıyordu. Ölçüldü (telefon): her ipucunun 46-329px'i kesiliyor, sağdaki
+   rozetlerde ipucu ekranın da 308px dışına çıkıyordu; yani rozetlere basmak
+   pratikte hiçbir şey göstermiyordu. fixed kaptan kurtarır ama konumu artık
+   kendi bulamaz: açılışta rozete göre hesaplanıp ekrana sığdırılıyor
+   (bkz. rozetIpucuKonumla). left/top yalnızca JS gelene kadarki başlangıç. */
 .badge .badge-tip{
   display:none;
-  position:absolute;
-  top:120%;
+  position:fixed;
+  top:0;
   left:0;
-  z-index:50;
+  z-index:165;
   background:var(--ink);
   color:var(--on-accent);
   padding:6px 8px;
@@ -965,9 +972,15 @@ body.has-fullscreen-panel{overflow:hidden;}
   flex-direction:column;
   height:250px;
 }
+/* Ortalama gerekçesi .sera-plot ile aynı: kutu sabit 82px, artan pay hep sağda
+   birikiyordu (ölçüldü: 360px'te 43, 390px'te 73, 430px'te 113px). İki ızgara
+   yan yana duruyor, biri ortalı biri sola dayalı kalırsa fark daha da göze
+   batıyor. safe: kap 82px'in altına inerse sola dayansın, kutu kırpılmasın. */
 .tarla-plot{
   display:flex;flex-wrap:wrap;gap:7px;overflow-y:auto;overflow-x:hidden;
   padding:4px 2px 8px 2px;flex:1;align-content:flex-start;
+  justify-content:center;
+  justify-content:safe center;
 }
 .tarla-box{
   flex:0 0 auto;
@@ -2560,7 +2573,7 @@ const AYARLAR = {
    sera bu formülle 17px kalıyor, etiketi 39px yer istiyordu — ekranda "8." diye
    görünüyordu. Kutu artık eşit genişlikte (bkz. .sera-box). */
 const STORAGE_KEY = 'scvSahaKrokiV1';
-const APP_SURUM = 'v138'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
+const APP_SURUM = 'v139'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
 
 /* =========================================================
    HATA / DONMA GÜNLÜĞÜ — "bazen donuyor" şikayetini araştırmak için.
@@ -3556,6 +3569,41 @@ function kullaniciMenusuAcKapa(e){
   e.stopPropagation();
   document.getElementById('userMenu').classList.toggle('open');
 }
+/* Rozet ipucu position:fixed (bkz. .badge-tip): kaydırma kabının kırpmasından
+   kurtulur ama konumunu artık kendi bulamaz, açılışta buradan yerleştirilir.
+   Rozetin altına açılır; ekranın altına sığmıyorsa üstüne alınır, sağa taşıyorsa
+   içeri çekilir. Şerit yatay kaydığı ve sayfa dikey kaydığı için açık ipucu
+   kaymalarda yeniden konumlanır — yoksa fixed kutu rozetten kopup havada kalır. */
+const ROZET_IPUCU_KENAR = 8;
+function rozetIpucuKonumla(rozet){
+  const ipucu = rozet.querySelector('.badge-tip');
+  if(!ipucu) return;
+  const r = rozet.getBoundingClientRect();
+  const k = ipucu.getBoundingClientRect(); // .open geldikten sonra: display:block
+  const vw = document.documentElement.clientWidth;
+  const vh = document.documentElement.clientHeight;
+  let sol = Math.min(r.left, vw - ROZET_IPUCU_KENAR - k.width);
+  sol = Math.max(ROZET_IPUCU_KENAR, sol);
+  let ust = r.bottom + 6;
+  if(ust + k.height > vh - ROZET_IPUCU_KENAR){
+    ust = Math.max(ROZET_IPUCU_KENAR, r.top - 6 - k.height);
+  }
+  ipucu.style.left = Math.round(sol) + 'px';
+  ipucu.style.top = Math.round(ust) + 'px';
+}
+function rozetTikla(e, rozet){
+  e.stopPropagation();
+  /* Aynı anda tek ipucu: fixed kutular üst üste binince hangisinin hangi
+     rozete ait olduğu anlaşılmıyor. */
+  document.querySelectorAll('.badge.open').forEach(b=>{ if(b!==rozet) b.classList.remove('open'); });
+  if(rozet.classList.toggle('open')) rozetIpucuKonumla(rozet);
+}
+function acikRozetleriKonumla(){
+  document.querySelectorAll('.badge.open').forEach(rozetIpucuKonumla);
+}
+window.addEventListener('scroll', acikRozetleriKonumla, {passive:true, capture:true});
+window.addEventListener('resize', acikRozetleriKonumla);
+
 /* Menü gövdesi CSS'te tetik düğmesinin SAĞ kenarına hizalı (right:0). Bu yalnız
    düğme ekranın sağındayken doğru: .header-sag sarıldığında (ölçüldü: 520px ve
    altı) düğme sola, x=123'e düşüyor ve 232px'lik menü x=-65'ten başlıyor —
@@ -4807,7 +4855,7 @@ function renderBadges(){
     { label:'Kayıp', val: r.kayipOrani==null?'-':fmt(r.kayipOrani,1)+'%', tip:'Kayıp/çürük dizi ÷ toplam dizi (girilen kayıtlara göre).' },
   ];
   document.getElementById('badgesRow').innerHTML = items.map(it=>`
-    <button class="badge" onclick="event.stopPropagation();this.classList.toggle('open')">
+    <button class="badge" onclick="rozetTikla(event,this)">
       ${escapeHtml(it.label)}: <b>${escapeHtml(it.val)}</b>
       <span class="badge-tip">${escapeHtml(it.tip)}</span>
     </button>
