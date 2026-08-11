@@ -816,7 +816,18 @@ input[type=number],.num,td,th,.badge b,.quickstats b{font-variant-numeric:tabula
 .quickstats b{display:block;font-size:var(--fs-xl);color:var(--green-900);line-height:1.15;}
 
 /* ---------- SAG: SERALAR ---------- */
-.sera-plot{display:flex;flex-wrap:wrap;gap:10px;align-content:flex-start;}
+/* Kutu genişliği SABİT 44px (aşağıya bak), yani satıra tam sayıda kutu sığar ve
+   artan pay her zaman sağda birikir: ölçüldü, telefonda 390px'te 34px, 520px'te
+   56px, 700px'te 236px. Izgara sol kenara yapışık, sağı bomboş görünüyordu.
+   Kutuları esnetip boşluğu yutmak "hepsi eşit genişlikte" kuralını bozardı
+   (son satırdaki iki kutu diğerlerinden geniş çıkar), o yüzden artan pay iki
+   yana eşit dağıtılıyor. safe: kap 44px'in altına inerse ortalama kutuyu
+   kaydırıp erişilmez kılmasın, sola dayansın. */
+.sera-plot{
+  display:flex;flex-wrap:wrap;gap:10px;align-content:flex-start;
+  justify-content:center;
+  justify-content:safe center;
+}
 /* Genişlik eskiden kapasiteden türüyordu: (kapasite/480)x40px. 200 dizilik bir
    sera bu formülle 17px kalıyor, etiketi 39px yer istiyordu — ekranda "8." diye
    görünüyordu ve punto düşürmek çözmüyordu, çünkü sorun kabın kendisindeydi.
@@ -2549,7 +2560,7 @@ const AYARLAR = {
    sera bu formülle 17px kalıyor, etiketi 39px yer istiyordu — ekranda "8." diye
    görünüyordu. Kutu artık eşit genişlikte (bkz. .sera-box). */
 const STORAGE_KEY = 'scvSahaKrokiV1';
-const APP_SURUM = 'v137'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
+const APP_SURUM = 'v138'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
 
 /* =========================================================
    HATA / DONMA GÜNLÜĞÜ — "bazen donuyor" şikayetini araştırmak için.
@@ -3545,6 +3556,36 @@ function kullaniciMenusuAcKapa(e){
   e.stopPropagation();
   document.getElementById('userMenu').classList.toggle('open');
 }
+/* Menü gövdesi CSS'te tetik düğmesinin SAĞ kenarına hizalı (right:0). Bu yalnız
+   düğme ekranın sağındayken doğru: .header-sag sarıldığında (ölçüldü: 520px ve
+   altı) düğme sola, x=123'e düşüyor ve 232px'lik menü x=-65'ten başlıyor —
+   yani 65px'i ekranın solunda kalıyordu. Genişlik eşiğiyle uğraşmak yerine
+   açılışta ölçüp içeri çekiliyor; düğme nereye düşerse düşsün çalışır. */
+const AYAR_MENU_KENAR = 8; // ekran kenarıyla menü arasında bırakılan pay
+function ayarMenusuKonumla(el){
+  const govde = el.querySelector('.ayar-menu-govde');
+  if(!govde) return;
+  govde.style.left = '';
+  govde.style.right = '';
+  /* Masaüstünde gövde display:contents / position:static — konumlanacak bir
+     kutusu yok, ölçüm anlamsız. */
+  if(getComputedStyle(govde).position !== 'absolute') return;
+  const vw = document.documentElement.clientWidth;
+  const kutu = govde.getBoundingClientRect();
+  const capa = el.getBoundingClientRect(); // left/right bu kutuya göre yazılıyor
+  if(kutu.left < AYAR_MENU_KENAR){
+    govde.style.right = 'auto';
+    govde.style.left = (AYAR_MENU_KENAR - capa.left) + 'px';
+  }else if(kutu.right > vw - AYAR_MENU_KENAR){
+    govde.style.right = (capa.right - (vw - AYAR_MENU_KENAR)) + 'px';
+  }
+}
+function ayarMenusuKapat(el){
+  el.classList.remove('open');
+  el.querySelector('.ayar-menu-btn')?.setAttribute('aria-expanded','false');
+  const govde = el.querySelector('.ayar-menu-govde');
+  if(govde){ govde.style.left = ''; govde.style.right = ''; }
+}
 /* Ayarlar menüsü yalnızca telefonda açılır menüdür; masaüstünde .ayar-menu
    display:contents olduğu için tetik düğmesi zaten gizli ve bu hiç çağrılmaz. */
 function ayarMenusuAcKapa(e){
@@ -3554,7 +3595,8 @@ function ayarMenusuAcKapa(e){
   el.querySelector('.ayar-menu-btn').setAttribute('aria-expanded', acik ? 'true' : 'false');
   /* Menü kapanırken içindeki hesap menüsü açık kalmasın, yoksa bir sonraki
      açılışta yarısı açık geliyor. */
-  if(!acik) document.getElementById('userMenu').classList.remove('open');
+  if(acik) ayarMenusuKonumla(el);
+  else { ayarMenusuKapat(el); document.getElementById('userMenu').classList.remove('open'); }
 }
 function hesaptanCik(){
   document.getElementById('userMenu').classList.remove('open');
@@ -5134,10 +5176,7 @@ document.addEventListener('click', function(e){
     document.querySelectorAll('.user-menu.open').forEach(b=>b.classList.remove('open'));
   }
   if(!e.target.closest('.ayar-menu')){
-    document.querySelectorAll('.ayar-menu.open').forEach(b=>{
-      b.classList.remove('open');
-      b.querySelector('.ayar-menu-btn')?.setAttribute('aria-expanded','false');
-    });
+    document.querySelectorAll('.ayar-menu.open').forEach(ayarMenusuKapat);
   }
 });
 

@@ -13,7 +13,8 @@ Kurulum (bir kereliğine):
     python -m playwright install chromium
 
 Kullanım:  python tests/gorsel.py [cikti-dizini]
-Çıkış kodu 1 = yatay taşma ya da etiket kırpılması var.
+Çıkış kodu 1 = yatay taşma, etiket kırpılması, sera ızgarası ortalı değil ya da
+ayarlar menüsü ekran dışına taşıyor.
 """
 import json
 import pathlib
@@ -24,7 +25,10 @@ from playwright.sync_api import sync_playwright
 KOK = pathlib.Path(__file__).resolve().parent.parent
 CIKTI = pathlib.Path(sys.argv[1]) if len(sys.argv) > 1 else KOK / "tests" / "_gorsel"
 CIKTI.mkdir(parents=True, exist_ok=True)
-OLCULER = [(360, 740), (390, 844), (430, 932)]
+# 700px bilerek listede: ayarlar menüsü orada başlığın SAĞINDA açılır, dar
+# ekranlarda ise solunda. İki yön de sınanmazsa birini düzelten değişiklik
+# diğerini sessizce ekran dışına atıyor.
+OLCULER = [(360, 740), (390, 844), (430, 932), (700, 900)]
 
 
 def tarla(i, ad, bolge, dekar):
@@ -82,7 +86,42 @@ OLCUM = """() => {
         }
     });
     const ilkKutu = document.querySelector('.sera-box');
-    return { tasma, kirpilan,
+
+    // Sera ızgarası: kutu genişliği sabit olduğu için artan pay eskiden hep
+    // sağda birikiyordu (ölçüldü: 390px'te 34px). Her SATIRIN iki yanındaki
+    // boşluk eşit mi diye bakılır; en büyük fark döner.
+    const plot = document.querySelector('.sera-plot');
+    let seraKacik = 0;
+    if (plot) {
+        const pk = plot.getBoundingClientRect();
+        const satirlar = new Map();
+        plot.querySelectorAll('.sera-box').forEach(b => {
+            const q = b.getBoundingClientRect();
+            const s = satirlar.get(Math.round(q.top)) || { sol: Infinity, sag: -Infinity };
+            s.sol = Math.min(s.sol, q.left);
+            s.sag = Math.max(s.sag, q.right);
+            satirlar.set(Math.round(q.top), s);
+        });
+        satirlar.forEach(s => {
+            seraKacik = Math.max(seraKacik, Math.abs((s.sol - pk.left) - (pk.right - s.sag)));
+        });
+    }
+
+    // Ayarlar menüsü açıkken tamamı ekranda mı?
+    const menu = document.getElementById('ayarMenu');
+    let menuTasma = 0, menuOlculdu = false;
+    if (menu && typeof ayarMenusuAcKapa === 'function') {
+        ayarMenusuAcKapa({ stopPropagation(){} });
+        const govde = menu.querySelector('.ayar-menu-govde');
+        if (getComputedStyle(govde).position === 'absolute') {
+            const g = govde.getBoundingClientRect();
+            menuTasma = Math.round(Math.max(0, -g.left, g.right - document.documentElement.clientWidth));
+            menuOlculdu = true;
+        }
+        ayarMenusuAcKapa({ stopPropagation(){} });
+    }
+
+    return { tasma, kirpilan, seraKacik: Math.round(seraKacik), menuTasma, menuOlculdu,
              seraGen: ilkKutu ? Math.round(ilkKutu.getBoundingClientRect().width) : 0 };
 }"""
 
@@ -108,13 +147,24 @@ with sync_playwright() as p:
 
             olcum = sayfa.evaluate(OLCUM)
             etiket = f"{genislik}px/{tema}"
-            print("%-14s yatay taşma=%dpx  sera kutusu=%dpx  kırpılan=%s"
-                  % (etiket, olcum["tasma"], olcum["seraGen"],
+            print("%-14s yatay taşma=%dpx  sera kutusu=%dpx  sera kaçıklık=%dpx  "
+                  "ayar menüsü taşma=%s  kırpılan=%s"
+                  % (etiket, olcum["tasma"], olcum["seraGen"], olcum["seraKacik"],
+                     "%dpx" % olcum["menuTasma"] if olcum["menuOlculdu"] else "ölçülmedi",
                      olcum["kirpilan"] if olcum["kirpilan"] else "yok"))
             if olcum["tasma"] > 0:
                 hata.append("%s: yatay taşma %dpx" % (etiket, olcum["tasma"]))
             if olcum["kirpilan"]:
                 hata.append("%s: kırpılan etiket %s" % (etiket, olcum["kirpilan"]))
+            # 2px pay: tek sayıda artan pikselin bir yana düşmesi normal.
+            if olcum["seraKacik"] > 2:
+                hata.append("%s: sera ızgarası ortalı değil, yanlar %dpx farklı"
+                            % (etiket, olcum["seraKacik"]))
+            if not olcum["menuOlculdu"]:
+                hata.append("%s: ayarlar menüsü ölçülemedi (açılır menü değil?)" % etiket)
+            elif olcum["menuTasma"] > 0:
+                hata.append("%s: ayarlar menüsü ekran dışına %dpx taşıyor"
+                            % (etiket, olcum["menuTasma"]))
             sayfa.close()
     tarayici.close()
 
