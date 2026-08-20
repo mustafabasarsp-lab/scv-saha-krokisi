@@ -1655,6 +1655,102 @@ const tik = () => new Promise(r => setImmediate(r));
   }
 
   /* ---------------------------------------------------------------
+     Depo — Giden Kutular sekmesi ve toplu çıkış
+     Tek tek 📤 ile çıkarmak 900+ kutuluk depoda kullanılamıyordu. Toplu çıkışın
+     iki kritik davranışı burada bağlanıyor: FIFO (en eski kutu önce çıkar) ve
+     "ya hep ya hiç" (bir kalitede bile eksik varsa hiçbir kutuya dokunulmaz).
+     --------------------------------------------------------------- */
+  bolum('Depo — toplu çıkış');
+  {
+    const app = kur();
+    const kutu = (no, kalite, tarih) => ({
+      id: 'k' + no, bolge: 'tekeliler', kutuNo: no, kg: 12.5, tarih, kalite, olusturma: no
+    });
+    app.state.depoKutulari.push(
+      kutu(1, 'XX1', '2026-08-01'), kutu(2, 'XX1', '2026-08-05'), kutu(3, 'XX1', '2026-08-03'),
+      kutu(4, 'X1', '2026-08-02'), kutu(5, 'X1', '2026-08-04')
+    );
+
+    // FIFO: 2 adet XX1 istendiğinde 08-01 ve 08-03 seçilmeli, 08-05 depoda kalmalı.
+    const s1 = app.topluCikisSecim('tekeliler', { XX1: 2, X1: 0, X2: 0 });
+    esit(s1.eksikler, [], 'yeterli kutu varken eksik bildirilmez');
+    esit(s1.secilen.map(k => k.kutuNo), [1, 3], 'en eski kutular seçilir (FIFO)');
+
+    // Ya hep ya hiç: X2 hiç yok, XX1 yeterli → yine de hiçbir şey seçilmemeli.
+    const s2 = app.topluCikisSecim('tekeliler', { XX1: 1, X1: 0, X2: 2 });
+    esit(s2.eksikler, ['X2: 0/2'], 'eksik kalite adıyla ve sayısıyla bildirilir');
+
+    // Başka bölgenin kutuları sayılmamalı.
+    const s3 = app.topluCikisSecim('kalemli', { XX1: 1, X1: 0, X2: 0 });
+    esit(s3.eksikler, ['XX1: 0/1'], 'diğer bölgenin kutuları sayılmaz');
+
+    // Zaten çıkmış kutu ikinci kez seçilmemeli.
+    app.state.depoKutulari.find(k => k.kutuNo === 1).cikisTarihi = '2026-08-10';
+    const s4 = app.topluCikisSecim('tekeliler', { XX1: 3, X1: 0, X2: 0 });
+    esit(s4.eksikler, ['XX1: 2/3'], 'çıkmış kutu tekrar sayılmaz');
+    const s5 = app.topluCikisSecim('tekeliler', { XX1: 2, X1: 0, X2: 0 });
+    esit(s5.secilen.map(k => k.kutuNo), [3, 2], 'kalan kutular yine FIFO sırasında');
+    app._temizle();
+  }
+  {
+    // Sekme geçişi: bölümler doğru gizlenir, bölge sekmesinden bağımsızdır.
+    const app = kur();
+    const b = app._belge;
+    app.depoSekmeGecis('giden');
+    esit(app.depoSekmeAktif, 'giden', 'sekme durumu değişir');
+    dogru(b.getElementById('depoBolumDepoda').classList.contains('hidden'), 'depoda bölümü gizlenir');
+    yanlis(b.getElementById('depoBolumGiden').classList.contains('hidden'), 'giden bölümü görünür');
+    dogru(b.getElementById('depoSekmeTab_giden').classList.contains('active'), 'giden sekmesi etkin');
+
+    app.depoBolgeSekmeGecis('kalemli');
+    esit(app.depoSekmeAktif, 'giden', 'bölge değişince giden sekmesinde kalınır');
+
+    app.depoSekmeGecis('depoda');
+    yanlis(b.getElementById('depoBolumDepoda').classList.contains('hidden'), 'depoda bölümü geri gelir');
+    dogru(b.getElementById('depoBolumGiden').classList.contains('hidden'), 'giden bölümü gizlenir');
+    app._temizle();
+  }
+
+  /* ---------------------------------------------------------------
+     Ödemeler — evrak yazdırma önizlemesi
+     odemeYazdir() eskiden doğrudan window.print() çağırıyordu; iOS'ta ana ekrana
+     eklenmiş PWA içinde bu çağrı sessizce hiçbir şey yapmıyor ve kullanıcı hiçbir
+     önizleme göremiyordu. Artık evrak önce uygulama içi tam ekran önizlemede
+     açılıyor. Burada bağlanan: önizleme AÇILIYOR, evrak gövdesi "yeni sekmede aç"
+     için saklanıyor, ve kapatınca hem sınıf hem gövde temizleniyor.
+     --------------------------------------------------------------- */
+  bolum('Ödemeler — yazdırma önizlemesi');
+  {
+    const app = kur();
+    app.state.dayibasilar.push({ id: 'd0', ad: 'Ali', bolge: 'tekeliler', aktif: true });
+    app.state.yevmiyeKayitlari.push({
+      id: 'y0', tarih: app.todayStr(), bolge: 'tekeliler', dayibasiId: 'd0',
+      sayilar: { kirim: 4, sulama: 0, dizimAsim: 0, sera: 0, capa: 0 }
+    });
+    app.odemeBolgeSekmeGecis('tekeliler');
+    app.odemeGunlukTarihDegisti(app.todayStr());
+
+    const printEl = app._belge.getElementById('odemePrintSayfa');
+    app.odemeYazdir();
+
+    dogru(printEl.classList.contains('onizleme-acik'), 'yazdır önizlemeyi açar');
+    dogru(app._belge.body.classList.contains('odeme-onizleme-acik'), 'gövde kaydırması kilitlenir');
+    dogru(printEl.innerHTML.includes('odeme-print-table'), 'evrak tablosu basılır');
+    dogru(printEl.innerHTML.includes('Ali'), 'dolu satırı olan dayıbaşı evrakta');
+    dogru(printEl.innerHTML.includes('odeme-onizleme-cubuk'), 'önizleme düğme çubuğu basılır');
+    // Yeni sekme belgesi ikinci kez hesaplanmasın diye gövde saklanır; çubuk
+    // SAKLANAN gövdeye sızmamalı, yoksa yazdırılan kâğıtta düğmeler çıkar.
+    dogru(app.odemeEvrakGovde.includes('odeme-print-table'), 'evrak gövdesi saklanır');
+    yanlis(app.odemeEvrakGovde.includes('odeme-onizleme-cubuk'), 'saklanan gövdede düğme çubuğu yok');
+
+    app.odemeOnizlemeKapat();
+    yanlis(printEl.classList.contains('onizleme-acik'), 'kapatınca önizleme kapanır');
+    yanlis(app._belge.body.classList.contains('odeme-onizleme-acik'), 'kapatınca kilit kalkar');
+    esit(printEl.innerHTML, '', 'kapatınca evrak DOM\'dan temizlenir');
+    app._temizle();
+  }
+
+  /* ---------------------------------------------------------------
      Ortak kırım (aynı gün aynı kodlu tarlalar → TEK kayıt).
      Bu kayıtlarda tarlaId bilerek null, tarlalar tarlaIds'te durur; sadece
      tarlaId'ye bakan her yol bu kayıtları sessizce görmez oluyordu.

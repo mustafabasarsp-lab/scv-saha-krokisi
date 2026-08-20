@@ -1628,12 +1628,48 @@ body.has-fullscreen-panel{overflow:hidden;}
 .odeme-filtre-disi-ipucu b{color:var(--ink);}
 .odeme-filtre-disi-ipucu .ipucu-gelecek{color:var(--red);font-weight:700;}
 
-/* ---------- ÖDEMELER: YAZDIRILABİLİR EVRAK ---------- */
+/* ---------- ÖDEMELER: YAZDIRILABİLİR EVRAK ----------
+   Yazdır düğmesi artık doğrudan window.print() çağırmıyor: iOS'ta ana ekrana
+   eklenmiş PWA içinde window.print() sessizce hiçbir şey yapmıyor, kullanıcı
+   düğmeye basıyor ve hiçbir önizleme açılmıyordu. Bunun yerine evrak önce
+   uygulama içi tam ekran önizlemede gösteriliyor; oradan ya window.print()
+   (masaüstü) ya da bağımsız bir sekme (telefon → Safari paylaş menüsü → Yazdır)
+   ile çıktı alınıyor. */
 #odemePrintSayfa{display:none;}
+#odemePrintSayfa.onizleme-acik{
+  display:block;position:fixed;inset:0;z-index:200;
+  background:#fff;overflow:auto;-webkit-overflow-scrolling:touch;
+  padding:16px 16px 0;
+}
+.odeme-onizleme-cubuk{
+  position:sticky;bottom:0;display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;
+  padding:12px 0;margin-top:16px;background:#fff;border-top:1px solid #ccc;
+}
+body.odeme-onizleme-acik{overflow:hidden;}
+/* Evrak dar ekranda SIKIŞTIRILMAZ, KÜÇÜLTÜLÜR. 8 sütunlu tablo 390px'e
+   akıtıldığında TOPLAM ve İMZA sütunları ekranın dışında kalıyordu — üstelik
+   sıkışmış sütunlar kâğıdın gerçek hâlini de göstermiyor. Kâğıt sabit
+   ONIZLEME_EVRAK_GEN genişliğinde çizilip transform ile ölçekleniyor; ölçeği
+   odemeOnizlemeOlcekle() hesaplıyor. transform yerleşimi değiştirmediği için
+   tuvalin yüksekliği de oradan veriliyor. */
+.odeme-onizleme-tuval{overflow:hidden;}
+#odemePrintSayfa.onizleme-acik .odeme-onizleme-tuval > .odeme-print{
+  width:720px;transform-origin:top left;transform:scale(var(--evrak-olcek,1));
+}
+@media print{
+  .odeme-onizleme-tuval{height:auto !important;overflow:visible !important;}
+  #odemePrintSayfa.onizleme-acik .odeme-onizleme-tuval > .odeme-print{
+    width:auto;transform:none;
+  }
+}
 @media print{
   body *{visibility:hidden;}
   #odemePrintSayfa, #odemePrintSayfa *{visibility:visible;}
   #odemePrintSayfa{display:block;position:absolute;left:0;top:0;width:100%;padding:20px;}
+  /* Önizleme açıkken de yazdırılabilmeli: .onizleme-acik daha özgül olduğu için
+     position:fixed baskıda ilk sayfaya kilitlenirdi. */
+  #odemePrintSayfa.onizleme-acik{position:absolute;inset:auto;left:0;top:0;overflow:visible;padding:20px;}
+  .odeme-onizleme-cubuk{display:none !important;}
 }
 .odeme-print{font-family:Arial,Helvetica,sans-serif;color:#000;}
 .odeme-print-baslik{font-size:22px;font-weight:800;text-align:center;margin-bottom:4px;letter-spacing:.04em;}
@@ -1899,6 +1935,7 @@ body.has-fullscreen-panel{overflow:hidden;}
 label.etiket-normal{text-transform:none;}
 label.etiket-normal-kucuk{text-transform:none;font-size:var(--fs-xs);}
 .metin-pasif{color:var(--muted);font-size:var(--fs-xs);}
+.metin-uyari{color:var(--red);}
 .olcum-alt-metni{display:block;font-size:var(--fs-xs);color:var(--muted);font-weight:400;}
 .metin-rengi-miras{color:inherit;}
 
@@ -2051,6 +2088,17 @@ input.dayibasi-ad-alani{flex:1;min-width:110px;border:1px solid var(--border);bo
 .foto-bayrak div{ margin-top:2px; }
 .foto-ozet{ display:flex; gap:10px; flex-wrap:wrap; margin-bottom:10px; font-size:var(--fs-sm, 14px); font-weight:600; }
 .foto-mesgul{ color:var(--muted); font-size:var(--fs-sm, 14px); }
+
+/* ---------- KAPATMA / SİLME ÇARPILARI ----------
+   Her × kırmızı: sahada güneş altında "bu düğme kapatır/siler" sinyalini renkten
+   okumak gerekiyor. .del ve .btn-muted sınıfları ✎ / 📤 / ↩ / "Vazgeç" gibi
+   çarpı OLMAYAN düğmelerde de kullanıldığı için blanket boyanamaz — × olanlara
+   ayrıca .carpi verilir. Blok bilerek stil sayfasının EN SONUNDA: .mini-kirim
+   .r1 .del gibi üç sınıflı kurallar aksi hâlde .carpi'yi yener. */
+.icon-btn.fullscreen-close{color:var(--red);}
+.dizim-del,.kaldir,.toplu-satir-sil,.iklim-row-del{color:var(--red);}
+.carpi,.btn.carpi,.mini-kirim .r1 .del.carpi,.secim-chip .carpi{color:var(--red);}
+.secim-chip .carpi{font-weight:800;}
 </style>
 </head>
 <!-- fab-acik: açılış sayfası Saha, yani "Kırım Gir" butonu görünür durumda.
@@ -2359,19 +2407,35 @@ input.dayibasi-ad-alani{flex:1;min-width:110px;border:1px solid var(--border);bo
       </div>
       <div class="panel-body">
         <input type="search" id="depoAramaInput" class="search-input alt-bosluk-2" placeholder="Kutu no, tarih veya kalite ara…" data-i18n-placeholder="Kutu no, tarih veya kalite ara…" oninput="renderDepo()">
-        <div class="detail-grid" id="depoOzet"></div>
-        <div class="field ust-bosluk-10">
-          <label data-i18n="Günlük Kutu Basımı">Günlük Kutu Basımı</label>
-          <div class="depo-tablo-wrap"><table class="depo-tablo" id="depoGunlukTablo"></table></div>
+        <div class="page-tabs alt-bosluk-2" id="depoSekmeTabs">
+          <button class="tab-btn active" id="depoSekmeTab_depoda" onclick="depoSekmeGecis('depoda')" data-i18n="Depodaki Kutular">Depodaki Kutular</button>
+          <button class="tab-btn" id="depoSekmeTab_giden" onclick="depoSekmeGecis('giden')" data-i18n="Giden Kutular">Giden Kutular</button>
         </div>
-        <div class="field ust-bosluk-10">
-          <label data-i18n="Kutular">Kutular</label>
-          <div class="hint-box hidden alt-bosluk-6" id="depoKaliteOzet"></div>
-          <div class="list-small" id="depoKutuListesi"></div>
+        <div id="depoBolumDepoda">
+          <div class="detail-grid" id="depoOzet"></div>
+          <div class="field ust-bosluk-10">
+            <label data-i18n="Günlük Kutu Basımı">Günlük Kutu Basımı</label>
+            <div class="depo-tablo-wrap"><table class="depo-tablo" id="depoGunlukTablo"></table></div>
+          </div>
+          <div class="field ust-bosluk-10">
+            <label data-i18n="Kutular">Kutular</label>
+            <div class="hint-box hidden alt-bosluk-6" id="depoKaliteOzet"></div>
+            <div class="list-small" id="depoKutuListesi"></div>
+          </div>
         </div>
-        <div class="field ust-bosluk-10">
-          <label data-i18n="Çıkış Geçmişi">Çıkış Geçmişi</label>
-          <div class="list-small" id="depoCikisListesi"></div>
+        <div id="depoBolumGiden" class="hidden">
+          <div class="detail-grid" id="depoGidenOzet"></div>
+          <div class="field ust-bosluk-10">
+            <label data-i18n="Toplu Çıkış Gir">Toplu Çıkış Gir</label>
+            <!-- Alanlar depoGidenFormKur() ile BİR KEZ basılıyor: kalite sütunları
+                 KUTU_KALITELERI sabitinden gelmeli ama renderDepo her çağrıldığında
+                 yeniden basılsa kullanıcının yazdığı adetler silinirdi. -->
+            <div id="depoGidenForm"></div>
+          </div>
+          <div class="field ust-bosluk-10">
+            <label data-i18n="Çıkış Geçmişi">Çıkış Geçmişi</label>
+            <div class="list-small" id="depoCikisListesi"></div>
+          </div>
         </div>
       </div>
     </div>
@@ -2512,7 +2576,7 @@ input.dayibasi-ad-alani{flex:1;min-width:110px;border:1px solid var(--border);bo
           <div class="bar-chart" id="raporBolgeChart"></div>
         </div>
         <div class="field">
-          <label data-i18n="Kırım Bazında Toplam Hasat (kg)">Kırım Bazında Toplam Hasat (kg)</label>
+          <label data-i18n="Kırım Bazında Tahmini Hasat (kg)">Kırım Bazında Tahmini Hasat (kg)</label>
           <div class="bar-chart" id="raporKirimChart"></div>
         </div>
         <div class="field">
@@ -2573,7 +2637,7 @@ const AYARLAR = {
    sera bu formülle 17px kalıyor, etiketi 39px yer istiyordu — ekranda "8." diye
    görünüyordu. Kutu artık eşit genişlikte (bkz. .sera-box). */
 const STORAGE_KEY = 'scvSahaKrokiV1';
-const APP_SURUM = 'v139'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
+const APP_SURUM = 'v140'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
 
 /* =========================================================
    HATA / DONMA GÜNLÜĞÜ — "bazen donuyor" şikayetini araştırmak için.
@@ -2816,13 +2880,14 @@ const I18N_EN = {
   'Yağmurlu':'Rainy', 'Karlı':'Snowy', 'Sağanak':'Showers', 'Fırtına':'Thunderstorm',
   'SCV Saha — Giriş':'SCV Saha — Login', 'Kullanıcı Adı':'Username', 'Şifre':'Password', 'Giriş Yap':'Log In',
   'Vazgeç':'Cancel', 'Kaydet':'Save', 'Ekle':'Add', 'Kapat':'Close', 'Düzenle':'Edit', 'Sil':'Delete',
+  'Yeni sekmede aç':'Open in new tab',
   '↩ Geri Al':'↩ Undo', 'silindi.':'deleted.',
   'Yeni Sera':'New Greenhouse', 'Serayı Düzenle':'Edit Greenhouse', 'Yeni Tarla':'New Field', 'Tarlayı Düzenle':'Edit Field',
   'Sera Adı':'Greenhouse Name', 'Sera Dizi Kapasitesi':'Greenhouse String Capacity',
   'Tür':'Type', 'Çeşit':'Variety', 'Giriş Tarihi':'Entry Date', 'Branda Rengi':'Tarp Color', 'Beyaz':'White', 'Mavi':'Blue',
   'Açılma Günü (girişten itibaren)':'Opening Day (from entry)', 'Kapalı Kalınan Gün':'Days Kept Closed', 'Altı Sulanan Gün':'Days Watered Underneath',
   'Geçmiş dönem yok':'No past cycles', 'Doluluk':'Fill Level', 'Dolu':'Filled', 'Dizilmiş Tütün':'Strung Tobacco', 'Tahmini Boşalma':'Estimated Emptying',
-  'gün':'days', 'Güncel Dönem (düzenlenebilir)':'Current Cycle (editable)', 'Dönem Bilgilerini Kaydet':'Save Cycle Info',
+  'gün':'days',
   'Dizilen Tütünler (Güncel Dönem)':'Strung Tobacco (Current Cycle)', 'Henüz kayıt yok':'No records yet',
   'Yeni Dönem Başlat':'Start New Cycle', 'Dönem Başlat':'Start Cycle',
   'Kapasite':'Capacity', 'Son İşlem':'Last Action', 'Geçmiş Dönemler':'Past Cycles', 'Boşalt':'Empty Out',
@@ -2880,13 +2945,16 @@ const I18N_EN = {
   'Tarih (Hasat Tarihi)':'Date (Harvest Date)', 'Kırım No (kaçıncı kırım)':'Harvest No.', 'Ort. Dizi Ağırlığı (kg)':'Avg. String Weight (kg)',
   'İşçi Sayısı':'Number of Workers', 'Yevmiye (₺)':'Daily Wage (₺)', 'Kayıp/Çürük Dizi (opsiyonel)':'Lost/Spoiled Strings (optional)',
   '18 yaş altı çalışan yok':'No workers under 18', 'Çalışma Saati':'Working Hours',
-  'Kutu Sayısı':'Box Count', 'Toplam Kg':'Total Kg', 'Ort. Kutu Kg':'Avg. Box Kg',
-  'Çıkan Toplam Kg':'Total Shipped Kg', 'Çıkış Geçmişi':'Shipment History', 'Depodan Çıkart':'Ship Out',
+  'Kutu Sayısı':'Box Count', 'Tahmini Kg':'Estimated Kg', 'Ort. Kutu Kg':'Avg. Box Kg',
+  'Çıkış Geçmişi':'Shipment History', 'Depodan Çıkart':'Ship Out',
+  'Depodaki Kutular':'Boxes in Storage', 'Giden Kutular':'Outgoing Boxes', 'Toplu Çıkış Gir':'Bulk Ship Out',
+  'Giden Kutu':'Shipped Boxes', 'Çıkan Kg':'Shipped Kg', 'Son Çıkış':'Last Shipment',
+  'Depoda yeterli kutu yok':'Not enough boxes in storage', 'çıkar':'will be shipped',
   'Depoya Geri Al':'Return to Storage', 'Çıkış Tarihi':'Shipment Date', 'Alıcı / Not (opsiyonel)':'Recipient / Note (optional)',
   'Çıkart':'Ship Out', 'Henüz çıkış kaydı yok':'No shipments yet',
   'Kaç Saat Sulandı':'Hours Irrigated', 'Kayıt Sayısı':'Record Count', 'Toplam Saat':'Total Hours', 'Henüz sulama kaydı yok':'No irrigation records yet',
   '📊 Genel Özet':'📊 Overview', 'Genel Özet':'Overview',
-  'Bölgeye Göre Gerçekleşen Hasat (kg)':'Harvested by Region (kg)', 'Kırım Bazında Toplam Hasat (kg)':'Harvest by Round (kg)', 'Depo Kalite Dağılımı (kg)':'Storage Quality Distribution (kg)',
+  'Bölgeye Göre Gerçekleşen Hasat (kg)':'Harvested by Region (kg)', 'Kırım Bazında Tahmini Hasat (kg)':'Estimated Harvest by Round (kg)', 'Depo Kalite Dağılımı (kg)':'Storage Quality Distribution (kg)',
   'Veri yok':'No data', 'Toplam Tarla':'Total Fields', 'Toplam Dekar':'Total Decares', 'Gerçekleşen Hasat':'Harvested', 'Tahmini Hasat':'Estimated Harvest',
   'Toplam Sulama Saati':'Total Irrigation Hours', 'Toplam Depo Kg':'Total Storage Kg',
   '⚠️ Uyarılar':'⚠️ Warnings', 'hasada':'harvest in', 'Aktif uyarı yok':'No active warnings',
@@ -3037,7 +3105,6 @@ const I18N_EN = {
   'Geçersiz yedek dosyası.':'Invalid backup file.',
   'Dosya okunamadı, geçerli bir JSON yedeği değil.':'Could not read the file; it is not a valid JSON backup.',
   'Bu yedek yüklenirse bu cihazdaki VE sunucudaki mevcut veriler bunun üzerine yazılacak; değişiklik tüm kullanıcılara yayılır. Emin misiniz?':'Restoring this backup will OVERWRITE the current data on this device AND on the server; the change propagates to every user. Are you sure?',
-  'Toplam Hasat':'Total Harvest',
   'Sera seçilmedi ve elle dizi sayısı girilmedi — kayıt 0 dizi ile oluşturulacak, sonradan düzenleyebilirsiniz. Devam edilsin mi?':'No greenhouse was selected and no string count was entered — the record will be created with 0 strings and can be edited later. Continue?',
   // Cihaz / tarayıcı yetenekleri
   'Bu tarayıcı bildirimleri desteklemiyor.':'This browser does not support notifications.',
@@ -4875,7 +4942,7 @@ function renderDizim(){
       <div class="sw"></div>
       <div class="main">
         <div class="r1"><span>${escapeHtml(kirimTarlaEtiket(k))}</span>
-          <span><button class="del" title="${i18n('Düzenle')}" onclick="openKirimDuzenleModal('${k.id}')">✎</button><button class="del" title="Sil" onclick="kirimSil('${k.id}')">×</button></span></div>
+          <span><button class="del" title="${i18n('Düzenle')}" onclick="openKirimDuzenleModal('${k.id}')">✎</button><button class="del carpi" title="Sil" onclick="kirimSil('${k.id}')">×</button></span></div>
         <div class="r2">${escapeHtml(k.tarih)} · ${kirimNoEtiket(k)}${k.sonDuzenleyen?' · '+escapeHtml(k.sonDuzenleyen):''}</div>
       </div>
       <div class="stat"><b>${fmt(tr.diziSayisi,0)}</b><span>${fmt(tr.toplamKg,0)} kg</span></div>
@@ -4942,14 +5009,12 @@ function renderToplamIstatistik(){
   });
   const toplamDizi = kayitlar.reduce((s,k)=>s+kirimTurev(k).diziSayisi,0);
   const toplamKg = kayitlar.reduce((s,k)=>s+kirimTurev(k).toplamKg,0);
-  const toplamFire = kayitlar.reduce((s,k)=>s+(Number(k.kayipDizi)||0),0);
   const diziliKayitlar = kayitlar.filter(k=>Number(k.ortDiziKg)>0);
   const diziOrt = diziliKayitlar.length ? diziliKayitlar.reduce((s,k)=>s+Number(k.ortDiziKg),0)/diziliKayitlar.length : null;
   sonucEl.innerHTML = `
     <div>Toplam Dizim<b>${fmt(toplamDizi,0)}</b></div>
-    <div>Toplam Kg<b>${fmt(toplamKg,0)}</b></div>
+    <div>Tahmini Kg<b>${fmt(toplamKg,0)}</b></div>
     <div>${i18n('Dizi Ortalaması')}<b>${diziOrt==null?'-':fmt(diziOrt,2)+' kg'}</b></div>
-    <div>Toplam Fire<b>${fmt(toplamFire,0)}</b></div>
   `;
   if(listeEl){
     const siraliKayitlar = [...kayitlar].sort((a,b)=>b.tarih.localeCompare(a.tarih));
@@ -5158,6 +5223,8 @@ document.addEventListener('keydown', function(e){
      kapatıyordu — modal açıkken tuş hiçbir şey yapmıyor, üstelik arkadaki panel
      görünmeden kapanıyordu. */
   if(e.key==='Escape'){
+    // Ödeme evrakı önizlemesi her şeyin üstünde (z-index 200) — önce o kapanır.
+    if(document.body.classList.contains('odeme-onizleme-acik')){ odemeOnizlemeKapat(); return; }
     const overlay = document.getElementById('overlay');
     if(overlay && !overlay.classList.contains('hidden')){ closeModal(); return; }
     if(fullscreenPanelId){ panelTamEkranKapat(fullscreenPanelId); return; }
@@ -5438,14 +5505,6 @@ function submitDonemBaslat(seraId){
   seraIsaretiUygula(s, 'doldurma'); // dönem açılan sera o gün doldurulmaya başlanmıştır
   renderAll(); openSeraDetay(seraId);
 }
-function submitDonemGuncelle(seraId){
-  const s = seraBul(seraId);
-  if(!s) return;
-  const d = seraAktifDonem(s);
-  if(!d) return;
-  Object.assign(d, donemFormOku());
-  renderAll(); openSeraDetay(seraId);
-}
 function seraBosalt(id){
   const s = seraBul(id);
   if(!s) return;
@@ -5705,11 +5764,11 @@ function openSeraDetay(id){
       <div>${i18n('Dizilmiş Tütün')}<b>${fmt(dizilmisKg,0)} kg</b></div>
       <div>${i18n('Tahmini Boşalma')}<b>${tahminGun>0? '~'+tahminGun+' '+i18n('gün'):'-'}</b></div>
     </div>
-    <div class="field">
-      <label>${i18n('Güncel Dönem (düzenlenebilir)')}</label>
-      ${donemFormFieldsHtml(d)}
-      <button class="btn btn-primary ust-bosluk-minik" onclick="submitDonemGuncelle('${s.id}')">${i18n('Dönem Bilgilerini Kaydet')}</button>
-    </div>
+    <!-- "Güncel Dönem (düzenlenebilir)" formu KALDIRILDI: aktif dönemin tür /
+         çeşit / branda / gün alanları sera detayında sahada hiç kullanılmıyordu,
+         kartı uzatıp asıl aranan bilgiyi (kaçıncı kırım, çeşit, doluluk)
+         aşağı itiyordu. Alanlar dönem BAŞLARKEN hâlâ giriliyor; sonradan
+         düzenleme yolu bilerek kapatıldı. -->
     <div class="field">
       <label>${i18n('Dizilen Tütünler (Güncel Dönem)')}</label>
       <div class="list-small liste-yukseklik-sinirli">${kaynakSatirlariHtml || `<div class="item">${i18n('Henüz kayıt yok')}</div>`}</div>
@@ -5858,7 +5917,7 @@ function ilacRowEkle(prefill){
     <input type="text" placeholder="İlaç adı" id="ilacAd${idx}" value="${escapeHtml(p.ad||'')}">
     <input type="date" id="ilacTarih${idx}" value="${p.tarih||''}">
     <input type="number" placeholder="PHI gün" id="ilacPhi${idx}" min="0" value="${p.phi??''}">
-    <button class="btn btn-muted" type="button" onclick="document.getElementById('ilacRow${idx}').remove()">×</button>
+    <button class="btn btn-muted carpi" type="button" onclick="document.getElementById('ilacRow${idx}').remove()">×</button>
   `;
   document.getElementById('ilacRows').appendChild(wrap);
 }
@@ -5885,7 +5944,7 @@ function zararliRowEkle(prefill){
     <input type="text" placeholder="Zararlı adı (örn. Yaprak biti)" id="zararliAd${idx}" value="${escapeHtml(p.ad||'')}">
     <input type="date" id="zararliTarih${idx}" value="${p.tarih||''}">
     <input type="number" placeholder="Yüzde %" id="zararliYuzde${idx}" min="0" max="100" step="1" value="${p.yuzde??''}">
-    <button class="btn btn-muted" type="button" onclick="document.getElementById('zararliRow${idx}').remove()">×</button>
+    <button class="btn btn-muted carpi" type="button" onclick="document.getElementById('zararliRow${idx}').remove()">×</button>
   `;
   document.getElementById('zararliRows').appendChild(wrap);
 }
@@ -5912,7 +5971,7 @@ function gubreRowEkle(prefill){
     <input type="text" placeholder="Gübre adı" id="gubreAd${idx}" value="${escapeHtml(p.ad||'')}">
     <input type="date" id="gubreTarih${idx}" value="${p.tarih||''}">
     <input type="number" placeholder="Miktar (kg)" id="gubreMiktar${idx}" min="0" step="0.1" value="${p.miktar??''}">
-    <button class="btn btn-muted" type="button" onclick="document.getElementById('gubreRow${idx}').remove()">×</button>
+    <button class="btn btn-muted carpi" type="button" onclick="document.getElementById('gubreRow${idx}').remove()">×</button>
   `;
   document.getElementById('gubreRows').appendChild(wrap);
 }
@@ -6007,7 +6066,7 @@ function openTarlaDetay(id){
       <div class="sw"></div>
       <div class="main">
         <div class="r1"><span>${escapeHtml(ilac.ad)}</span>
-          <button class="del" title="Sil" onclick="ilacSilTarla('${t.id}',${i});openTarlaDetay('${t.id}')">×</button></div>
+          <button class="del carpi" title="Sil" onclick="ilacSilTarla('${t.id}',${i});openTarlaDetay('${t.id}')">×</button></div>
         <div class="r2">${escapeHtml(ilac.tarih)} · PHI ${ilac.phi}g</div>
       </div>
       <div class="stat"><b style="${guvenli?'':'color:var(--red);'}">${guvenli?i18n('Güvenli'):kalan}</b>${guvenli?'':`<span>${i18n('gün kaldı')}</span>`}</div>
@@ -6018,7 +6077,7 @@ function openTarlaDetay(id){
       <div class="sw" style="background:${Number(z.yuzde)>=50?'var(--red)':'var(--tobacco)'}"></div>
       <div class="main">
         <div class="r1"><span>🐛 ${escapeHtml(z.ad)}</span>
-          <button class="del" title="Sil" onclick="zararliSilTarla('${t.id}',${i});openTarlaDetay('${t.id}')">×</button></div>
+          <button class="del carpi" title="Sil" onclick="zararliSilTarla('${t.id}',${i});openTarlaDetay('${t.id}')">×</button></div>
         <div class="r2">${escapeHtml(z.tarih)}</div>
       </div>
       <div class="stat"><b>%${Number(z.yuzde)||0}</b></div>
@@ -6029,7 +6088,7 @@ function openTarlaDetay(id){
       <div class="sw"></div>
       <div class="main">
         <div class="r1"><span>🌾 ${escapeHtml(g.ad)}</span>
-          <button class="del" title="Sil" onclick="gubreSilTarla('${t.id}',${i});openTarlaDetay('${t.id}')">×</button></div>
+          <button class="del carpi" title="Sil" onclick="gubreSilTarla('${t.id}',${i});openTarlaDetay('${t.id}')">×</button></div>
         <div class="r2">${escapeHtml(g.tarih)}</div>
       </div>
       <div class="stat"><b>${fmt(g.miktar,1)}</b><span>kg</span></div>
@@ -6046,13 +6105,12 @@ function openTarlaDetay(id){
     return `<div class="item">${escapeHtml(k.tarih)} — ${kirimNoEtiket(k)} · ${fmt(tr.diziSayisi,0)} dizi · ${fmt(tr.toplamKg,0)} kg${ortakNot} → ${escapeHtml(seraDagilimiEtiket(k.seraDagilimi))}${bekleyenNot}
       <span class="saga-yasla">
         <button class="btn btn-muted dugme-cok-kucuk" onclick="openKirimDuzenleModal('${k.id}','${t.id}')">✎</button>
-        <button class="btn btn-muted dugme-cok-kucuk" onclick="kirimSil('${k.id}');openTarlaDetay('${t.id}')">×</button>
+        <button class="btn btn-muted dugme-cok-kucuk carpi" onclick="kirimSil('${k.id}');openTarlaDetay('${t.id}')">×</button>
       </span></div>`;
   }).join('') || `<div class="item">${i18n('Henüz kırım kaydı yok')}</div>`;
   openModal(`
     <h2>${escapeHtml(t.ad)}</h2>
     <div class="detail-grid">
-      <div>${i18n('Çiftçi')}<b>${escapeHtml(t.ciftci||'-')}</b></div>
       <div>${i18n('Dekar')}<b>${fmt(t.dekar,1)}</b></div>
       <div>${i18n('Bölge')}<b>${t.bolge==='tekeliler'?'Tekeliler':t.bolge==='kalemli'?'Kalemli':'-'}</b></div>
       <div>${i18n('Varyete Kodu / Çeşit')}<b>${escapeHtml(t.cesit||'-')}</b></div>
@@ -6061,9 +6119,8 @@ function openTarlaDetay(id){
       <div>${i18n('Çapa Tarihi')}<b>${escapeHtml(t.capaTarihi||'-')}</b></div>
       <div>${i18n('Fide Yöntemi')}<b>${fideYontemiEtiket(t)}</b></div>
       <div>${i18n('Kırım Durumu')}<b>${stats.maxKirimNo? stats.maxKirimNo+'. '+i18n('kırım yapıldı'):i18n('Henüz kırım yok')} (${stats.kayitSayisi} ${i18n('kayıt')})</b></div>
-      <div>${i18n('Toplam Hasat')}<b>${fmt(stats.toplamKg,0)} kg</b></div>
+      <div>${i18n('Tahmini Hasat')}<b>${fmt(stats.toplamKg,0)} kg</b></div>
       <div>${i18n('Toplam Dizi')}<b>${fmt(stats.toplamDizi,0)}</b></div>
-      <div>${i18n('Tahmini Hasat')}<b>${fmt(t.tahminiHasatKg,0)} kg</b></div>
       <div>${i18n('Son İşlem')}<b>${sonIslemEtiket(t)}</b></div>
     </div>
     <div class="field">
@@ -6720,7 +6777,7 @@ function kirimEkTarlaAlaniHtml(){
   const chipsHtml = ekTarlalar.length ? `
     <div class="secim-chip-row">
       <span class="secim-chip sabit">${escapeHtml(anaTarla?anaTarla.ad:'')}</span>
-      ${ekTarlalar.map(t=>`<button type="button" class="secim-chip" onclick="kirimEkTarlaToggle('${t.id}')">${escapeHtml(t.ad)} ×</button>`).join('')}
+      ${ekTarlalar.map(t=>`<button type="button" class="secim-chip" onclick="kirimEkTarlaToggle('${t.id}')">${escapeHtml(t.ad)} <span class="carpi">×</span></button>`).join('')}
     </div>` : '';
   const digerler = state.tarlalar.filter(t=>t.id!==kirimAkisTarlaId);
   const tilesHtml = digerler.length ? `<div class="tarla-grid">${digerler.map(t=>`
@@ -9202,7 +9259,7 @@ async function excelDisaAktar(){
       Ad:t.ad, Çiftçi:t.ciftci, Bölge: t.bolge==='tekeliler'?'Tekeliler':t.bolge==='kalemli'?'Kalemli':'-',
       Dekar:t.dekar, 'Varyete/Çeşit':t.cesit, 'Dikim Tarihi':t.dikimTarihi, 'Çapa Tarihi':t.capaTarihi,
       'Viyol (da)':t.viyolDekar||0, 'Yer Ocağı (da)':t.yerOcagiDekar||0,
-      'Toplam Hasat (kg)':Math.round(stats.toplamKg), 'Tahmini Hasat (kg)':t.tahminiHasatKg
+      'Tahmini Hasat (kg)':Math.round(stats.toplamKg), 'Elle Girilen Tahmin (kg)':t.tahminiHasatKg
     };
   });
   XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(tarlaRows), 'Tarlalar');
@@ -9222,7 +9279,7 @@ async function excelDisaAktar(){
     return {
       Tarih:k.tarih, Tarla:kirimTarlaEtiket(k), Çeşit:k.cesit||'', 'Kırım No':k.kirimNo, 'Dizi Sayısı':tr.diziSayisi,
       'Ort. Dizi Kg':k.ortDiziKg,
-      'Toplam Kg':Math.round(tr.toplamKg), 'Sera Dağılımı':seraDagilimiEtiket(k.seraDagilimi), 'Bekleyen Dizi':tr.kalanDizi,
+      'Tahmini Kg':Math.round(tr.toplamKg), 'Sera Dağılımı':seraDagilimiEtiket(k.seraDagilimi), 'Bekleyen Dizi':tr.kalanDizi,
       'İşçi Sayısı':k.isciSayisi, Yevmiye:k.yevmiye
     };
   });
@@ -9617,6 +9674,17 @@ function depoBolgeSekmeGecis(bolge){
   });
   renderDepo();
 }
+/* Depoda / Giden ayrımı. Bölge sekmesinden BAĞIMSIZ: kullanıcı Tekeliler'in
+   gidenlerine bakarken bölge değiştirdiğinde yine gidenlerde kalır. */
+let depoSekmeAktif = 'depoda';
+function depoSekmeGecis(sekme){
+  depoSekmeAktif = sekme;
+  ['depoda','giden'].forEach(s=>{
+    document.getElementById('depoSekmeTab_'+s).classList.toggle('active', s===sekme);
+    document.getElementById('depoBolum'+(s==='depoda'?'Depoda':'Giden')).classList.toggle('hidden', s!==sekme);
+  });
+  renderDepo();
+}
 /* ---- Kutu basımı (toplu giriş) ----
    Kutular tek tek değil, bir günün basımı olarak giriliyor: kâğıttaki kayıt da
    böyle tutuluyor (bir gün + ürün kodu + kalite başına adet). Kalite başına
@@ -9743,6 +9811,91 @@ function submitKutuCikis(id){
   Object.assign(k, sonIslemDamgasi());
   closeModal(); renderAll();
 }
+/* ---- Toplu çıkış (Giden Kutular sekmesi) ----
+   Kutu Basımı'nın aynası: gün + kalite başına adet. Tek tek 📤 ile çıkarmak 900+
+   kutuluk bir depoda kullanılamıyordu.
+   Seçim kuralı: en ESKİ kutudan başlanır (paketleme tarihi, eşitse kutu no).
+   Depoda ambar mantığı FIFO — önce basılan önce sevk edilir.
+   "Ya hep ya hiç": bir kalitede bile yeterli kutu yoksa HİÇBİR kutuya
+   dokunulmaz. Kısmi uygulama, kullanıcının hangi kalitenin eksik kaldığını
+   sonradan anlamasını imkânsız kılardı. */
+function topluCikisSecim(bolge, adetler){
+  const depoda = sezonSuz(state.depoKutulari)
+    .filter(k=>k.bolge===bolge && !k.cikisTarihi)
+    .sort((a,b)=> (a.tarih||'').localeCompare(b.tarih||'') || (a.kutuNo||0)-(b.kutuNo||0));
+  const secilen = [];
+  const eksikler = [];
+  KUTU_KALITELERI.forEach(kal=>{
+    const istenen = Math.max(0, Math.floor(Number(adetler[kal])||0));
+    if(!istenen) return;
+    const uygun = depoda.filter(k=>(k.kalite||'')===kal);
+    if(uygun.length < istenen){ eksikler.push(`${kal}: ${uygun.length}/${istenen}`); return; }
+    secilen.push(...uygun.slice(0, istenen));
+  });
+  return { secilen, eksikler };
+}
+function submitTopluCikis(){
+  const bolge = depoBolgeAktif;
+  const tarih = document.getElementById('fGcTarih').value || todayStr();
+  const not = document.getElementById('fGcNot').value.trim();
+  const adetler = {};
+  KUTU_KALITELERI.forEach(kal=>{
+    adetler[kal] = Math.max(0, Math.floor(Number(document.getElementById('fGc_'+kal).value)||0));
+  });
+  const toplam = KUTU_KALITELERI.reduce((s,k)=>s+adetler[k],0);
+  if(!toplam){ uyar(i18n('Kalite başına kutu adedi girin.')); return; }
+  const { secilen, eksikler } = topluCikisSecim(bolge, adetler);
+  if(eksikler.length){
+    uyar(`${i18n('Depoda yeterli kutu yok')} — ${eksikler.join(' · ')}`);
+    return;
+  }
+  const damga = sonIslemDamgasi();
+  secilen.forEach(k=>{ k.cikisTarihi = tarih; k.cikisNot = not; Object.assign(k, damga); });
+  KUTU_KALITELERI.forEach(kal=>{ document.getElementById('fGc_'+kal).value = 0; });
+  document.getElementById('fGcNot').value = '';
+  renderAll();
+  const kg = secilen.reduce((s,k)=>s+(Number(k.kg)||0),0);
+  const dokum = KUTU_KALITELERI.filter(k=>adetler[k]>0).map(k=>`${adetler[k]} ${k}`).join(' + ');
+  uyar(`${tarih} — ${dokum} = ${secilen.length} kutu çıkarıldı (${fmt(kg,0)} kg)`);
+}
+function depoGidenFormKur(){
+  const el = document.getElementById('depoGidenForm');
+  if(!el || el.dataset.kuruldu) return;
+  el.innerHTML = `
+    <div class="row2">
+      <div class="field"><label>${i18n('Çıkış Tarihi')}</label><input id="fGcTarih" type="date" value="${todayStr()}"></div>
+      <div class="field"><label>${i18n('Alıcı / Not (opsiyonel)')}</label><input id="fGcNot" type="text"></div>
+    </div>
+    <label class="alan-basligi">${i18n('Kalite Başına Kutu Adedi')}</label>
+    <div class="row3">
+      ${KUTU_KALITELERI.map(kal=>`<div class="field"><label>${kal}</label>
+        <input id="fGc_${kal}" type="number" inputmode="numeric" min="0" step="1" value="0" oninput="topluCikisOzet()"></div>`).join('')}
+    </div>
+    <div class="hint-box" id="gcOzet"></div>
+    <button class="btn btn-primary ust-bosluk-6" onclick="submitTopluCikis()">${i18n('Çıkart')}</button>`;
+  el.dataset.kuruldu = '1';
+}
+function topluCikisOzet(){
+  const el = document.getElementById('gcOzet');
+  if(!el) return;
+  const adetler = {};
+  KUTU_KALITELERI.forEach(kal=>{
+    adetler[kal] = Math.max(0, Math.floor(Number(document.getElementById('fGc_'+kal).value)||0));
+  });
+  const toplam = KUTU_KALITELERI.reduce((s,k)=>s+adetler[k],0);
+  if(!toplam){
+    el.innerHTML = `<span class="metin-pasif">${i18n('Kalite başına kutu adedi girin.')}</span>`;
+    return;
+  }
+  const { secilen, eksikler } = topluCikisSecim(depoBolgeAktif, adetler);
+  if(eksikler.length){
+    el.innerHTML = `<b class="metin-uyari">${i18n('Depoda yeterli kutu yok')}</b> — ${escapeHtml(eksikler.join(' · '))}`;
+    return;
+  }
+  const kg = secilen.reduce((s,k)=>s+(Number(k.kg)||0),0);
+  const parcalar = KUTU_KALITELERI.filter(k=>adetler[k]>0).map(k=>`<b>${adetler[k]}</b> ${k}`);
+  el.innerHTML = `${parcalar.join(' · ')} → <b>${toplam}</b> ${i18n('kutu')} / <b>${fmt(kg,0)}</b> kg ${i18n('çıkar')}`;
+}
 function kutuGeriAl(id){
   const k = state.depoKutulari.find(x=>x.id===id);
   if(!k) return;
@@ -9768,10 +9921,21 @@ function renderDepo(){
   const cikanToplamKg = cikmis.reduce((s,k)=>s+(Number(k.kg)||0),0);
   ozetEl.innerHTML = `
     <div>${i18n('Kutu Sayısı')}<b>${depoda.length}</b></div>
-    <div>${i18n('Toplam Kg')}<b>${fmt(toplamKg,0)}</b></div>
+    <div>${i18n('Tahmini Kg')}<b>${fmt(toplamKg,0)}</b></div>
     <div>${i18n('Ort. Kutu Kg')}<b>${depoda.length?fmt(toplamKg/depoda.length,1):'-'}</b></div>
-    <div>${i18n('Çıkan Toplam Kg')}<b>${fmt(cikanToplamKg,0)}</b></div>
   `;
+  /* Çıkış rakamları artık Giden Kutular sekmesinde: depodaki mevcudu okurken
+     çıkmış kg'ın yanda durması iki farklı soruyu aynı ızgaraya karıştırıyordu. */
+  const gidenOzetEl = document.getElementById('depoGidenOzet');
+  if(gidenOzetEl){
+    gidenOzetEl.innerHTML = `
+      <div>${i18n('Giden Kutu')}<b>${cikmis.length}</b></div>
+      <div>${i18n('Çıkan Kg')}<b>${fmt(cikanToplamKg,0)}</b></div>
+      <div>${i18n('Son Çıkış')}<b>${cikmis.length?escapeHtml(cikmis[0].cikisTarihi):'-'}</b></div>
+    `;
+  }
+  depoGidenFormKur();
+  topluCikisOzet();
   /* Kalite bazında özet — seçili bölgenin (ve aramanın) depodaki kutuları */
   const kaliteOzetEl = document.getElementById('depoKaliteOzet');
   if(kaliteOzetEl){
@@ -9806,7 +9970,7 @@ function renderDepo(){
         <div class="r1"><span>Kutu #${k.kutuNo}</span>
           <span>
             <button class="del" title="${i18n('Depodan Çıkart')}" onclick="openKutuCikisModal('${k.id}')">📤</button>
-            <button class="del" title="Sil" onclick="kutuSil('${k.id}')">×</button>
+            <button class="del carpi" title="Sil" onclick="kutuSil('${k.id}')">×</button>
           </span></div>
         <div class="r2">${escapeHtml(k.tarih)}${k.kalite?' · '+escapeHtml(k.kalite):''}</div>
       </div>
@@ -9945,7 +10109,7 @@ function renderSulama(){
       <div class="sw"></div>
       <div class="main">
         <div class="r1"><span>${escapeHtml(t?t.ad:'(silinmiş tarla)')}</span>
-          <button class="del" title="Sil" onclick="sulamaSil('${s.id}')">×</button></div>
+          <button class="del carpi" title="Sil" onclick="sulamaSil('${s.id}')">×</button></div>
         <div class="r2">${escapeHtml(s.tarih)}</div>
       </div>
       <div class="stat"><b>${fmt(s.saat,1)}</b><span>saat</span></div>
@@ -11567,7 +11731,7 @@ function renderOdemeGecmisListesi(){
     const d = state.dayibasilar.find(x=>x.id===o.dayibasiId);
     return `<div class="item satir-iki-yanli">
       <span>${escapeHtml(o.tarih)} · ${escapeHtml(d?d.ad:i18n('(silinmiş)'))} · <b>${fmt(o.tutar,0)}₺</b>${o.not?' · '+escapeHtml(o.not):''}</span>
-      <button class="del sade-sil-dugmesi" title="${i18n('Sil')}" onclick="odemeSil('${o.id}')">×</button>
+      <button class="del sade-sil-dugmesi carpi" title="${i18n('Sil')}" onclick="odemeSil('${o.id}')">×</button>
     </div>`;
   }).join('') || `<div class="item">${i18n('Henüz ödeme kaydı yok')}</div>`;
 }
@@ -11578,6 +11742,10 @@ function renderOdemeGecmisListesi(){
    Arayüz dili İngilizceye alındığında evrakın da İngilizce basılması belgeyi
    imzalayan kişi için okunamaz hâle getirirdi. Ekran Türkçe/İngilizce, evrak
    her zaman Türkçe. */
+/* Üretilen evrak gövdesi önizleme ile "Yeni sekmede aç" arasında paylaşılıyor;
+   ikinci kez hesaplanmasın diye burada saklanıyor. */
+let odemeEvrakGovde = '';
+let odemeEvrakBaslik = '';
 function odemeYazdir(){
   const tarih = odemeGunlukTarih;
   const bolge = odemeBolgeAktif;
@@ -11601,7 +11769,7 @@ function odemeYazdir(){
   const bosSatir = `<tr><td>&nbsp;</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>`;
   const printEl = document.getElementById('odemePrintSayfa');
   if(!printEl) return;
-  printEl.innerHTML = `
+  odemeEvrakGovde = `
     <div class="odeme-print">
       <div class="odeme-print-baslik">${bolgeAdBuyuk}</div>
       <div class="odeme-print-tarih">TARİH: ${tarihGoster}</div>
@@ -11620,7 +11788,71 @@ function odemeYazdir(){
       <div class="odeme-print-sayim">SAYIM YAPAN: ________________________</div>
     </div>
   `;
-  setTimeout(()=>window.print(), 50);
+  odemeEvrakBaslik = `${bolgeAdBuyuk} ${tarihGoster}`;
+  printEl.innerHTML = `<div class="odeme-onizleme-tuval" id="odemeEvrakTuval">${odemeEvrakGovde}</div>
+    <div class="odeme-onizleme-cubuk">
+      <button class="btn btn-muted carpi" onclick="odemeOnizlemeKapat()">${i18n('Kapat')}</button>
+      <button class="btn" onclick="odemeEvrakYeniSekme()">${i18n('Yeni sekmede aç')}</button>
+      <button class="btn btn-primary" onclick="window.print()">🖨 ${i18n('Yazdır')}</button>
+    </div>`;
+  printEl.classList.add('onizleme-acik');
+  document.body.classList.add('odeme-onizleme-acik');
+  printEl.scrollTop = 0;
+  odemeOnizlemeOlcekle();
+}
+/* Kâğıdın 720px'lik sabit genişliğini ekrana sığdıran ölçek. Ölçek yalnızca
+   KÜÇÜLTÜR (Math.min ... 1): masaüstünde kâğıt gerçek boyutunda durmalı. */
+const ONIZLEME_EVRAK_GEN = 720;
+function odemeOnizlemeOlcekle(){
+  const printEl = document.getElementById('odemePrintSayfa');
+  const tuval = document.getElementById('odemeEvrakTuval');
+  if(!printEl || !tuval) return;
+  const evrak = tuval.firstElementChild;
+  if(!evrak) return;
+  const kullanilabilir = (printEl.clientWidth || 0) - 32; // .onizleme-acik yatay padding
+  if(kullanilabilir <= 0) return;
+  const olcek = Math.min(1, kullanilabilir / ONIZLEME_EVRAK_GEN);
+  evrak.style.setProperty('--evrak-olcek', olcek);
+  tuval.style.height = Math.ceil((evrak.offsetHeight || 0) * olcek) + 'px';
+}
+function odemeOnizlemeKapat(){
+  const printEl = document.getElementById('odemePrintSayfa');
+  if(printEl){ printEl.classList.remove('onizleme-acik'); printEl.innerHTML = ''; }
+  document.body.classList.remove('odeme-onizleme-acik');
+}
+/* Evrakın bağımsız bir HTML belgesi hâli. iOS'ta PWA'dan açıldığında Safari
+   sekmesinde açılır ve paylaş menüsündeki Yazdır ile çıktı alınır.
+   window.open('') iOS standalone'da engellenebildiği için blob URL + <a> ile
+   açılıyor; tıklama kullanıcı hareketi olduğundan açılır pencere engeline
+   takılmıyor. Evrak stilleri burada TEKRARLANIYOR: yeni sekme uygulamanın
+   <style> bloğuna erişemiyor, belgenin kendi kendine yeterli olması gerekiyor. */
+function odemeEvrakYeniSekme(){
+  if(!odemeEvrakGovde) return;
+  const belge = `<!doctype html><html lang="tr"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>${escapeHtml(odemeEvrakBaslik)}</title>
+<style>
+body{margin:0;padding:20px;background:#fff;}
+.odeme-print{font-family:Arial,Helvetica,sans-serif;color:#000;}
+.odeme-print-baslik{font-size:22px;font-weight:800;text-align:center;margin-bottom:4px;letter-spacing:.04em;}
+.odeme-print-tarih{font-size:14px;font-weight:700;text-align:center;margin-bottom:16px;}
+.odeme-print-table{width:100%;border-collapse:collapse;}
+.odeme-print-table th,.odeme-print-table td{border:1px solid #000;padding:6px 8px;font-size:12px;text-align:center;}
+.odeme-print-table th{font-weight:800;}
+.odeme-print-table td:first-child,.odeme-print-table th:first-child{text-align:left;}
+.odeme-print-alt{display:flex;justify-content:flex-end;margin-top:14px;}
+.odeme-print-genel-toplam{border:1px solid #000;padding:8px 18px;font-weight:800;font-size:13px;display:flex;flex-direction:column;align-items:center;gap:4px;}
+.odeme-print-genel-toplam span{font-size:19px;}
+.odeme-print-sayim{margin-top:28px;font-size:13px;font-weight:700;}
+@media print{body{padding:0;}}
+</style></head><body>${odemeEvrakGovde}</body></html>`;
+  const url = URL.createObjectURL(new Blob([belge], {type:'text/html'}));
+  const a = document.createElement('a');
+  a.href = url; a.target = '_blank'; a.rel = 'noopener';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url), 60000);
 }
 
 /* =========================================================
