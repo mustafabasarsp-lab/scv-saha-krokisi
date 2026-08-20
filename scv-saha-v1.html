@@ -2297,8 +2297,8 @@ input.dayibasi-ad-alani{flex:1;min-width:110px;border:1px solid var(--border);bo
             <div><b id="qsSeraDoluluk">-</b><span data-i18n="Sera Doluluk">Sera Doluluk</span></div>
             <div><b id="qsDoluSera">0</b><span data-i18n="Dolu Sera">Dolu Sera</span></div>
             <div><b id="qsBosSera">0</b><span data-i18n="Boş Sera">Boş Sera</span></div>
-            <div title="Toplam kg ÷ kırım yapılmış tarlaların dekarı"><b id="qsVerimKirilan">-</b><span data-i18n="kg/da (kırılan)">kg/da (kırılan)</span></div>
-            <div title="Toplam kg ÷ bütün tarlaların dekarı"><b id="qsVerimTum">-</b><span data-i18n="kg/da (tüm saha)">kg/da (tüm saha)</span></div>
+            <div title="Tahmini kg ÷ kırım yapılmış tarlaların dekarı"><b id="qsVerimKirilan">-</b><span data-i18n="tahmini kg/da (kırılan)">tahmini kg/da (kırılan)</span></div>
+            <div title="Tahmini kg ÷ bütün tarlaların dekarı"><b id="qsVerimTum">-</b><span data-i18n="tahmini kg/da (tüm saha)">tahmini kg/da (tüm saha)</span></div>
           </div>
           <div class="uyarilar-baslik" data-i18n="⚠️ Uyarılar">⚠️ Uyarılar</div>
           <div class="uyarilar-box" id="sahaUyarilar"></div>
@@ -2637,7 +2637,7 @@ const AYARLAR = {
    sera bu formülle 17px kalıyor, etiketi 39px yer istiyordu — ekranda "8." diye
    görünüyordu. Kutu artık eşit genişlikte (bkz. .sera-box). */
 const STORAGE_KEY = 'scvSahaKrokiV1';
-const APP_SURUM = 'v140'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
+const APP_SURUM = 'v141'; // pre-commit hook her kod güncellemesinde bu sayıyı sw.js'teki cache sürümüyle birlikte otomatik artırır
 
 /* =========================================================
    HATA / DONMA GÜNLÜĞÜ — "bazen donuyor" şikayetini araştırmak için.
@@ -2848,7 +2848,7 @@ const I18N_EN = {
   'Bu günün planı zaten dolu. Kopyalamadan önce mevcut planı boşaltın.':'This day already has a plan. Clear it before copying.',
   'gelen':'incoming', 'giden':'outgoing',
   'Boş':'Empty', 'Tarla':'Field', 'Sera':'Greenhouse', 'Sera Doluluk':'Greenhouse Occupancy',
-  'Dolu Sera':'Full', 'Boş Sera':'Empty', 'kg/da (kırılan)':'kg/da (harvested)', 'kg/da (tüm saha)':'kg/da (all land)',
+  'Dolu Sera':'Full', 'Boş Sera':'Empty', 'tahmini kg/da (kırılan)':'est. kg/da (harvested)', 'tahmini kg/da (tüm saha)':'est. kg/da (all land)',
   'Seralar':'Greenhouses', 'Sera ara…':'Search greenhouses…',
   'Tarlalar':'Fields', 'Tarla ara…':'Search fields…',
   'Tarla Ara':'Search Field', 'Sonuç bulunamadı':'No results found',
@@ -2889,7 +2889,6 @@ const I18N_EN = {
   'Geçmiş dönem yok':'No past cycles', 'Doluluk':'Fill Level', 'Dolu':'Filled', 'Dizilmiş Tütün':'Strung Tobacco', 'Tahmini Boşalma':'Estimated Emptying',
   'gün':'days',
   'Dizilen Tütünler (Güncel Dönem)':'Strung Tobacco (Current Cycle)', 'Henüz kayıt yok':'No records yet',
-  'Yeni Dönem Başlat':'Start New Cycle', 'Dönem Başlat':'Start Cycle',
   'Kapasite':'Capacity', 'Son İşlem':'Last Action', 'Geçmiş Dönemler':'Past Cycles', 'Boşalt':'Empty Out',
   'İlaç Ekle':'Add Pesticide', 'Zararlı Ekle':'Add Pest', 'Gübre Ekle':'Add Fertilizer',
   /* Fotoğraftan aktar */
@@ -3139,7 +3138,7 @@ const I18N_EN = {
   'gibi bir aralık yazarsanız B1, B2 … B41 olarak açılır. Aynı adda sera zaten varsa atlanır.':'style ranges expand to B1, B2 … B41. Greenhouses that already exist by name are skipped.',
   'Arama yalnızca listeyi daraltır; eylemler görünmeyen ama işaretli kalan seralara da uygulanır. İşaretler bugün için geçerlidir, ertesi gün kendiliğinden düşer.':'Search only narrows the list; actions still apply to checked greenhouses that are hidden. Marks are valid for today and clear themselves the next day.',
   'İşaret bugün için geçerlidir, ertesi gün kendiliğinden düşer. Tarlaya o güne ait kırım kaydı girildiğinde de düşer.':'The mark is valid for today and clears itself the next day. It also clears once a harvest record is entered for that field on that day.',
-  'Aktif dönem yok. Kırım eklendiğinde otomatik başlar, ya da burada elle başlatabilirsiniz.':'No active period. One starts automatically when a harvest is added, or you can start one here.',
+  'Aktif dönem yok. Kırım eklendiğinde otomatik başlar; elle doldurmak için Toplu Doldur\'u kullanın.':'No active cycle. One starts automatically when a harvest is added; use Bulk Fill to start one by hand.',
   'Yol tarifini başlatmak için haritayı seçin.':'Choose a map app to start directions.',
   'Birikmiş ölçümleri tek seferde girin — her satır ayrı bir gün ve saat olabilir. Yeni satır, bir üstteki satırın serasını ve tarihini devralır. Tamamen boş satırlar yok sayılır.':'Enter accumulated readings in one go — each row can be its own day and time. A new row inherits the greenhouse and date of the row above. Completely empty rows are ignored.',
   // uyar()/onayla() içinde birleştirilen parçalar — sözlükte tam metinle aranır
@@ -4915,7 +4914,7 @@ function renderSahaUyarilar(){
 function renderBadges(){
   const r = hesaplaRozetler();
   const items = [
-    { label:'kg/dekar', val: r.verimKirilan==null?'-':fmt(r.verimKirilan,1), tip:'Toplam kg ÷ kırım yapılmış tarlaların toplam dekarı. Tüm sahaya göre verim Saha Genel panelinde.' },
+    { label:'tahmini kg/dekar', val: r.verimKirilan==null?'-':fmt(r.verimKirilan,1), tip:'Tahmini kg ÷ kırım yapılmış tarlaların toplam dekarı. Kg dizi sayısı × ortalama dizi ağırlığından hesaplanır, tartım değildir. Tüm sahaya göre verim Saha Genel panelinde.' },
     { label:'₺/kg', val: r.tlKg==null?'-':fmt(r.tlKg,2), tip:'Toplam işçi maliyeti ÷ toplam kg (tüm kayıtlar).' },
     { label:'Sera Doluluk', val: r.seraDoluluk==null?'-':fmt(r.seraDoluluk,0)+'%', tip:'Tüm seraların toplam dolu dizi ÷ toplam kapasite.' },
     { label:'Ort. Dizi (7g)', val: r.ortDizi==null?'-':fmt(r.ortDizi,2)+' kg', tip:'Son 7 gündeki kırımların ortalama dizi ağırlığı.' },
@@ -5496,15 +5495,6 @@ function donemFormOku(){
 function yeniDonemNesnesi(f){
   return { id: uid(), ...f, dolu: 0, kaynaklar: [], aktif: true, baslangic: Date.now(), bitis: null };
 }
-function submitDonemBaslat(seraId){
-  const s = seraBul(seraId);
-  if(!s) return;
-  if(seraAktifDonem(s)){ uyar('Zaten aktif bir dönem var.'); return; }
-  s.donemler = s.donemler || [];
-  s.donemler.push(yeniDonemNesnesi(donemFormOku()));
-  seraIsaretiUygula(s, 'doldurma'); // dönem açılan sera o gün doldurulmaya başlanmıştır
-  renderAll(); openSeraDetay(seraId);
-}
 function seraBosalt(id){
   const s = seraBul(id);
   if(!s) return;
@@ -5764,22 +5754,19 @@ function openSeraDetay(id){
       <div>${i18n('Dizilmiş Tütün')}<b>${fmt(dizilmisKg,0)} kg</b></div>
       <div>${i18n('Tahmini Boşalma')}<b>${tahminGun>0? '~'+tahminGun+' '+i18n('gün'):'-'}</b></div>
     </div>
-    <!-- "Güncel Dönem (düzenlenebilir)" formu KALDIRILDI: aktif dönemin tür /
-         çeşit / branda / gün alanları sera detayında sahada hiç kullanılmıyordu,
-         kartı uzatıp asıl aranan bilgiyi (kaçıncı kırım, çeşit, doluluk)
-         aşağı itiyordu. Alanlar dönem BAŞLARKEN hâlâ giriliyor; sonradan
-         düzenleme yolu bilerek kapatıldı. -->
+    <!-- Dönem formu (tür / çeşit / giriş tarihi / branda / üç gün sayısı) sera
+         DETAYINDAN tamamen kaldırıldı — hem aktif dönemi olan seradaki
+         "düzenlenebilir" hâli hem de boş seradaki "Yeni Dönem Başlat" hâli.
+         Yedi alan sahada kullanılmıyordu ve asıl aranan bilgiyi (kaçıncı kırım,
+         çeşit, doluluk) aşağı itiyordu. Dönem hâlâ kırım eklendiğinde otomatik
+         başlıyor; elle başlatmak gerekirse Toplu Doldur akışında aynı form
+         duruyor (tek sera seçilerek de kullanılabilir). -->
     <div class="field">
       <label>${i18n('Dizilen Tütünler (Güncel Dönem)')}</label>
       <div class="list-small liste-yukseklik-sinirli">${kaynakSatirlariHtml || `<div class="item">${i18n('Henüz kayıt yok')}</div>`}</div>
     </div>
   ` : `
-    <div class="hint-box">${i18n('Aktif dönem yok. Kırım eklendiğinde otomatik başlar, ya da burada elle başlatabilirsiniz.')}</div>
-    <div class="field">
-      <label>${i18n('Yeni Dönem Başlat')}</label>
-      ${donemFormFieldsHtml()}
-      <button class="btn btn-primary ust-bosluk-minik" onclick="submitDonemBaslat('${s.id}')">${i18n('Dönem Başlat')}</button>
-    </div>
+    <div class="hint-box">${i18n('Aktif dönem yok. Kırım eklendiğinde otomatik başlar; elle doldurmak için Toplu Doldur\'u kullanın.')}</div>
   `;
   /* ---- SAHA KARTI ----
      Sahada seralar arasında gezerken anında görülmesi istenen beş bilgi:
@@ -6114,7 +6101,7 @@ function openTarlaDetay(id){
       <div>${i18n('Dekar')}<b>${fmt(t.dekar,1)}</b></div>
       <div>${i18n('Bölge')}<b>${t.bolge==='tekeliler'?'Tekeliler':t.bolge==='kalemli'?'Kalemli':'-'}</b></div>
       <div>${i18n('Varyete Kodu / Çeşit')}<b>${escapeHtml(t.cesit||'-')}</b></div>
-      <div>Kg/Dekar<b>${kgDekar==null?'-':fmt(kgDekar,1)}</b></div>
+      <div>Tahmini Kg/Dekar<b>${kgDekar==null?'-':fmt(kgDekar,1)}</b></div>
       <div>${i18n('Dikim Tarihi')}<b>${escapeHtml(t.dikimTarihi||'-')}</b></div>
       <div>${i18n('Çapa Tarihi')}<b>${escapeHtml(t.capaTarihi||'-')}</b></div>
       <div>${i18n('Fide Yöntemi')}<b>${fideYontemiEtiket(t)}</b></div>
@@ -11893,7 +11880,7 @@ function renderRapor(){
     <div>${i18n('Toplam Dekar')}<b>${fmt(toplamDekar,1)}</b></div>
     <div>${i18n('Gerçekleşen Hasat')}<b>${fmt(toplamGercek,0)} kg</b></div>
     <div>${i18n('Tahmini Hasat')}<b>${fmt(toplamTahmini,0)} kg</b></div>
-    <div>Kg/Dekar<b>${kgDekar==null?'-':fmt(kgDekar,1)}</b></div>
+    <div>Tahmini Kg/Dekar<b>${kgDekar==null?'-':fmt(kgDekar,1)}</b></div>
     <div>${i18n('Toplam Sulama Saati')}<b>${fmt(toplamSulamaSaat,1)}</b></div>
     <div>${i18n('Toplam Depo Kg')}<b>${fmt(toplamDepoKg,0)}</b></div>
   `;
